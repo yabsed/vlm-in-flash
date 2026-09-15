@@ -108,4 +108,78 @@ $$R_-\le\|M\|_1\le R_+,$$
 
 for which the maximum-utility single-chunk argument no longer provides a general exact solution.
 
-##
+---
+
+## The paper's greedy algorithm approximates a fixed-budget importance-per-latency objective.
+
+The paper's implementation treats
+
+$$R=\left\lfloor(1-\rho)N\right\rfloor$$
+
+as a target number of weight rows to retain. Rather than deciding the sparsity level, the selection algorithm receives $R$ from the sparsity allocation and determines which rows should be loaded.
+
+Let $\mathcal G$ denote the generated set of contiguous candidate chunks. Each candidate $C\in\mathcal G$ is assigned the utility
+
+$$U(C)=\frac{I(C)}{T[|C|]},\qquad I(C)=\sum_{i\in C}v_i.$$
+
+Thus, $U(C)$ measures the activation importance preserved by the chunk per unit of estimated flash-read latency.
+
+The candidates are sorted by decreasing utility:
+
+$$U(C_{(1)})\ge U(C_{(2)})\ge\cdots\ge U(C_{(K)}).$$
+
+The algorithm initializes
+
+$$S\leftarrow\varnothing,\qquad q\leftarrow0,$$
+
+where $S$ is the set of accepted chunks and $q$ is the number of selected rows. It then processes the sorted candidates in order. A candidate $C_{(j)}$ is accepted if
+
+$$C_{(j)}\cap\bigcup_{D\in S}D=\varnothing$$
+
+and
+
+$$q+|C_{(j)}|\le R.$$
+
+Upon acceptance,
+
+$$S\leftarrow S\cup\{C_{(j)}\},\qquad q\leftarrow q+|C_{(j)}|.$$
+
+The procedure continues until $q=R$ or no remaining candidate can be accepted. The resulting mask is
+
+$$\boxed{M_i^{\mathrm{greedy}}=\mathbf1\left\{i\in\bigcup_{C\in S}C\right\}.}$$
+
+The algorithm may return fewer than $R$ rows when the remaining budget cannot be filled by any nonoverlapping candidate. Nevertheless, its operational goal is to select approximately $R$ rows rather than to determine the row count from scratch.
+
+The candidate utility is the chunk-level counterpart of the mask-level objective
+
+$$\frac{I(M)}{\widehat L(M)}=\frac{\sum_{C\in\mathcal C(M)}I(C)}{\sum_{C\in\mathcal C(M)}T[|C|]}.$$
+
+Accordingly, the algorithm gives priority to chunks with high importance per estimated latency and greedily combines them while attempting to fill the prescribed row budget. This is a heuristic construction: ranking chunks individually does not guarantee that their combination maximizes the global ratio.
+
+The position of Neuron Chunking can be understood by comparing it with conventional top-$R$ sparsification. Given the same prescribed row count, top-$R$ selects
+
+$$\boxed{M_{\mathrm{top}\text{-}R}\in\arg\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}I(M).}$$
+
+Because
+
+$$I(M)=\sum_i v_iM_i,$$
+
+this selects the $R$ channels with the largest individual importance values. It maximizes retained activation importance without considering the physical arrangement or flash-read latency of the selected rows.
+
+Neuron Chunking instead aims to balance retained importance against flash latency:
+
+$$\boxed{M_{\mathrm{chunk}}\approx\arg\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}\frac{I(M)}{\widehat L(M)}.}$$
+
+The symbol $\approx$ indicates that the paper's greedy procedure is intended as a fast heuristic for this objective, not as an exact optimizer.
+
+The methodological difference is therefore
+
+$$\boxed{\begin{aligned}\text{Top-}R&:\quad\max_{\|M\|_1=R} I(M),\\\text{Neuron Chunking}&:\quad\max_{\|M\|_1=R}\frac{I(M)}{\widehat L(M)}.\end{aligned}}$$
+
+Top-$R$ always prefers the individually most important rows, even when they are scattered across storage. Neuron Chunking may instead select contiguous, slightly less important rows when the reduction in flash-read latency compensates for the lost importance.
+
+Section 3.2.1 formally states the constraint as
+
+$$\|M\|_1\le R.$$
+
+The fixed-$R$ expression above is therefore not the literal displayed formulation. It is a reconstruction of the problem suggested by the algorithm and experimental comparison: $R$ is determined by the target sparsity, and the greedy procedure continues selecting chunks toward that prescribed budget.
