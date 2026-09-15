@@ -26,7 +26,7 @@ $$K(M)=|\mathcal C(M)|$$
 
 as the number of maximal contiguous chunks. Under the paper's additive latency model,
 
-$$\widehat L(M)=\sum_{C\in\mathcal C(M)}T[|C|],$$
+$$L_{\mathrm{table}}(M)=\sum_{C\in\mathcal C(M)}T[|C|],$$
 
 where $T[r]$ is the profiled flash-read latency associated with a contiguous chunk of $r$ rows.
 
@@ -34,9 +34,9 @@ Define the total retained activation importance as
 
 $$I(M)=\sum_{i=0}^{N-1}v_iM_i,$$
 
-where $v_i$ is the importance of channel $i$. The paper's displayed selection problem can then be written as
+Assume $v_i\ge0$, $I_{\mathrm{tot}}=\sum_i v_i>0$, $T[r]>0$, and $1\le R\le N$. The paper's displayed selection problem can then be written as
 
-$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{\widehat L(M)}},\qquad R=\left\lfloor(1-\rho)N\right\rfloor.$$
+$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{L_{\mathrm{table}}(M)}},\qquad R=\left\lfloor(1-\rho)N\right\rfloor.$$
 
 The lower bound excludes the empty mask, for which the ratio is undefined.
 
@@ -54,7 +54,7 @@ $$I(M)=\sum_{C\in\mathcal C(M)}I(C).$$
 
 Therefore,
 
-$$\frac{I(M)}{\widehat L(M)}=\frac{\sum_{C\in\mathcal C(M)}I(C)}{\sum_{D\in\mathcal C(M)}T[|D|]}=\sum_{C\in\mathcal C(M)}\underbrace{\frac{T[|C|]}{\sum_{D\in\mathcal C(M)}T[|D|]}}_{w_C}\underbrace{\frac{I(C)}{T[|C|]}}_{U(C)}.$$
+$$\frac{I(M)}{L_{\mathrm{table}}(M)}=\frac{\sum_{C\in\mathcal C(M)}I(C)}{\sum_{D\in\mathcal C(M)}T[|D|]}=\sum_{C\in\mathcal C(M)}\underbrace{\frac{T[|C|]}{\sum_{D\in\mathcal C(M)}T[|D|]}}_{w_C}\underbrace{\frac{I(C)}{T[|C|]}}_{U(C)}.$$
 
 The coefficients satisfy
 
@@ -62,7 +62,7 @@ $$w_C\ge0,\qquad \sum_{C\in\mathcal C(M)}w_C=1.$$
 
 Hence the mask-level importance–latency ratio is a latency-weighted average of the utilities of its constituent chunks:
 
-$$\boxed{\frac{I(M)}{\widehat L(M)}\le\max_{C\in\mathcal C(M)}U(C)}.$$
+$$\boxed{\frac{I(M)}{L_{\mathrm{table}}(M)}\le\max_{C\in\mathcal C(M)}U(C)}.$$
 
 Let $C^\star$ be the highest-utility contiguous interval whose length does not exceed $R$:
 
@@ -74,7 +74,7 @@ $$\frac{I(C^\star)}{T[|C^\star|]}=U(C^\star).$$
 
 Consequently,
 
-$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{\widehat L(M)}=\max_{\substack{C\text{ contiguous}\\1\le|C|\le R}}U(C)}.$$
+$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{L_{\mathrm{table}}(M)}=\max_{\substack{C\text{ contiguous}\\1\le|C|\le R}}U(C)}.$$
 
 Thus, under the displayed objective and additive latency assumption, there always exists an exact optimum consisting of only one contiguous chunk. Multiple chunks can also be optimal in the exceptional case where every selected chunk has the same maximum utility.
 
@@ -128,7 +128,7 @@ for which the maximum-utility single-chunk argument no longer provides a general
 
 ---
 
-## The paper's greedy algorithm approximates a fixed-budget importance-per-latency objective.
+## A fixed-budget objective captures the budget-filling behavior of the greedy algorithm.
 
 ### Fixed-budget interpretation
 
@@ -176,7 +176,7 @@ The algorithm may return fewer than $R$ rows when the remaining budget cannot be
 
 The candidate utility is the chunk-level counterpart of the mask-level objective
 
-$$\frac{I(M)}{\widehat L(M)}=\frac{\sum_{C\in\mathcal C(M)}I(C)}{\sum_{C\in\mathcal C(M)}T[|C|]}.$$
+$$\frac{I(M)}{L_{\mathrm{table}}(M)}=\frac{\sum_{C\in\mathcal C(M)}I(C)}{\sum_{C\in\mathcal C(M)}T[|C|]}.$$
 
 Accordingly, the algorithm gives priority to chunks with high importance per estimated latency and greedily combines them while attempting to fill the prescribed row budget. This is a heuristic construction: ranking chunks individually does not guarantee that their combination maximizes the global ratio.
 
@@ -192,35 +192,15 @@ $$I(M)=\sum_i v_iM_i,$$
 
 this selects the $R$ channels with the largest individual importance values. It maximizes retained activation importance without considering the physical arrangement or flash-read latency of the selected rows.
 
-Neuron Chunking instead aims to balance retained importance against flash latency:
+To study the budget-filling behavior of Neuron Chunking, we use the reconstructed benchmark
 
-$$\boxed{M_{\mathrm{chunk}}\approx\arg\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}\frac{I(M)}{\widehat L(M)}.}$$
+$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}\frac{I(M)}{L_{\mathrm{table}}(M)}.}$$
 
-The symbol $\approx$ indicates that the paper's greedy procedure is intended as a fast heuristic for this objective, not as an exact optimizer.
-
-The methodological difference is therefore
-
-$$
-\boxed{
-\begin{aligned}
-\text{Top-}R
-&:\quad \max_{R(M)=R} I(M),
-\\
-\text{Neuron Chunking}
-&:\quad \max_{R(M)=R}\frac{I(M)}{\widehat L(M)}.
-\end{aligned}
-}
-$$
-
-Top-$R$ always prefers the individually most important rows, even when they are scattered across storage. Neuron Chunking may instead select contiguous, slightly less important rows when the reduction in flash-read latency compensates for the lost importance.
+Top-$R$ maximizes importance at a fixed row count; this benchmark balances importance against flash latency at the same row count.
 
 ### Displayed constraint versus reconstructed objective
 
-Section 3.2.1 formally states the constraint as
-
-$$R(M)\le R.$$
-
-The fixed-$R$ expression above is therefore not the literal displayed formulation. It is a reconstruction of the problem suggested by the algorithm and experimental comparison: $R$ is determined by the target sparsity, and the greedy procedure continues selecting chunks toward that prescribed budget.
+The paper formally uses $R(M)\le R$. The fixed-$R$ problem is our comparison benchmark, not a proved approximation guarantee for greedy. If greedy selects fewer than $R$ rows, compare it at its actual row count $R(M_{\mathrm{greedy}})$.
 
 ---
 
@@ -234,44 +214,44 @@ $$
 T[r],
 $$
 
-where $r$ is the number of weight rows in the chunk. The released profiles instead record chunk size in kilobytes. Let $z$ denote the chunk size in KB. A least-squares fit to the released latency tables gives
+where $r$ is the number of weight rows in the chunk. The released profiles instead record chunk size in kibibytes. Let $z$ denote the chunk size in KiB. A least-squares fit to the released latency tables gives
 
 $$
 \boxed{
-T_{\mathrm{KB}}(z)\approx a+c_{\mathrm{KB}}z.
+T_{\mathrm{KiB}}(z)\approx a+c_{\mathrm{KiB}}z.
 }
 $$
 
 The fitted models are:
 
-| Device | Profiled range | Affine fit, with \(z\) in KB and \(T\) in ms | \(R^2\) |
+| Device | Profiled range | Affine fit, with $z$ in KiB and $T$ in ms | $R^2$ |
 |---|---:|---:|---:|
-| Jetson Orin AGX | \(1\text{--}255\) KB | \(T(z)\approx0.01100+0.0001398z\) | \(0.9867\) |
-| Jetson Orin Nano | \(1\text{--}350\) KB | \(T(z)\approx0.01573+0.0002842z\) | \(0.9940\) |
+| Jetson Orin AGX | $1\text{--}255$ KiB | $T(z)\approx0.01100+0.0001398z$ | $0.9867$ |
+| Jetson Orin Nano | $1\text{--}350$ KiB | $T(z)\approx0.01573+0.0002842z$ | $0.9940$ |
 
 These $R^2$ values are not reported in the original paper. They are obtained by fitting the latency tables released with its implementation. The mean absolute percentage errors are approximately $4.22\%$ on AGX and $3.21\%$ on Nano.
 
-The latency curves therefore have an approximately linear increasing shape with a positive intercept and relatively small local fluctuations. The affine approximation is intended as a structural model rather than an exact replacement for every entry in the lookup table.
+The maximum entrywise relative errors are $28.63\%$ on AGX and $23.41\%$ on Nano, so the fit is an average approximation. Its accuracy is not established beyond the profiled range; longer chunks selected by the DP require additional profiling. Here KiB means $1024$ bytes, labeled “KB” in the implementation.
 
-### Validation in the throughput domain
+### Fit in the throughput domain
 
-The model can also be validated in the throughput domain. The released implementation computes logical throughput as
+The fit can also be examined in the throughput domain. The released implementation computes logical throughput as
 
 $$
 \beta(z)
 =
-\frac{1000z}{1024T_{\mathrm{KB}}(z)}
+\frac{1000z}{1024T_{\mathrm{KiB}}(z)}
 \quad\text{MiB/s},
 $$
 
-where $z$ is measured in KB and $T_{\mathrm{KB}}(z)$ in milliseconds. Substituting the affine latency model gives
+where $z$ is measured in KiB and $T_{\mathrm{KiB}}(z)$ in milliseconds. Substituting the affine latency model gives
 
 $$
 \boxed{
 \widehat\beta(z)
 =
 \frac{1000z}
-{1024\left(a+c_{\mathrm{KB}}z\right)}.
+{1024\left(a+c_{\mathrm{KiB}}z\right)}.
 }
 $$
 
@@ -281,7 +261,7 @@ $$
 \boxed{
 \lim_{z\to\infty}\widehat\beta(z)
 =
-\frac{1000}{1024c_{\mathrm{KB}}}
+\frac{1000}{1024c_{\mathrm{KiB}}}
 \quad\text{MiB/s}.
 }
 $$
@@ -299,17 +279,17 @@ $$
 At the saturation sizes reported in Appendices D and H,
 
 $$
-z_{\mathrm{sat}}^{\mathrm{AGX}}=236\text{ KB},
+z_{\mathrm{sat}}^{\mathrm{AGX}}=236\text{ KiB},
 \qquad
-z_{\mathrm{sat}}^{\mathrm{Nano}}=348\text{ KB},
+z_{\mathrm{sat}}^{\mathrm{Nano}}=348\text{ KiB},
 $$
 
 the measured and affine-predicted throughputs are approximately:
 
 | Device | Measured throughput | Affine prediction |
 |---|---:|---:|
-| AGX | \(5221\) MiB/s | \(5238\) MiB/s |
-| Nano | \(3096\) MiB/s | \(2965\) MiB/s |
+| AGX | $5221$ MiB/s | $5238$ MiB/s |
+| Nano | $3096$ MiB/s | $2965$ MiB/s |
 
 The fitted asymptotic throughputs are
 
@@ -335,14 +315,14 @@ $$
 
 for Nano. The fitted asymptotes differ from these advertised limits by approximately $1.7\%$ and $2.9\%$, respectively.
 
-The asymptotic comparison should be interpreted cautiously. The quantities $\beta_\infty$ are extrapolated limits of the fitted models, whereas the paper measures throughput only at finite chunk sizes. Nevertheless, the agreement in both the latency and throughput domains supports the affine approximation over the profiled operating range.
+This throughput check transforms the same latency data, so it is not independent validation. At the reported saturation sizes, the affine predictions reach only $75.0\%$ and $86.3\%$ of their asymptotes. The finite measured saturation points therefore differ from the model's extrapolated limits.
 
-### Conversion from kilobytes to weight rows
+### Conversion from kibibytes to weight rows
 
-To express the model in weight-row units, suppose one weight row occupies $b$ KB. A chunk containing $r$ rows then occupies
+To express the model in weight-row units, suppose one weight row occupies $b$ KiB. A chunk containing $r$ rows then occupies
 
 $$
-z=br\text{ KB}.
+z=br\text{ KiB}.
 $$
 
 Therefore,
@@ -350,15 +330,15 @@ Therefore,
 $$
 T[r]
 =
-T_{\mathrm{KB}}(br)
+T_{\mathrm{KiB}}(br)
 \approx
-a+c_{\mathrm{KB}}br.
+a+c_{\mathrm{KiB}}br.
 $$
 
 Defining
 
 $$
-c=bc_{\mathrm{KB}},
+c=bc_{\mathrm{KiB}},
 $$
 
 the row-based latency model becomes
@@ -378,69 +358,32 @@ The parameter $a$ summarizes the effective penalty associated with small indepen
 
 ### Consequences for mask-level latency
 
-Substituting the affine approximation into the paper's additive mask-level latency model gives
-
-$$
-\begin{aligned}
-\widehat L(M)
-&=
-\sum_{C\in\mathcal C(M)}T[|C|]\\
-&\approx
-\sum_{C\in\mathcal C(M)}
-\left(a+c|C|\right)\\
-&=
-\boxed{
-aK(M)+cR(M)
-}.
-\end{aligned}
-$$
-
-Thus, under the affine approximation, mask latency depends only on
-
-- the number of separate contiguous chunks, $K(M)$;
-- the total number of selected rows, $R(M)$.
-
-When the number of selected rows is fixed at $R$,
-
-$$
-R(M)=R,
-$$
-
-the row-transfer term becomes constant:
+Define a separate affine cost, with $a,c>0$:
 
 $$
 \boxed{
-\widehat L(M)
-\approx
-aK(M)+cR.
+L_{\mathrm{aff}}(M)
+=\sum_{C\in\mathcal C(M)}(a+c|C|)
+=aK(M)+cR(M).
 }
 $$
 
-For $a>0$, masks containing the same number of rows are therefore ordered by their numbers of chunks:
+Thus $L_{\mathrm{table}}(M)\approx L_{\mathrm{aff}}(M)$. The affine cost depends only on the number of chunks and selected rows.
+
+At a fixed row count, the transfer term $cR$ is constant, so
 
 $$
 \boxed{
 R(M_1)=R(M_2)=R
 \quad\Longrightarrow\quad
-\widehat L(M_1)<\widehat L(M_2)
-\iff
-K(M_1)<K(M_2).
+\left[
+L_{\mathrm{aff}}(M_1)<L_{\mathrm{aff}}(M_2)
+\iff K(M_1)<K(M_2)
+\right].
 }
 $$
 
-Equivalently,
-
-$$
-\boxed{
-\arg\min_{\substack{M\in\{0,1\}^N\\R(M)=R}}
-\widehat L(M)
-=
-\arg\min_{\substack{M\in\{0,1\}^N\\R(M)=R}}
-K(M).
-}
-$$
-
-This explains why the paper emphasizes long contiguous regions. Among masks containing the same number of rows, a mask with fewer and longer chunks pays the effective per-chunk cost $a$ fewer times than a fragmented mask.
+Fewer chunks therefore mean lower affine latency. This exact ordering need not hold for the lookup table, whose costs also depend on individual chunk lengths.
 
 ---
 
@@ -489,7 +432,7 @@ $$
 F_0^0(0,0)=0,
 $$
 
-with every other initial state set to $-\infty$.
+with every other initial or unreachable state set to $-\infty$.
 
 ### Dynamic-programming recurrence
 
@@ -573,7 +516,7 @@ $$
 
 trace the exact fixed-$R$ importance–latency trade-off under the affine model.
 
-Increasing $k$ strictly increases affine latency when $a>0$. It also gives the optimizer greater freedom to collect important rows from separated regions, so the achievable importance generally increases along the upper envelope of these points. The exact-$k$ values $I^\star(R,k)$ need not be monotone for every activation vector because the feasible sets for different exact values of $k$ are not nested. If a monotone envelope is desired, define
+Increasing $k$ strictly increases affine latency, but the exact-$k$ values $I^\star(R,k)$ need not increase: their feasible sets are not nested. A monotone envelope is
 
 $$
 I^\star_{\le}(R,k)
@@ -585,7 +528,7 @@ The nondominated points in $\mathcal F_R$ form the fixed-budget Pareto frontier.
 
 $$
 \left(
-\widehat L(M_{\mathrm{greedy}}),\,
+L_{\mathrm{aff}}(M_{\mathrm{greedy}}),\,
 I(M_{\mathrm{greedy}})
 \right),
 $$
@@ -605,6 +548,8 @@ and rolling-array memory complexity
 $$
 O(RK_{\max}).
 $$
+
+This memory bound covers values; storing all parent pointers for backtracking takes $O(NRK_{\max})$ memory.
 
 Since $R\le N$ and $K_{\max}\le N$, this is polynomial rather than exponential, with a worst-case time complexity of $O(N^3)$. The recurrence therefore provides an exact oracle in principle. For full-scale projections, however, its practical use requires either reduced instances or further acceleration.
 
@@ -657,7 +602,7 @@ $$
 
 over the first $i$ channels, with $r$ selected channels and final state $s$.
 
-The chain-DP transitions are
+The initialization is $G_0^0(0;\eta)=0$, with all other initial or unreachable states set to $-\infty$. The transitions are
 
 $$
 G_i^0(r;\eta)
@@ -712,7 +657,7 @@ $$
 \Psi(\eta_t)=0
 $$
 
-up to the desired numerical tolerance.
+in exact arithmetic. Numerical implementations use a stated residual tolerance.
 
 Each parametric chain-DP evaluation takes
 
@@ -728,16 +673,16 @@ O(qNR),
 }
 $$
 
-with $O(R)$ memory for the objective values, excluding the additional storage required to reconstruct the mask.
+with $O(R)$ memory for values or $O(NR)$ with parent pointers for mask recovery. Here $q$ is the actual number of iterations.
 
-The three-dimensional dynamic program provides a direct polynomial-time exact oracle, while the parametric chain-DP removes the explicit chunk-count dimension and is potentially much faster in practice. Both methods are exact for the fitted affine objective
+The three-dimensional dynamic program provides a direct polynomial-time exact oracle, while the parametric chain-DP removes the explicit chunk-count dimension and is potentially much faster in practice. With exact arithmetic, exact inner solves, and zero-residual termination for Dinkelbach, both methods solve the fitted affine objective exactly:
 
 $$
 \frac{I(M)}
 {aK(M)+cR},
 $$
 
-but not automatically for the paper's original lookup-table objective when $T[r]$ deviates from $a+cr$.
+but this guarantee does not extend to the original lookup-table objective when $T[r]$ deviates from $a+cr$.
 
 ---
 
@@ -745,7 +690,7 @@ but not automatically for the paper's original lookup-table objective when $T[r]
 
 ### Coverage formulation
 
-The paper’s fixed-budget formulation prescribes the number of selected rows,
+The reconstructed fixed-budget formulation prescribes the number of selected rows,
 
 $$
 R(M)=R,
@@ -759,63 +704,29 @@ $$
 I_{\mathrm{tot}}=\sum_{i=1}^{N}v_i,
 $$
 
-and let \(\alpha\in(0,1]\) be the target importance-retention ratio. The required importance is
+and let $\alpha\in(0,1]$ be the target importance-retention ratio. The required importance is
 
 $$
 B_\alpha=\alpha I_{\mathrm{tot}}.
 $$
 
-The proposed coverage problem is
+Under the affine model, the proposed coverage problem is
 
 $$
 \boxed{
-M_\alpha^\star
-\in
-\arg\min_{M\in\{0,1\}^{N}}
-\widehat L(M)
-\quad
-\text{subject to}
-\quad
-I(M)\ge \alpha I_{\mathrm{tot}}.
-}
-$$
-
-The constraint is written as an inequality because the importance values are real-valued, so a mask satisfying the exact equality
-
-$$
-I(M)=\alpha I_{\mathrm{tot}}
-$$
-
-may not exist.
-
-Under the affine latency approximation,
-
-$$
-\widehat L(M)\approx aK(M)+cR(M),
-$$
-
-the problem becomes
-
-$$
-\boxed{
-M_\alpha^\star
-\in
-\arg\min_{M\in\{0,1\}^{N}}
-\left\{
-aK(M)+cR(M)
-\right\}
-\quad
-\text{subject to}
-\quad
+M_\alpha^\star\in\arg\min_M L_{\mathrm{aff}}(M)
+\quad\text{subject to}\quad
 I(M)\ge\alpha I_{\mathrm{tot}}.
 }
 $$
 
-Unlike the fixed-budget problem, this formulation does not prescribe \(R(M)\). Both the number of selected rows and the number of chunks are determined by the optimization. Concentrated importance may allow the target to be reached with relatively few rows, whereas a smoother importance distribution may require selecting more rows.
+The inequality allows coverage to exceed the target, since exact equality may be impossible. Among masks with minimum latency, choose one with the largest retained importance.
+
+Unlike the fixed-budget problem, this formulation does not prescribe $R(M)$. Both the number of selected rows and the number of chunks are determined by the optimization. Concentrated importance may allow the target to be reached with relatively few rows, whereas a smoother importance distribution may require selecting more rows.
 
 ### Exact offline solution
 
-The chain dynamic program developed for the fixed-budget problem can also solve the affine coverage problem exactly. For every feasible pair \((r,k)\), define
+The chain dynamic program developed for the fixed-budget problem can also solve the affine coverage problem exactly. For every feasible pair $(r,k)$, define
 
 $$
 I^\star(r,k)
@@ -826,13 +737,13 @@ I(M)
 \max_{s\in\{0,1\}}F_N^s(r,k).
 $$
 
-Every mask with \(R(M)=r\) and \(K(M)=k\) has the same affine latency,
+Every mask with $R(M)=r$ and $K(M)=k$ has the same affine latency,
 
 $$
 aK(M)+cR(M)=ak+cr.
 $$
 
-Consequently, some mask with row count \(r\) and chunk count \(k\) satisfies the coverage constraint if and only if
+Consequently, some mask with row count $r$ and chunk count $k$ satisfies the coverage constraint if and only if
 
 $$
 I^\star(r,k)\ge\alpha I_{\mathrm{tot}}.
@@ -859,13 +770,13 @@ $$
 K_{\max}(r)=\min(r,N-r+1)
 $$
 
-for \(r\ge1\), with \(K_{\max}(0)=0\).
+for $r\ge1$, with $K_{\max}(0)=0$.
 
-The corresponding optimal mask can be recovered by backtracking through the DP state attaining \((r_\alpha^\star,k_\alpha^\star)\). Equivalently, the exact minimum latency is
+Break cost ties between states by larger $I^\star(r,k)$. The corresponding optimal mask can be recovered by backtracking through the DP state attaining $(r_\alpha^\star,k_\alpha^\star)$. Equivalently, the exact minimum latency is
 
 $$
 \boxed{
-L^\star(\alpha)
+L_{\mathrm{aff}}^\star(\alpha)
 =
 \min_{\substack{r,k\\
 I^\star(r,k)\ge\alpha I_{\mathrm{tot}}
@@ -874,19 +785,19 @@ I^\star(r,k)\ge\alpha I_{\mathrm{tot}}
 }
 $$
 
-Computing the complete table \(I^\star(r,k)\) requires
+Computing the complete table $I^\star(r,k)$ requires
 
 $$
 O(N^3)
 $$
 
-time in the unrestricted worst case and \(O(N^2)\) rolling-array memory. Once computed, the same table can answer any number of coverage thresholds without rerunning the chain DP.
+time and $O(N^2)$ rolling memory for values. Direct backtracking with all parent pointers takes $O(N^3)$ memory; smaller-memory recovery requires recomputation. The final table can be reused across coverage thresholds.
 
-This algorithm is therefore suitable as an exact offline oracle. It establishes the best achievable latency under the affine model, but its cubic running time is unlikely to satisfy the paper’s approximately \(2\) ms per-matrix online-selection target.
+This algorithm is therefore suitable as an exact offline oracle. It establishes the best achievable latency under the affine model, but its cubic running time is unlikely to satisfy the paper’s approximately $2$ ms per-matrix online-selection target.
 
 ### A fast Lagrangian chain solver
 
-A faster online approximation can be obtained by relaxing the coverage constraint with a multiplier \(\lambda\ge0\):
+A faster online approximation can be obtained by relaxing the coverage constraint with a multiplier $\lambda\ge0$:
 
 $$
 \min_M
@@ -897,7 +808,7 @@ aK(M)+cR(M)
 \right].
 $$
 
-Because \(\lambda B_\alpha\) is constant for a fixed multiplier, the mask can be found by solving
+Because $\lambda B_\alpha$ is constant for a fixed multiplier, the mask can be found by solving
 
 $$
 \boxed{
@@ -908,12 +819,12 @@ aK(M)+cR(M)-\lambda I(M)
 }
 $$
 
-The multiplier \(\lambda\) controls the value assigned to retained importance:
+The multiplier $\lambda$ controls the value assigned to retained importance:
 
-* a small \(\lambda\) emphasizes low latency;
-* a large \(\lambda\) rewards retaining more importance.
+* a small $\lambda$ emphasizes low latency;
+* a large $\lambda$ rewards retaining more importance.
 
-For a fixed \(\lambda\), define \(D_i^s(\lambda)\) as the minimum relaxed cost for the first \(i\) channels when channel \(i\) has state \(s\in\{0,1\}\). The initial conditions are
+For a fixed $\lambda$, define $D_i^s(\lambda)$ as the minimum relaxed cost for the first $i$ channels when channel $i$ has state $s\in\{0,1\}$. The initial conditions are
 
 $$
 D_0^0(\lambda)=0,
@@ -921,7 +832,7 @@ D_0^0(\lambda)=0,
 D_0^1(\lambda)=+\infty.
 $$
 
-If channel \(i\) is not selected,
+If channel $i$ is not selected,
 
 $$
 D_i^0(\lambda)
@@ -933,7 +844,7 @@ D_{i-1}^1(\lambda)
 \right\}.
 $$
 
-If channel \(i\) is selected, it either continues the current chunk or starts a new one:
+If channel $i$ is selected, it either continues the current chunk or starts a new one:
 
 $$
 \boxed{
@@ -949,53 +860,53 @@ D_{i-1}^0(\lambda)+a
 }
 $$
 
-The term \(c-\lambda v_i\) is the marginal cost of selecting channel \(i\). A transition from \(0\) to \(1\) additionally pays the per-chunk cost \(a\), while a transition from \(1\) to \(1\) extends an existing chunk without paying \(a\) again.
+The term $c-\lambda v_i$ is the marginal cost of selecting channel $i$. A transition from $0$ to $1$ additionally pays the per-chunk cost $a$, while a transition from $1$ to $1$ extends an existing chunk without paying $a$ again.
 
-This recurrence has only two states per channel. It does not explicitly track either \(R(M)\) or \(K(M)\). Therefore, one multiplier evaluation requires
+This recurrence has only two states per channel. It does not explicitly track either $R(M)$ or $K(M)$. Therefore, one multiplier evaluation requires
 
 $$
 \boxed{O(N)}
 $$
 
-time. Evaluating \(q\) multiplier values requires
+time. Evaluating $q$ multiplier values requires
 
 $$
 \boxed{O(qN)}
 $$
 
-time, with \(O(1)\) memory when only the optimal value is needed and \(O(N)\) memory when the mask must be recovered.
+time, with $O(1)$ memory when only the optimal value is needed and $O(N)$ memory when the mask must be recovered.
 
-A grid search or bisection-style search over \(\lambda\) can generate masks ranging from low-latency, low-importance solutions to higher-importance solutions. Among the generated masks satisfying
+A grid search or bisection-style search over $\lambda$ can generate masks ranging from low-latency, low-importance solutions to higher-importance solutions. Among the generated masks satisfying
 
 $$
 I(M)\ge\alpha I_{\mathrm{tot}},
 $$
 
-the feasible mask with the smallest actual affine latency is returned.
+the mask with the smallest affine latency is returned, breaking ties by greater importance. Keep the full-selection mask as a feasible fallback if the searched multipliers produce no feasible candidate.
 
-The \(O(qN)\) complexity makes this method a plausible candidate for approaching the paper’s online runtime target. Unlike Neuron Chunking, it requires neither multiscale candidate generation nor global candidate sorting. Its practical latency must nevertheless be established experimentally rather than inferred from asymptotic complexity alone.
+The $O(qN)$ complexity makes this method a plausible candidate for approaching the paper’s online runtime target. Unlike Neuron Chunking, it requires neither multiscale candidate generation nor global candidate sorting. Its practical latency must nevertheless be established experimentally rather than inferred from asymptotic complexity alone.
 
-The Lagrangian solver is not guaranteed to recover the exact coverage optimum. Linear scalarization can recover only supported points of the discrete importance–latency frontier. The minimum-latency mask satisfying a particular coverage threshold may be an unsupported point and may therefore fail to minimize the relaxed objective for every value of \(\lambda\).
+The Lagrangian solver is not guaranteed to recover the exact coverage optimum. Linear scalarization can recover only supported points of the discrete importance–latency frontier. The minimum-latency mask satisfying a particular coverage threshold may be an unsupported point and may therefore fail to minimize the relaxed objective for every value of $\lambda$.
 
 The two algorithms consequently serve different purposes:
 
 | Method                   | Complexity | Role                      |
 | ------------------------ | ---------: | ------------------------- |
-| Exact \((r,k)\) chain DP | \(O(N^3)\) | Offline optimality oracle |
-| Lagrangian chain DP      |  \(O(qN)\) | Fast online approximation |
+| Exact $(r,k)$ chain DP | $O(N^3)$ | Offline optimality oracle |
+| Lagrangian chain DP      |  $O(qN)$ | Fast online approximation |
 
 The exact DP provides the ground truth against which the faster solver can be evaluated.
 
 ### Importance–latency frontiers
 
-Sweeping the coverage threshold produces the exact affine importance–latency frontier
+Sweeping a finite set of coverage thresholds samples the exact affine importance–latency frontier
 
 $$
 \boxed{
 \left\{
 \left(
 \frac{I(M_\alpha^\star)}{I_{\mathrm{tot}}},
-L^\star(\alpha)
+L_{\mathrm{aff}}^\star(\alpha)
 \right)
 :
 \alpha\in\mathcal A
@@ -1011,13 +922,13 @@ $$
 \{0.80,0.85,0.90,0.95,0.97,0.99\}.
 $$
 
-If \(\alpha_1\le\alpha_2\), every mask feasible at \(\alpha_2\) is also feasible at \(\alpha_1\). Hence,
+If $\alpha_1\le\alpha_2$, every mask feasible at $\alpha_2$ is also feasible at $\alpha_1$. Hence,
 
 $$
 \boxed{
 \alpha_1\le\alpha_2
 \quad\Longrightarrow\quad
-L^\star(\alpha_1)\le L^\star(\alpha_2).
+L_{\mathrm{aff}}^\star(\alpha_1)\le L_{\mathrm{aff}}^\star(\alpha_2).
 }
 $$
 
@@ -1025,32 +936,32 @@ The curve therefore measures the minimum additional latency required to preserve
 
 The experiment can compare four sets of operating points on the same activation vectors:
 
-* the exact coverage frontier obtained from the \(O(N^3)\) DP;
-* the \(O(qN)\) Lagrangian solutions;
+* the exact coverage frontier obtained from the $O(N^3)$ DP;
+* the $O(qN)$ Lagrangian solutions;
 * the masks produced by Neuron Chunking;
-* the masks produced by conventional top-\(R\) selection.
+* the masks produced by conventional top-$R$ selection.
 
-For any produced mask \(M\), define its achieved coverage as
+For any produced mask $M$, define its achieved coverage as
 
 $$
 \alpha(M)=\frac{I(M)}{I_{\mathrm{tot}}}.
 $$
 
-Its relative gap from the exact coverage frontier is then
+For $I(M)>0$, its relative gap under the affine model is
 
 $$
 \boxed{
-\operatorname{Gap}(M)
+\operatorname{Gap}_{\mathrm{aff}}(M)
 =
 \frac{
-\widehat L(M)-L^\star(\alpha(M))
+L_{\mathrm{aff}}(M)-L_{\mathrm{aff}}^\star(\alpha(M))
 }{
-L^\star(\alpha(M))
+L_{\mathrm{aff}}^\star(\alpha(M))
 }.
 }
 $$
 
-Using the achieved coverage \(\alpha(M)\), rather than the requested threshold, ensures that each method is compared with the exact optimum preserving at least as much importance as that method actually preserves.
+Using the achieved coverage $\alpha(M)$, rather than the requested threshold, ensures that each method is compared with the exact optimum preserving at least as much importance as that method actually preserves.
 
 Recording
 
@@ -1062,11 +973,13 @@ $$
 
 at each operating point additionally reveals whether a latency reduction comes from selecting fewer rows, forming fewer chunks, or both.
 
-The fixed-\(R\) and coverage frontiers answer distinct questions:
+The fixed-$R$ and coverage frontiers answer distinct questions:
 
 | Frontier             | Constraint                         | Variables allowed to change                | Primary purpose                                              |
 | -------------------- | ---------------------------------- | ------------------------------------------ | ------------------------------------------------------------ |
-| Fixed-\(R\) frontier | \(R(M)=R\)                         | \(K(M)\) and selected positions            | Evaluate the problem suggested by the paper’s implementation |
-| Coverage frontier    | \(I(M)\ge\alpha I_{\mathrm{tot}}\) | \(R(M)\), \(K(M)\), and selected positions | Evaluate the alternative problem proposed here               |
+| Fixed-$R$ frontier | $R(M)=R$                         | $K(M)$ and selected positions            | Evaluate the problem suggested by the paper’s implementation |
+| Coverage frontier    | $I(M)\ge\alpha I_{\mathrm{tot}}$ | $R(M)$, $K(M)$, and selected positions | Evaluate the alternative problem proposed here               |
+
+For each mask, record $L_{\mathrm{aff}}$, $L_{\mathrm{table}}$, and $L_{\mathrm{measured}}$ separately to distinguish optimization quality from model accuracy. Use the same channel order and reordering across methods, and include activation transfers, mask recovery, and synchronization in selection time.
 
 Finally, activation importance remains a surrogate for model quality. Exact optimality on the importance–latency frontier does not imply exact optimality on the downstream accuracy–latency frontier. Selected operating points must therefore also be evaluated on the original VLM tasks.
