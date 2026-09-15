@@ -1,0 +1,3 @@
+[submodule "vlm-flash"]
+	path = vlm-flash
+	url = https://github.com/snuhcs/vlm-flash.git
