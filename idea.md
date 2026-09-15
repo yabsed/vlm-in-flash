@@ -192,9 +192,11 @@ The paper represents the latency of a contiguous chunk using the profiled lookup
 
 $$T[r],$$
 
-where $r$ is the number of weight rows in the chunk. The released profiles store chunk size in kilobytes. Let $z$ denote the chunk size in KB. A least-squares fit to these profiles gives the affine approximation
+where $r$ is the number of weight rows in the chunk. The released profiles instead record chunk size in kilobytes. Let $z$ denote the chunk size in KB. A least-squares fit to these profiles gives
 
-$$\boxed{T_{\mathrm{KB}}(z)\approx a+c_{\mathrm{KB}}z.}$$
+$$\boxed{
+T_{\mathrm{KB}}(z)\approx a+c_{\mathrm{KB}}z.
+}$$
 
 The fitted models are:
 
@@ -205,33 +207,111 @@ The fitted models are:
 
 These $R^2$ values are not reported in the original paper; they are obtained by fitting the latency tables released with its implementation. The mean absolute percentage errors are approximately $4.22\%$ on AGX and $3.21\%$ on Nano.
 
-The latency curves therefore have a nearly linear increasing shape with a positive intercept, together with relatively small local fluctuations. The approximation is especially useful as a structural model rather than as an exact replacement for every lookup-table entry.
+The latency curves therefore have a nearly linear increasing shape with a positive intercept, together with relatively small local fluctuations. The affine approximation is useful as a structural model rather than as an exact replacement for every lookup-table entry.
 
-The corresponding throughput is
+The affine model can also be validated in the throughput domain. The released implementation computes logical throughput as
 
-$$\beta(z)=\frac{z}{T_{\mathrm{KB}}(z)}
-\approx
-\frac{z}{a+c_{\mathrm{KB}}z}.$$
+$$
+\beta(z)
+=
+\frac{1000z}{1024T_{\mathrm{KB}}(z)}
+\quad\text{MiB/s},
+$$
 
-Hence,
+where $z$ is measured in KB and $T_{\mathrm{KB}}(z)$ in milliseconds. Substituting
 
-$$\beta(z)\longrightarrow\frac{1}{c_{\mathrm{KB}}}
-\qquad\text{as}\qquad
-z\longrightarrow\infty.$$
+$$T_{\mathrm{KB}}(z)\approx a+c_{\mathrm{KB}}z$$
 
-This produces the qualitative shape observed in the paper: throughput initially increases with contiguous-read size and then approaches a saturation level.
+gives
 
-If one weight row occupies $b$ KB, a chunk containing $r$ rows occupies
+$$
+\boxed{
+\widehat\beta(z)
+=
+\frac{1000z}
+{1024\left(a+c_{\mathrm{KB}}z\right)}
+}.
+$$
+
+This function increases with chunk size and approaches
+
+$$
+\boxed{
+\beta_\infty
+=
+\frac{1000}{1024c_{\mathrm{KB}}}
+\quad\text{MiB/s}
+}
+$$
+
+as $z\to\infty$. It therefore reproduces the qualitative behavior observed in the paper: throughput rises rapidly for small contiguous reads and gradually approaches a bandwidth ceiling.
+
+The throughput curves derived from the affine model closely match the released measurements. The coefficients of determination in the throughput domain are
+
+$$
+R^2_{\mathrm{AGX}}=0.9875,
+\qquad
+R^2_{\mathrm{Nano}}=0.9866.
+$$
+
+At the saturation sizes reported in Appendices D and H,
+
+$$
+z_{\mathrm{sat}}^{\mathrm{AGX}}=236\text{ KB},
+\qquad
+z_{\mathrm{sat}}^{\mathrm{Nano}}=348\text{ KB},
+$$
+
+the measured and affine-predicted throughputs are approximately
+
+$$
+\begin{array}{c|cc}
+&\text{Measured}&\text{Affine prediction}\\
+\hline
+\text{AGX}&5221\text{ MiB/s}&5238\text{ MiB/s}\\
+\text{Nano}&3096\text{ MiB/s}&2965\text{ MiB/s}.
+\end{array}
+$$
+
+The fitted asymptotic throughputs are
+
+$$
+\beta_\infty^{\mathrm{AGX}}
+\approx6985\text{ MiB/s},
+\qquad
+\beta_\infty^{\mathrm{Nano}}
+\approx3436\text{ MiB/s}.
+$$
+
+For comparison, the advertised SSD limits are
+
+$$
+7450\text{ MB/s}\approx7105\text{ MiB/s}
+$$
+
+for AGX and
+
+$$
+3500\text{ MB/s}\approx3338\text{ MiB/s}
+$$
+
+for Nano. The affine asymptotes differ from these advertised limits by approximately $1.7\%$ and $2.9\%$, respectively.
+
+This comparison should be interpreted cautiously. The quantities $\beta_\infty$ are extrapolated asymptotes of fitted models, whereas the paper's throughput measurements are obtained at finite chunk sizes. Nevertheless, the agreement in both the latency and throughput domains supports the affine approximation over the profiled operating range.
+
+To express the model in weight-row units, suppose one row occupies $b$ KB. A chunk containing $r$ rows then occupies
 
 $$z=br\text{ KB}.$$
 
 Therefore,
 
-$$T[r]
+$$
+T[r]
 =
 T_{\mathrm{KB}}(br)
 \approx
-a+c_{\mathrm{KB}}br.$$
+a+c_{\mathrm{KB}}br.
+$$
 
 Defining
 
@@ -239,7 +319,9 @@ $$c=bc_{\mathrm{KB}},$$
 
 the row-based latency model becomes
 
-$$\boxed{T[r]\approx a+cr.}$$
+$$\boxed{
+T[r]\approx a+cr.
+}$$
 
 Here:
 
@@ -254,9 +336,13 @@ $$K(M)=|\mathcal C(M)|$$
 
 be the number of maximal contiguous chunks in mask $M$, and let
 
-$$R(M)=\|M\|_1
+$$
+R(M)
 =
-\sum_{C\in\mathcal C(M)}|C|$$
+\|M\|_1
+=
+\sum_{C\in\mathcal C(M)}|C|
+$$
 
 be the total number of selected rows. Substituting the affine approximation into the paper's additive latency model gives
 
@@ -273,111 +359,39 @@ a|\mathcal C(M)|
 +
 c\sum_{C\in\mathcal C(M)}|C|\\
 &=
-\boxed{aK(M)+cR(M)}.
+\boxed{
+aK(M)+cR(M)
+}.
 \end{aligned}
 $$
 
-Thus, the latency depends only on two structural properties of the mask:
+Thus, the affine latency depends only on two structural properties of the mask:
 
 - the number of selected rows, $R(M)$;
 - the number of separate contiguous chunks, $K(M)$.
 
-When the row count is fixed at $R$,
+When the selected row count is fixed at $R$,
 
 $$R(M)=R,$$
 
 the row-transfer term is constant:
 
-$$\widehat L(M)\approx aK(M)+cR.$$
+$$
+\widehat L(M)
+\approx
+aK(M)+cR.
+$$
 
-Consequently, differences in estimated latency among masks with the same row count arise from the number of chunks:
+For $a>0$, differences in affine latency among masks with the same row count are therefore determined entirely by their numbers of chunks:
 
-$$\boxed{
+$$
+\boxed{
 R(M)=R
 \quad\Longrightarrow\quad
 \min_M\widehat L(M)
 \iff
 \min_MK(M).
-}$$
-
-This explains why the paper emphasizes long contiguous chunks. A mask with fewer, longer chunks pays the effective fixed cost $a$ fewer times than a fragmented mask containing the same number of selected rows.
-
-For two chunks of lengths $r_1$ and $r_2$, reading them separately costs
-
-$$T[r_1]+T[r_2]
-\approx
-2a+c(r_1+r_2).$$
-
-Reading the same rows as one contiguous chunk costs
-
-$$T[r_1+r_2]
-\approx
-a+c(r_1+r_2).$$
-
-Therefore,
-
-$$
-\begin{aligned}
-T[r_1]+T[r_2]-T[r_1+r_2]
-&\approx a,
-\end{aligned}
-$$
-
-and hence
-
-$$\boxed{
-T[r_1+r_2]
-<
-T[r_1]+T[r_2]
-\qquad\text{whenever}\qquad
-a>0.
-}$$
-
-The strict inequality itself requires only a positive intercept. Its practical significance depends on whether $a$ is large relative to the variable transfer cost $c(r_1+r_2)$:
-
-$$
-\frac{
-T[r_1]+T[r_2]-T[r_1+r_2]
-}{
-T[r_1+r_2]
 }
-\approx
-\frac{a}{a+c(r_1+r_2)}.
 $$
 
-Thus, it is not dimensionally meaningful to compare $a$ directly with $c$: $a$ has units of latency, whereas $c$ has units of latency per row. The relevant comparison is between $a$ and $cr$, or equivalently between the chunk length $r$ and the characteristic scale
-
-$$\boxed{r_{\mathrm{fixed}}=\frac ac.}$$
-
-Using the KB-based fitted models gives
-
-$$\frac{a}{c_{\mathrm{KB}}}
-\approx
-\begin{cases}
-78.7\text{ KB},&\text{AGX},\\
-55.3\text{ KB},&\text{Nano}.
-\end{cases}$$
-
-The fixed per-chunk penalty is therefore comparable to the cost of transferring approximately $79$ KB on AGX and $55$ KB on Nano. This is large enough for fragmentation to have a substantial effect on small and medium-sized reads.
-
-More generally, suppose two selected regions of lengths $r_1$ and $r_2$ are separated by an unselected gap of length $g$. Reading them separately costs
-
-$$2a+c(r_1+r_2),$$
-
-whereas loading the intervening gap and merging them into one read costs
-
-$$a+c(r_1+r_2+g).$$
-
-The merged read is faster precisely when
-
-$$
-a+c(r_1+r_2+g)
-<
-2a+c(r_1+r_2),
-$$
-
-or equivalently,
-
-$$\boxed{g<\frac ac.}$$
-
-Thus, under the affine model, it can be faster to load some additional neighboring rows if doing so eliminates a separate chunk. The ratio $a/c$ determines how large a gap can be bridged before the additional transfer cost exceeds the saved per-chunk cost.
+This explains why the paper emphasizes long contiguous regions. Among masks containing the same number of rows, a mask with fewer and longer chunks pays the effective per-chunk cost $a$ fewer times than a fragmented mask.
