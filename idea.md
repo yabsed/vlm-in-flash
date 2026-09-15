@@ -188,15 +188,19 @@ The fixed-$R$ expression above is therefore not the literal displayed formulatio
 
 ## The profiled chunk latency is closely approximated by an affine function.
 
-The paper represents the latency of a contiguous chunk using the profiled lookup table
+The paper represents the latency of reading a contiguous chunk using the profiled lookup table
 
-$$T[r],$$
+$$
+T[r],
+$$
 
-where $r$ is the number of weight rows in the chunk. The released profiles instead record chunk size in kilobytes. Let $z$ denote the chunk size in KB. A least-squares fit to these profiles gives
+where $r$ is the number of weight rows in the chunk. The released profiles instead record chunk size in kilobytes. Let $z$ denote the chunk size in KB. A least-squares fit to the released latency tables gives
 
-$$\boxed{
+$$
+\boxed{
 T_{\mathrm{KB}}(z)\approx a+c_{\mathrm{KB}}z.
-}$$
+}
+$$
 
 The fitted models are:
 
@@ -205,11 +209,11 @@ The fitted models are:
 | Jetson Orin AGX | \(1\text{--}255\) KB | \(T(z)\approx0.01100+0.0001398z\) | \(0.9867\) |
 | Jetson Orin Nano | \(1\text{--}350\) KB | \(T(z)\approx0.01573+0.0002842z\) | \(0.9940\) |
 
-These $R^2$ values are not reported in the original paper; they are obtained by fitting the latency tables released with its implementation. The mean absolute percentage errors are approximately $4.22\%$ on AGX and $3.21\%$ on Nano.
+These $R^2$ values are not reported in the original paper. They are obtained by fitting the latency tables released with its implementation. The mean absolute percentage errors are approximately $4.22\%$ on AGX and $3.21\%$ on Nano.
 
-The latency curves therefore have a nearly linear increasing shape with a positive intercept, together with relatively small local fluctuations. The affine approximation is useful as a structural model rather than as an exact replacement for every lookup-table entry.
+The latency curves therefore have an approximately linear increasing shape with a positive intercept and relatively small local fluctuations. The affine approximation is intended as a structural model rather than an exact replacement for every entry in the lookup table.
 
-The affine model can also be validated in the throughput domain. The released implementation computes logical throughput as
+The model can also be validated in the throughput domain. The released implementation computes logical throughput as
 
 $$
 \beta(z)
@@ -218,35 +222,31 @@ $$
 \quad\text{MiB/s},
 $$
 
-where $z$ is measured in KB and $T_{\mathrm{KB}}(z)$ in milliseconds. Substituting
-
-$$T_{\mathrm{KB}}(z)\approx a+c_{\mathrm{KB}}z$$
-
-gives
+where $z$ is measured in KB and $T_{\mathrm{KB}}(z)$ in milliseconds. Substituting the affine latency model gives
 
 $$
 \boxed{
 \widehat\beta(z)
 =
 \frac{1000z}
-{1024\left(a+c_{\mathrm{KB}}z\right)}
-}.
-$$
-
-This function increases with chunk size and approaches
-
-$$
-\boxed{
-\beta_\infty
-=
-\frac{1000}{1024c_{\mathrm{KB}}}
-\quad\text{MiB/s}
+{1024\left(a+c_{\mathrm{KB}}z\right)}.
 }
 $$
 
-as $z\to\infty$. It therefore reproduces the qualitative behavior observed in the paper: throughput rises rapidly for small contiguous reads and gradually approaches a bandwidth ceiling.
+This function increases with chunk size and satisfies
 
-The throughput curves derived from the affine model closely match the released measurements. The coefficients of determination in the throughput domain are
+$$
+\boxed{
+\lim_{z\to\infty}\widehat\beta(z)
+=
+\frac{1000}{1024c_{\mathrm{KB}}}
+\quad\text{MiB/s}.
+}
+$$
+
+It therefore reproduces the qualitative behavior observed in the paper: throughput rises rapidly for small contiguous reads and gradually approaches a bandwidth ceiling.
+
+The throughput curves derived from the affine model also closely match the released measurements. Their coefficients of determination are
 
 $$
 R^2_{\mathrm{AGX}}=0.9875,
@@ -262,16 +262,12 @@ z_{\mathrm{sat}}^{\mathrm{AGX}}=236\text{ KB},
 z_{\mathrm{sat}}^{\mathrm{Nano}}=348\text{ KB},
 $$
 
-the measured and affine-predicted throughputs are approximately
+the measured and affine-predicted throughputs are approximately:
 
-$$
-\begin{array}{c|cc}
-&\text{Measured}&\text{Affine prediction}\\
-\hline
-\text{AGX}&5221\text{ MiB/s}&5238\text{ MiB/s}\\
-\text{Nano}&3096\text{ MiB/s}&2965\text{ MiB/s}.
-\end{array}
-$$
+| Device | Measured throughput | Affine prediction |
+|---|---:|---:|
+| AGX | \(5221\) MiB/s | \(5238\) MiB/s |
+| Nano | \(3096\) MiB/s | \(2965\) MiB/s |
 
 The fitted asymptotic throughputs are
 
@@ -295,13 +291,15 @@ $$
 3500\text{ MB/s}\approx3338\text{ MiB/s}
 $$
 
-for Nano. The affine asymptotes differ from these advertised limits by approximately $1.7\%$ and $2.9\%$, respectively.
+for Nano. The fitted asymptotes differ from these advertised limits by approximately $1.7\%$ and $2.9\%$, respectively.
 
-This comparison should be interpreted cautiously. The quantities $\beta_\infty$ are extrapolated asymptotes of fitted models, whereas the paper's throughput measurements are obtained at finite chunk sizes. Nevertheless, the agreement in both the latency and throughput domains supports the affine approximation over the profiled operating range.
+The asymptotic comparison should be interpreted cautiously. The quantities $\beta_\infty$ are extrapolated limits of the fitted models, whereas the paper measures throughput only at finite chunk sizes. Nevertheless, the agreement in both the latency and throughput domains supports the affine approximation over the profiled operating range.
 
-To express the model in weight-row units, suppose one row occupies $b$ KB. A chunk containing $r$ rows then occupies
+To express the model in weight-row units, suppose one weight row occupies $b$ KB. A chunk containing $r$ rows then occupies
 
-$$z=br\text{ KB}.$$
+$$
+z=br\text{ KB}.
+$$
 
 Therefore,
 
@@ -315,36 +313,26 @@ $$
 
 Defining
 
-$$c=bc_{\mathrm{KB}},$$
+$$
+c=bc_{\mathrm{KB}},
+$$
 
 the row-based latency model becomes
 
-$$\boxed{
+$$
+\boxed{
 T[r]\approx a+cr.
-}$$
+}
+$$
 
 Here:
 
-- $a$ is an effective fixed cost incurred once per contiguous chunk;
-- $c$ is the marginal latency of adding one more row to that chunk.
+- $a$ is the effective fixed latency incurred once per contiguous chunk;
+- $c$ is the marginal latency of adding one more weight row to that chunk.
 
-The parameter $a$ should be interpreted as an effective per-chunk penalty that summarizes small-read inefficiencies. It is not separately measured by the paper as one particular hardware operation.
+The parameter $a$ summarizes the effective penalty associated with small independent reads. It is inferred from the affine fit rather than separately measured by the paper as the cost of one particular hardware operation.
 
-Let
-
-$$K(M)=|\mathcal C(M)|$$
-
-be the number of maximal contiguous chunks in mask $M$, and let
-
-$$
-R(M)
-=
-\|M\|_1
-=
-\sum_{C\in\mathcal C(M)}|C|
-$$
-
-be the total number of selected rows. Substituting the affine approximation into the paper's additive latency model gives
+Substituting the affine approximation into the paper's additive mask-level latency model gives
 
 $$
 \begin{aligned}
@@ -360,37 +348,53 @@ a|\mathcal C(M)|
 c\sum_{C\in\mathcal C(M)}|C|\\
 &=
 \boxed{
-aK(M)+cR(M)
+a|\mathcal C(M)|+c\|M\|_1
 }.
 \end{aligned}
 $$
 
-Thus, the affine latency depends only on two structural properties of the mask:
+Thus, under the affine approximation, mask latency depends only on
 
-- the number of selected rows, $R(M)$;
-- the number of separate contiguous chunks, $K(M)$.
+- the number of separate contiguous chunks, $|\mathcal C(M)|$;
+- the total number of selected rows, $\|M\|_1$.
 
-When the selected row count is fixed at $R$,
-
-$$R(M)=R,$$
-
-the row-transfer term is constant:
+When the number of selected rows is fixed at $R$,
 
 $$
-\widehat L(M)
-\approx
-aK(M)+cR.
+\|M\|_1=R,
 $$
 
-For $a>0$, differences in affine latency among masks with the same row count are therefore determined entirely by their numbers of chunks:
+the row-transfer term becomes constant:
 
 $$
 \boxed{
-R(M)=R
+\widehat L(M)
+\approx
+a|\mathcal C(M)|+cR.
+}
+$$
+
+For $a>0$, masks containing the same number of rows are therefore ordered by their numbers of chunks:
+
+$$
+\boxed{
+\|M_1\|_1=\|M_2\|_1=R
 \quad\Longrightarrow\quad
-\min_M\widehat L(M)
+\widehat L(M_1)<\widehat L(M_2)
 \iff
-\min_MK(M).
+|\mathcal C(M_1)|<|\mathcal C(M_2)|.
+}
+$$
+
+Equivalently,
+
+$$
+\boxed{
+\arg\min_{\substack{M\in\{0,1\}^N\\\|M\|_1=R}}
+\widehat L(M)
+=
+\arg\min_{\substack{M\in\{0,1\}^N\\\|M\|_1=R}}
+|\mathcal C(M)|.
 }
 $$
 
