@@ -395,3 +395,246 @@ R(M)=R
 $$
 
 This explains why the paper emphasizes long contiguous regions. Among masks containing the same number of rows, a mask with fewer and longer chunks pays the effective per-chunk cost $a$ fewer times than a fragmented mask.
+
+## The fixed-budget affine objective admits an exact polynomial-time dynamic program.
+
+Substituting the affine latency model into the reconstructed fixed-budget objective gives
+
+$$
+\boxed{
+\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}
+\frac{I(M)}
+{a|\mathcal C(M)|+cR}.
+}
+$$
+
+Although there are $2^N$ possible masks, exhaustive enumeration is unnecessary. The selected channels form a one-dimensional binary sequence, and the number of chunks can be written as
+
+$$
+\boxed{
+|\mathcal C(M)|
+=
+M_1+
+\sum_{i=2}^{N}(1-M_{i-1})M_i.
+}
+$$
+
+A new chunk begins exactly when a selected channel follows either the beginning of the sequence or an unselected channel. Consequently, the effect of selecting channel $i$ depends only on whether channel $i-1$ was selected. This local dependency allows dynamic programming over the channel chain.
+
+For notational convenience, index the channel importances by $v_1,\ldots,v_N$. Define
+
+$$
+F_i^s(r,k)
+$$
+
+as the maximum importance obtainable from the first $i$ channels when
+
+- exactly $r$ channels have been selected;
+- exactly $k$ chunks have been formed;
+- channel $i$ has selection state $s\in\{0,1\}$.
+
+The initial conditions are
+
+$$
+F_0^0(0,0)=0,
+$$
+
+with every other initial state set to $-\infty$.
+
+If channel $i$ is not selected, the previous sequence may end in either state:
+
+$$
+F_i^0(r,k)
+=
+\max
+\left\{
+F_{i-1}^0(r,k),
+F_{i-1}^1(r,k)
+\right\}.
+$$
+
+If channel $i$ is selected, it either continues an existing chunk or starts a new one:
+
+$$
+F_i^1(r,k)
+=
+v_i+
+\max
+\left\{
+F_{i-1}^1(r-1,k),
+F_{i-1}^0(r-1,k-1)
+\right\}.
+$$
+
+The maximum importance achievable with exactly $R$ selected rows and $k$ chunks is therefore
+
+$$
+I^\star(R,k)
+=
+\max_{s\in\{0,1\}}F_N^s(R,k).
+$$
+
+The exact optimum of the affine fixed-budget problem is
+
+$$
+\boxed{
+\max_{1\le k\le K_{\max}}
+\frac{I^\star(R,k)}
+{ak+cR},
+}
+$$
+
+where
+
+$$
+K_{\max}
+=
+\min(R,N-R+1)
+$$
+
+is the largest possible number of chunks in a binary mask containing exactly $R$ selected positions.
+
+The dynamic program has time complexity
+
+$$
+\boxed{
+O(NRK_{\max})
+}
+$$
+
+and rolling-array memory complexity
+
+$$
+O(RK_{\max}).
+$$
+
+Since $R\le N$ and $K_{\max}\le N$, this is polynomial rather than exponential, with a worst-case time complexity of $O(N^3)$. It is suitable as an offline exact oracle for measuring the optimality gap of the paper's greedy algorithm.
+
+A faster formulation eliminates the explicit chunk-count dimension through fractional programming. For a parameter $\eta\ge0$, define
+
+$$
+\Psi(\eta)
+=
+\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}
+\left[
+I(M)
+-
+\eta
+\left(
+a|\mathcal C(M)|+cR
+\right)
+\right].
+$$
+
+Let
+
+$$
+\eta^\star
+=
+\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}
+\frac{I(M)}
+{a|\mathcal C(M)|+cR}.
+$$
+
+Then
+
+$$
+\boxed{
+\Psi(\eta)
+\begin{cases}
+>0,&\eta<\eta^\star,\\
+=0,&\eta=\eta^\star,\\
+<0,&\eta>\eta^\star.
+\end{cases}
+}
+$$
+
+For a fixed $\eta$, define $G_i^s(r;\eta)$ as the maximum value of
+
+$$
+I(M)-\eta a|\mathcal C(M)|
+$$
+
+over the first $i$ channels, with $r$ selected channels and final state $s$.
+
+The chain-DP transitions are
+
+$$
+G_i^0(r;\eta)
+=
+\max
+\left\{
+G_{i-1}^0(r;\eta),
+G_{i-1}^1(r;\eta)
+\right\},
+$$
+
+and
+
+$$
+G_i^1(r;\eta)
+=
+v_i+
+\max
+\left\{
+G_{i-1}^1(r-1;\eta),
+G_{i-1}^0(r-1;\eta)-\eta a
+\right\}.
+$$
+
+Continuing a selected run adds no new chunk cost, whereas changing from state $0$ to state $1$ starts a new chunk and incurs the penalty $\eta a$.
+
+After processing all channels,
+
+$$
+\boxed{
+\Psi(\eta)
+=
+\max_{s\in\{0,1\}}
+G_N^s(R;\eta)
+-
+\eta cR.
+}
+$$
+
+Dinkelbach's method repeatedly solves this parametric chain problem and updates
+
+$$
+\eta_{t+1}
+=
+\frac{I(M_t)}
+{a|\mathcal C(M_t)|+cR},
+$$
+
+where $M_t$ maximizes the transformed objective at parameter $\eta_t$. The procedure terminates when
+
+$$
+\Psi(\eta_t)=0
+$$
+
+up to the desired numerical tolerance.
+
+Each parametric chain-DP evaluation takes
+
+$$
+O(NR)
+$$
+
+time. If Dinkelbach's method performs $q$ iterations, the total running time is
+
+$$
+\boxed{
+O(qNR),
+}
+$$
+
+with $O(R)$ memory for the objective values, excluding the additional storage required to reconstruct the mask.
+
+The three-dimensional dynamic program provides a direct polynomial-time exact oracle, while the parametric chain-DP removes the explicit chunk-count dimension and is potentially much faster in practice. Both methods are exact for the fitted affine objective
+
+$$
+\frac{I(M)}
+{a|\mathcal C(M)|+cR},
+$$
+
+but not automatically for the paper's original lookup-table objective when $T[r]$ deviates from $a+cr$.
