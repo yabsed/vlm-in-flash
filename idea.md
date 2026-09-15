@@ -6,6 +6,8 @@ Seol Handong
 
 ## Under the displayed upper-bound formulation, an exact optimum can always be represented by a single contiguous chunk.
 
+### Problem setup
+
 Let $N$ be the number of input channels of a weight matrix and let
 
 $$M\in\{0,1\}^{N},$$
@@ -44,6 +46,8 @@ $$I(C)=\sum_{i\in C}v_i,\qquad U(C)=\frac{I(C)}{T[|C|]}.$$
 
 Here $U(C)$ is the chunk's retained importance per unit of estimated flash-read latency.
 
+### Single-chunk optimality
+
 Because distinct maximal chunks partition the selected channels,
 
 $$I(M)=\sum_{C\in\mathcal C(M)}I(C).$$
@@ -73,6 +77,8 @@ Consequently,
 $$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{\widehat L(M)}=\max_{\substack{C\text{ contiguous}\\1\le|C|\le R}}U(C)}.$$
 
 Thus, under the displayed objective and additive latency assumption, there always exists an exact optimum consisting of only one contiguous chunk. Multiple chunks can also be optimal in the exceptional case where every selected chunk has the same maximum utility.
+
+### Exact search with prefix sums
 
 This optimum can be found without examining all $2^N$ masks. Define the importance prefix sums
 
@@ -104,6 +110,8 @@ $$\boxed{O(NR)}$$
 
 time and $O(N)$ memory, which becomes $O(N^2)$ time in the worst case $R=\Theta(N)$.
 
+### Mismatch between the formulation and implementation
+
 This simple exact solution exposes a mismatch between the displayed formulation and the implemented algorithm. The displayed constraint
 
 $$R(M)\le R$$
@@ -122,6 +130,8 @@ for which the maximum-utility single-chunk argument no longer provides a general
 
 ## The paper's greedy algorithm approximates a fixed-budget importance-per-latency objective.
 
+### Fixed-budget interpretation
+
 The paper's implementation treats
 
 $$R=\left\lfloor(1-\rho)N\right\rfloor$$
@@ -133,6 +143,8 @@ Let $\mathcal G$ denote the generated set of contiguous candidate chunks. Each c
 $$U(C)=\frac{I(C)}{T[|C|]},\qquad I(C)=\sum_{i\in C}v_i.$$
 
 Thus, $U(C)$ measures the activation importance preserved by the chunk per unit of estimated flash-read latency.
+
+### Greedy selection rule
 
 Let $G=|\mathcal G|$ be the number of generated candidates. They are sorted by decreasing utility:
 
@@ -160,11 +172,15 @@ $$\boxed{M_i^{\mathrm{greedy}}=\mathbf1\left\{i\in\bigcup_{C\in S}C\right\}.}$$
 
 The algorithm may return fewer than $R$ rows when the remaining budget cannot be filled by any nonoverlapping candidate. Nevertheless, its operational goal is to select approximately $R$ rows rather than to determine the row count from scratch.
 
+### Relationship to the global ratio
+
 The candidate utility is the chunk-level counterpart of the mask-level objective
 
 $$\frac{I(M)}{\widehat L(M)}=\frac{\sum_{C\in\mathcal C(M)}I(C)}{\sum_{C\in\mathcal C(M)}T[|C|]}.$$
 
 Accordingly, the algorithm gives priority to chunks with high importance per estimated latency and greedily combines them while attempting to fill the prescribed row budget. This is a heuristic construction: ranking chunks individually does not guarantee that their combination maximizes the global ratio.
+
+### Comparison with top-$R$ sparsification
 
 The position of Neuron Chunking can be understood by comparing it with conventional top-$R$ sparsification. Given the same prescribed row count, top-$R$ selects
 
@@ -198,6 +214,8 @@ $$
 
 Top-$R$ always prefers the individually most important rows, even when they are scattered across storage. Neuron Chunking may instead select contiguous, slightly less important rows when the reduction in flash-read latency compensates for the lost importance.
 
+### Displayed constraint versus reconstructed objective
+
 Section 3.2.1 formally states the constraint as
 
 $$R(M)\le R.$$
@@ -207,6 +225,8 @@ The fixed-$R$ expression above is therefore not the literal displayed formulatio
 ---
 
 ## The profiled chunk latency is closely approximated by an affine function.
+
+### Affine fit of the released latency profiles
 
 The paper represents the latency of reading a contiguous chunk using the profiled lookup table
 
@@ -232,6 +252,8 @@ The fitted models are:
 These $R^2$ values are not reported in the original paper. They are obtained by fitting the latency tables released with its implementation. The mean absolute percentage errors are approximately $4.22\%$ on AGX and $3.21\%$ on Nano.
 
 The latency curves therefore have an approximately linear increasing shape with a positive intercept and relatively small local fluctuations. The affine approximation is intended as a structural model rather than an exact replacement for every entry in the lookup table.
+
+### Validation in the throughput domain
 
 The model can also be validated in the throughput domain. The released implementation computes logical throughput as
 
@@ -315,6 +337,8 @@ for Nano. The fitted asymptotes differ from these advertised limits by approxima
 
 The asymptotic comparison should be interpreted cautiously. The quantities $\beta_\infty$ are extrapolated limits of the fitted models, whereas the paper measures throughput only at finite chunk sizes. Nevertheless, the agreement in both the latency and throughput domains supports the affine approximation over the profiled operating range.
 
+### Conversion from kilobytes to weight rows
+
 To express the model in weight-row units, suppose one weight row occupies $b$ KB. A chunk containing $r$ rows then occupies
 
 $$
@@ -351,6 +375,8 @@ Here:
 - $c$ is the marginal latency of adding one more weight row to that chunk.
 
 The parameter $a$ summarizes the effective penalty associated with small independent reads. It is inferred from the affine fit rather than separately measured by the paper as the cost of one particular hardware operation.
+
+### Consequences for mask-level latency
 
 Substituting the affine approximation into the paper's additive mask-level latency model gives
 
@@ -420,6 +446,8 @@ This explains why the paper emphasizes long contiguous regions. Among masks cont
 
 ## The fixed-budget affine objective admits an exact polynomial-time dynamic program.
 
+### Fixed-budget formulation and DP state
+
 Substituting the affine latency model into the reconstructed fixed-budget objective gives
 
 $$
@@ -462,6 +490,8 @@ F_0^0(0,0)=0,
 $$
 
 with every other initial state set to $-\infty$.
+
+### Dynamic-programming recurrence
 
 If channel $i$ is not selected, the previous sequence may end in either state:
 
@@ -515,6 +545,8 @@ K_{\max}
 $$
 
 is the largest possible number of chunks in a binary mask containing exactly $R$ selected positions.
+
+### Exact importance–latency frontier
 
 The dynamic program yields more than the single ratio-maximizing mask. For every feasible chunk count $k$, it gives the largest importance achievable with exactly $R$ selected rows. Since the affine latency associated with that state is
 
@@ -575,6 +607,8 @@ O(RK_{\max}).
 $$
 
 Since $R\le N$ and $K_{\max}\le N$, this is polynomial rather than exponential, with a worst-case time complexity of $O(N^3)$. The recurrence therefore provides an exact oracle in principle. For full-scale projections, however, its practical use requires either reduced instances or further acceleration.
+
+### Faster solution through fractional programming
 
 A faster formulation eliminates the explicit chunk-count dimension through fractional programming. For a parameter $\eta\ge0$, define
 
@@ -708,6 +742,8 @@ but not automatically for the paper's original lookup-table objective when $T[r]
 ---
 
 ## An importance-coverage constraint defines an alternative optimization problem.
+
+### Coverage formulation
 
 The paper’s fixed-budget formulation prescribes the number of selected rows,
 
