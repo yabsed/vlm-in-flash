@@ -108,8 +108,6 @@ $$R_-\le\|M\|_1\le R_+,$$
 
 for which the maximum-utility single-chunk argument no longer provides a general exact solution.
 
----
-
 ## The paper's greedy algorithm approximates a fixed-budget importance-per-latency objective.
 
 The paper's implementation treats
@@ -183,8 +181,6 @@ Section 3.2.1 formally states the constraint as
 $$\|M\|_1\le R.$$
 
 The fixed-$R$ expression above is therefore not the literal displayed formulation. It is a reconstruction of the problem suggested by the algorithm and experimental comparison: $R$ is determined by the target sparsity, and the greedy procedure continues selecting chunks toward that prescribed budget.
-
----
 
 ## The profiled chunk latency is closely approximated by an affine function.
 
@@ -642,3 +638,162 @@ $$
 $$
 
 but not automatically for the paper's original lookup-table objective when $T[r]$ deviates from $a+cr$.
+
+## An importance-coverage constraint defines an alternative optimization problem.
+
+The fixed-budget formulation prescribes the number of selected rows,
+
+$$
+R(M)=R,
+$$
+
+and searches for a mask with a favorable importance–latency ratio. A complementary formulation instead specifies how much activation importance must be retained and minimizes the latency required to meet that requirement.
+
+Define the total activation importance as
+
+$$
+I_{\mathrm{tot}}
+=
+\sum_{i=1}^{N}v_i,
+$$
+
+and let $\alpha\in(0,1]$ denote a target importance-retention ratio. The required importance is then
+
+$$
+B_\alpha=\alpha I_{\mathrm{tot}}.
+$$
+
+The alternative optimization problem is
+
+$$
+\boxed{
+M_\alpha^\star
+\in
+\arg\min_{M\in\{0,1\}^{N}}
+\widehat L(M)
+\quad
+\text{subject to}
+\quad
+I(M)\ge\alpha I_{\mathrm{tot}}.
+}
+$$
+
+An inequality is used because the importance values are generally real-valued, so a mask satisfying the exact equality
+
+$$
+I(M)=\alpha I_{\mathrm{tot}}
+$$
+
+may not exist.
+
+Under the affine latency approximation,
+
+$$
+\widehat L(M)\approx aK(M)+cR(M),
+$$
+
+the problem becomes
+
+$$
+\boxed{
+M_\alpha^\star
+\in
+\arg\min_{M\in\{0,1\}^{N}}
+\left\{
+aK(M)+cR(M)
+\right\}
+\quad
+\text{subject to}
+\quad
+I(M)\ge\alpha I_{\mathrm{tot}}.
+}
+$$
+
+Unlike the fixed-budget problem, this formulation does not prescribe $R(M)$. Both the number of selected rows and the number of chunks are determined by the optimization:
+
+$$
+R(M_\alpha^\star)
+\quad\text{and}\quad
+K(M_\alpha^\star).
+$$
+
+When importance is concentrated in a small number of channels, the required coverage may be achieved with relatively few selected rows. When importance is distributed smoothly across many channels, more rows may be required. The formulation therefore adapts the selected row count to the current importance distribution.
+
+For each target ratio $\alpha$, define the optimal latency
+
+$$
+L^\star(\alpha)
+=
+\min_{\substack{M\in\{0,1\}^{N}\\
+I(M)\ge\alpha I_{\mathrm{tot}}}}
+\widehat L(M).
+$$
+
+Sweeping $\alpha$ produces an importance–latency curve:
+
+$$
+\boxed{
+\left\{
+\left(
+\frac{I(M_\alpha^\star)}{I_{\mathrm{tot}}},
+\widehat L(M_\alpha^\star)
+\right)
+:
+\alpha\in\mathcal A
+\right\}.
+}
+$$
+
+For example, one may evaluate
+
+$$
+\mathcal A
+=
+\{0.80,0.85,0.90,0.95,0.97,0.99\}.
+$$
+
+If $\alpha_1\le\alpha_2$, every mask feasible for $\alpha_2$ is also feasible for $\alpha_1$. Consequently,
+
+$$
+\boxed{
+\alpha_1\le\alpha_2
+\quad\Longrightarrow\quad
+L^\star(\alpha_1)\le L^\star(\alpha_2).
+}
+$$
+
+Thus, the curve measures the minimum additional latency required to preserve progressively more importance. It should not be interpreted as showing that greater importance produces lower latency. Rather, it quantifies the cost of retaining additional importance.
+
+The resulting optimal curve can serve as an offline reference frontier. On the same activation vectors, the experiment can plot:
+
+* the exact frontier obtained from the proposed optimization problem;
+* the masks produced by Neuron Chunking;
+* the masks produced by conventional top-$R$ selection.
+
+This comparison reveals how closely the paper’s greedy algorithm approaches the best achievable importance–latency trade-off under the adopted latency model. For a mask $M_{\mathrm{greedy}}$ achieving importance coverage $\alpha$, its latency gap can be measured as
+
+$$
+\Delta L(\alpha)
+=
+\widehat L(M_{\mathrm{greedy}})
+-
+L^\star(\alpha),
+$$
+
+or as a relative optimality gap,
+
+$$
+\operatorname{Gap}(\alpha)
+=
+\frac{
+\widehat L(M_{\mathrm{greedy}})
+-
+L^\star(\alpha)
+}{
+L^\star(\alpha)
+}.
+$$
+
+Recording $R(M)$ and $K(M)$ along the curve additionally shows whether latency reductions arise from selecting fewer rows, forming fewer chunks, or both.
+
+Finally, activation importance is only a proxy for model quality. An importance–latency frontier establishes optimality with respect to the mathematical surrogate, not task accuracy. Selected operating points should therefore also be evaluated on downstream tasks to determine how the importance-retention ratio relates to the actual accuracy–latency frontier.
