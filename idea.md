@@ -12,7 +12,17 @@ $$M\in\{0,1\}^{N},$$
 
 where $M_i=1$ means that channel $i$ and its corresponding weight row are selected.
 
-Let $\mathcal C(M)$ denote the set of maximal contiguous runs of selected channels. Under the paper's additive latency model,
+Let $\mathcal C(M)$ denote the set of maximal contiguous runs of selected channels.
+
+Define
+
+$$R(M)=\|M\|_1$$
+
+as the number of selected rows and
+
+$$K(M)=|\mathcal C(M)|$$
+
+as the number of maximal contiguous chunks. Under the paper's additive latency model,
 
 $$\widehat L(M)=\sum_{C\in\mathcal C(M)}T[|C|],$$
 
@@ -24,7 +34,7 @@ $$I(M)=\sum_{i=0}^{N-1}v_iM_i,$$
 
 where $v_i$ is the importance of channel $i$. The paper's displayed selection problem can then be written as
 
-$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le\|M\|_1\le R}}\frac{I(M)}{\widehat L(M)}},\qquad R=\left\lfloor(1-\rho)N\right\rfloor.$$
+$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{\widehat L(M)}},\qquad R=\left\lfloor(1-\rho)N\right\rfloor.$$
 
 The lower bound excludes the empty mask, for which the ratio is undefined.
 
@@ -60,7 +70,7 @@ $$\frac{I(C^\star)}{T[|C^\star|]}=U(C^\star).$$
 
 Consequently,
 
-$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le\|M\|_1\le R}}\frac{I(M)}{\widehat L(M)}=\max_{\substack{C\text{ contiguous}\\1\le|C|\le R}}U(C)}.$$
+$$\boxed{\max_{\substack{M\in\{0,1\}^{N}\\1\le R(M)\le R}}\frac{I(M)}{\widehat L(M)}=\max_{\substack{C\text{ contiguous}\\1\le|C|\le R}}U(C)}.$$
 
 Thus, under the displayed objective and additive latency assumption, there always exists an exact optimum consisting of only one contiguous chunk. Multiple chunks can also be optimal in the exceptional case where every selected chunk has the same maximum utility.
 
@@ -96,15 +106,15 @@ time and $O(N)$ memory, which becomes $O(N^2)$ time in the worst case $R=\Theta(
 
 This simple exact solution exposes a mismatch between the displayed formulation and the implemented algorithm. The displayed constraint
 
-$$\|M\|_1\le R$$
+$$R(M)\le R$$
 
 permits the optimizer to leave most of the budget unused, whereas the paper's greedy procedure continues accepting chunks toward $R$. Its implemented behavior is therefore closer to a fixed-cardinality or cardinality-band problem such as
 
-$$\|M\|_1=R$$
+$$R(M)=R$$
 
 or
 
-$$R_-\le\|M\|_1\le R_+,$$
+$$R_-\le R(M)\le R_+,$$
 
 for which the maximum-utility single-chunk argument no longer provides a general exact solution.
 
@@ -122,9 +132,9 @@ $$U(C)=\frac{I(C)}{T[|C|]},\qquad I(C)=\sum_{i\in C}v_i.$$
 
 Thus, $U(C)$ measures the activation importance preserved by the chunk per unit of estimated flash-read latency.
 
-The candidates are sorted by decreasing utility:
+Let $G=|\mathcal G|$ be the number of generated candidates. They are sorted by decreasing utility:
 
-$$U(C_{(1)})\ge U(C_{(2)})\ge\cdots\ge U(C_{(K)}).$$
+$$U(C_{(1)})\ge U(C_{(2)})\ge\cdots\ge U(C_{(G)}).$$
 
 The algorithm initializes
 
@@ -156,7 +166,7 @@ Accordingly, the algorithm gives priority to chunks with high importance per est
 
 The position of Neuron Chunking can be understood by comparing it with conventional top-$R$ sparsification. Given the same prescribed row count, top-$R$ selects
 
-$$\boxed{M_{\mathrm{top}\text{-}R}\in\arg\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}I(M).}$$
+$$\boxed{M_{\mathrm{top}\text{-}R}\in\arg\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}I(M).}$$
 
 Because
 
@@ -166,19 +176,29 @@ this selects the $R$ channels with the largest individual importance values. It 
 
 Neuron Chunking instead aims to balance retained importance against flash latency:
 
-$$\boxed{M_{\mathrm{chunk}}\approx\arg\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}\frac{I(M)}{\widehat L(M)}.}$$
+$$\boxed{M_{\mathrm{chunk}}\approx\arg\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}\frac{I(M)}{\widehat L(M)}.}$$
 
 The symbol $\approx$ indicates that the paper's greedy procedure is intended as a fast heuristic for this objective, not as an exact optimizer.
 
 The methodological difference is therefore
 
-$$\boxed{\begin{aligned}\text{Top-}R&:\quad\max_{\|M\|_1=R} I(M),\\\text{Neuron Chunking}&:\quad\max_{\|M\|_1=R}\frac{I(M)}{\widehat L(M)}.\end{aligned}}$$
+$$
+\boxed{
+\begin{aligned}
+\text{Top-}R
+&:\quad \max_{R(M)=R} I(M),
+\\
+\text{Neuron Chunking}
+&:\quad \max_{R(M)=R}\frac{I(M)}{\widehat L(M)}.
+\end{aligned}
+}
+$$
 
 Top-$R$ always prefers the individually most important rows, even when they are scattered across storage. Neuron Chunking may instead select contiguous, slightly less important rows when the reduction in flash-read latency compensates for the lost importance.
 
 Section 3.2.1 formally states the constraint as
 
-$$\|M\|_1\le R.$$
+$$R(M)\le R.$$
 
 The fixed-$R$ expression above is therefore not the literal displayed formulation. It is a reconstruction of the problem suggested by the algorithm and experimental comparison: $R$ is determined by the target sparsity, and the greedy procedure continues selecting chunks toward that prescribed budget.
 
@@ -339,25 +359,21 @@ $$
 \sum_{C\in\mathcal C(M)}
 \left(a+c|C|\right)\\
 &=
-a|\mathcal C(M)|
-+
-c\sum_{C\in\mathcal C(M)}|C|\\
-&=
 \boxed{
-a|\mathcal C(M)|+c\|M\|_1
+aK(M)+cR(M)
 }.
 \end{aligned}
 $$
 
 Thus, under the affine approximation, mask latency depends only on
 
-- the number of separate contiguous chunks, $|\mathcal C(M)|$;
-- the total number of selected rows, $\|M\|_1$.
+- the number of separate contiguous chunks, $K(M)$;
+- the total number of selected rows, $R(M)$.
 
 When the number of selected rows is fixed at $R$,
 
 $$
-\|M\|_1=R,
+R(M)=R,
 $$
 
 the row-transfer term becomes constant:
@@ -366,7 +382,7 @@ $$
 \boxed{
 \widehat L(M)
 \approx
-a|\mathcal C(M)|+cR.
+aK(M)+cR.
 }
 $$
 
@@ -374,11 +390,11 @@ For $a>0$, masks containing the same number of rows are therefore ordered by the
 
 $$
 \boxed{
-\|M_1\|_1=\|M_2\|_1=R
+R(M_1)=R(M_2)=R
 \quad\Longrightarrow\quad
 \widehat L(M_1)<\widehat L(M_2)
 \iff
-|\mathcal C(M_1)|<|\mathcal C(M_2)|.
+K(M_1)<K(M_2).
 }
 $$
 
@@ -386,11 +402,11 @@ Equivalently,
 
 $$
 \boxed{
-\arg\min_{\substack{M\in\{0,1\}^N\\\|M\|_1=R}}
+\arg\min_{\substack{M\in\{0,1\}^N\\R(M)=R}}
 \widehat L(M)
 =
-\arg\min_{\substack{M\in\{0,1\}^N\\\|M\|_1=R}}
-|\mathcal C(M)|.
+\arg\min_{\substack{M\in\{0,1\}^N\\R(M)=R}}
+K(M).
 }
 $$
 
@@ -402,9 +418,9 @@ Substituting the affine latency model into the reconstructed fixed-budget object
 
 $$
 \boxed{
-\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}
+\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}
 \frac{I(M)}
-{a|\mathcal C(M)|+cR}.
+{aK(M)+cR}.
 }
 $$
 
@@ -412,7 +428,7 @@ Although there are $2^N$ possible masks, exhaustive enumeration is unnecessary. 
 
 $$
 \boxed{
-|\mathcal C(M)|
+K(M)
 =
 M_1+
 \sum_{i=2}^{N}(1-M_{i-1})M_i.
@@ -494,6 +510,50 @@ $$
 
 is the largest possible number of chunks in a binary mask containing exactly $R$ selected positions.
 
+The dynamic program yields more than the single ratio-maximizing mask. For every feasible chunk count $k$, it gives the largest importance achievable with exactly $R$ selected rows. Since the affine latency associated with that state is
+
+$$
+L_R(k)=ak+cR,
+$$
+
+the points
+
+$$
+\boxed{
+\mathcal F_R
+=
+\left\{
+\left(
+ak+cR,\,
+I^\star(R,k)
+\right)
+:
+1\le k\le K_{\max}
+\right\}
+}
+$$
+
+trace the exact fixed-$R$ importance–latency trade-off under the affine model.
+
+Increasing $k$ strictly increases affine latency when $a>0$. It also gives the optimizer greater freedom to collect important rows from separated regions, so the achievable importance generally increases along the upper envelope of these points. The exact-$k$ values $I^\star(R,k)$ need not be monotone for every activation vector because the feasible sets for different exact values of $k$ are not nested. If a monotone envelope is desired, define
+
+$$
+I^\star_{\le}(R,k)
+=
+\max_{1\le j\le k}I^\star(R,j).
+$$
+
+The nondominated points in $\mathcal F_R$ form the fixed-budget Pareto frontier. The paper's greedy result,
+
+$$
+\left(
+\widehat L(M_{\mathrm{greedy}}),\,
+I(M_{\mathrm{greedy}})
+\right),
+$$
+
+can be plotted against this frontier. This reveals how far the greedy mask lies from the best importance achievable at comparable affine latency. If the greedy procedure underfills the budget, it should instead be compared with the frontier corresponding to its realized row count $R(M_{\mathrm{greedy}})$.
+
 The dynamic program has time complexity
 
 $$
@@ -508,20 +568,20 @@ $$
 O(RK_{\max}).
 $$
 
-Since $R\le N$ and $K_{\max}\le N$, this is polynomial rather than exponential, with a worst-case time complexity of $O(N^3)$. It is suitable as an offline exact oracle for measuring the optimality gap of the paper's greedy algorithm.
+Since $R\le N$ and $K_{\max}\le N$, this is polynomial rather than exponential, with a worst-case time complexity of $O(N^3)$. The recurrence therefore provides an exact oracle in principle. For full-scale projections, however, its practical use requires either reduced instances or further acceleration.
 
 A faster formulation eliminates the explicit chunk-count dimension through fractional programming. For a parameter $\eta\ge0$, define
 
 $$
 \Psi(\eta)
 =
-\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}
+\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}
 \left[
 I(M)
 -
 \eta
 \left(
-a|\mathcal C(M)|+cR
+aK(M)+cR
 \right)
 \right].
 $$
@@ -531,9 +591,9 @@ Let
 $$
 \eta^\star
 =
-\max_{\substack{M\in\{0,1\}^{N}\\\|M\|_1=R}}
+\max_{\substack{M\in\{0,1\}^{N}\\R(M)=R}}
 \frac{I(M)}
-{a|\mathcal C(M)|+cR}.
+{aK(M)+cR}.
 $$
 
 Then
@@ -552,7 +612,7 @@ $$
 For a fixed $\eta$, define $G_i^s(r;\eta)$ as the maximum value of
 
 $$
-I(M)-\eta a|\mathcal C(M)|
+I(M)-\eta aK(M)
 $$
 
 over the first $i$ channels, with $r$ selected channels and final state $s$.
@@ -603,7 +663,7 @@ $$
 \eta_{t+1}
 =
 \frac{I(M_t)}
-{a|\mathcal C(M_t)|+cR},
+{aK(M_t)+cR},
 $$
 
 where $M_t$ maximizes the transformed objective at parameter $\eta_t$. The procedure terminates when
@@ -634,7 +694,7 @@ The three-dimensional dynamic program provides a direct polynomial-time exact or
 
 $$
 \frac{I(M)}
-{a|\mathcal C(M)|+cR},
+{aK(M)+cR},
 $$
 
 but not automatically for the paper's original lookup-table objective when $T[r]$ deviates from $a+cr$.
@@ -719,15 +779,52 @@ $$
 
 When importance is concentrated in a small number of channels, the required coverage may be achieved with relatively few selected rows. When importance is distributed smoothly across many channels, more rows may be required. The formulation therefore adapts the selected row count to the current importance distribution.
 
-For each target ratio $\alpha$, define the optimal latency
+The same chain dynamic program used for the fixed-budget problem also provides an exact solution to the affine coverage problem. Evaluate the recurrence for every feasible pair $(r,k)$ and define
+
+$$
+I^\star(r,k)
+=
+\max_{s\in\{0,1\}}F_N^s(r,k).
+$$
+
+For fixed values of $r$ and $k$, every corresponding mask has the same affine latency $ak+cr$. Therefore, a pair $(r,k)$ can satisfy the target coverage if and only if
+
+$$
+I^\star(r,k)\ge\alpha I_{\mathrm{tot}}.
+$$
+
+The optimal row count and chunk count are consequently obtained by
+
+$$
+\boxed{
+(r_\alpha^\star,k_\alpha^\star)
+\in
+\arg\min_{\substack{0\le r\le N\\
+0\le k\le K_{\max}(r)\\
+I^\star(r,k)\ge\alpha I_{\mathrm{tot}}}}
+\left(ak+cr\right),
+}
+$$
+
+where
+
+$$
+K_{\max}(r)=\min(r,N-r+1)
+$$
+
+for $r\ge1$, with $K_{\max}(0)=0$. A corresponding optimal mask $M_\alpha^\star$ can be recovered by backtracking through the DP state that attains $(r_\alpha^\star,k_\alpha^\star)$.
+
+Equivalently, the optimal affine latency at coverage level $\alpha$ is
 
 $$
 L^\star(\alpha)
 =
-\min_{\substack{M\in\{0,1\}^{N}\\
-I(M)\ge\alpha I_{\mathrm{tot}}}}
-\widehat L(M).
+\min_{\substack{r,k\\
+I^\star(r,k)\ge\alpha I_{\mathrm{tot}}}}
+\left(ak+cr\right).
 $$
+
+Computing all states requires $O(N^3)$ time in the unrestricted worst case and $O(N^2)$ rolling-array memory. Once the table $I^\star(r,k)$ has been computed, multiple coverage thresholds can be evaluated by scanning the same table; the chain DP does not need to be rerun for each value of $\alpha$.
 
 Sweeping $\alpha$ produces an importance–latency curve:
 
@@ -795,5 +892,13 @@ L^\star(\alpha)
 $$
 
 Recording $R(M)$ and $K(M)$ along the curve additionally shows whether latency reductions arise from selecting fewer rows, forming fewer chunks, or both.
+
+The fixed-$R$ and coverage curves answer different questions. The fixed-$R$ frontier varies $K(M)$ while holding $R(M)=R$ and therefore evaluates the optimization problem suggested by the paper's implementation. The coverage frontier allows both $R(M)$ and $K(M)$ to vary while enforcing
+
+$$
+I(M)\ge\alpha I_{\mathrm{tot}},
+$$
+
+and therefore evaluates the alternative problem proposed here.
 
 Finally, activation importance is only a proxy for model quality. An importance–latency frontier establishes optimality with respect to the mathematical surrogate, not task accuracy. Selected operating points should therefore also be evaluated on downstream tasks to determine how the importance-retention ratio relates to the actual accuracy–latency frontier.
