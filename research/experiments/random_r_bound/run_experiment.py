@@ -10,9 +10,8 @@ The experiment deliberately separates three optimization problems:
    The exact solution is the best single contiguous interval of length at
    most R, by the weighted-average theorem in the same document.
 3. Importance coverage: I(M) >= alpha I_total.  An exact (r,k) chain DP is
-   compared with an O(qN) Lagrangian relaxation that solves q two-state
-   chain problems and keeps the feasible supported-frontier candidates, and
-   with an O(qN) quantized Pareto DP that preserves q coverage buckets.
+   compared with an O(qN) quantized Pareto DP that preserves q coverage
+   buckets.
 
 The paper heuristic is the repository's actual ``select_chunks`` function,
 and the latency-blind baseline is its ``select_topk`` function.  All
@@ -231,106 +230,6 @@ class ExactCoverageOracle:
             "chunks": int(k),
             "aff_ms": minimum,
         }
-
-
-def solve_lagrangian(
-    values: np.ndarray, lam: float, a_ms: float, c_ms_per_row: float
-) -> dict:
-    """Solve min aK+cR-lambda*I in O(N), returning a minimizing mask."""
-    n = len(values)
-    end_zero, end_one = 0.0, math.inf
-    parent_zero = np.full(n + 1, 255, dtype=np.uint8)
-    parent_one = np.full(n + 1, 255, dtype=np.uint8)
-    for i, value in enumerate(values, start=1):
-        if end_zero <= end_one:
-            new_zero, parent_zero[i] = end_zero, 0
-        else:
-            new_zero, parent_zero[i] = end_one, 1
-        continue_run = end_one
-        start_run = end_zero + a_ms
-        if continue_run <= start_run:
-            previous, parent_one[i] = continue_run, 1
-        else:
-            previous, parent_one[i] = start_run, 0
-        new_one = c_ms_per_row - lam * float(value) + previous
-        end_zero, end_one = new_zero, new_one
-
-    state = 0 if end_zero <= end_one else 1
-    mask = np.zeros(n, dtype=bool)
-    for i in range(n, 0, -1):
-        if state == 0:
-            state = int(parent_zero[i])
-        else:
-            mask[i - 1] = True
-            state = int(parent_one[i])
-    rows, chunks = mask_stats(mask)
-    importance = float(values[mask].sum())
-    return {
-        "mask": mask,
-        "importance": importance,
-        "rows": rows,
-        "chunks": chunks,
-        "aff_ms": a_ms * chunks + c_ms_per_row * rows,
-        "lambda": lam,
-    }
-
-
-def lagrangian_candidates(
-    values: np.ndarray,
-    a_ms: float,
-    c_ms_per_row: float,
-    q: int,
-    maximum_target: float,
-) -> list[dict]:
-    """Generate supported frontier points using q logarithmically spaced multipliers."""
-    if q < 2:
-        raise ValueError("the Lagrangian solver needs q >= 2")
-    # Find a data-adaptive upper endpoint that reaches the largest requested
-    # coverage. These O(N) probes are bounded by 64 and are reported separately
-    # from the q-point grid in the output metadata.
-    upper = max(a_ms, c_ms_per_row * len(values))
-    probe_count = 0
-    while probe_count < 64:
-        probe = solve_lagrangian(values, upper, a_ms, c_ms_per_row)
-        probe_count += 1
-        if probe["importance"] >= maximum_target - 1e-14:
-            break
-        upper *= 2.0
-    else:
-        raise RuntimeError("failed to bracket the requested Lagrangian coverage")
-
-    lower = max(upper * 1e-5, np.finfo(np.float64).tiny)
-    multipliers = np.r_[0.0, np.geomspace(lower, upper, q - 1)]
-    unique: dict[bytes, dict] = {}
-    for lam in multipliers:
-        solution = solve_lagrangian(values, float(lam), a_ms, c_ms_per_row)
-        key = np.packbits(solution["mask"]).tobytes()
-        previous = unique.get(key)
-        if previous is None or solution["lambda"] < previous["lambda"]:
-            unique[key] = solution
-
-    # A feasible fallback is part of the proposed method. It also protects
-    # against a coarse grid that stops just below the requested threshold.
-    full_mask = np.ones(len(values), dtype=bool)
-    full = {
-        "mask": full_mask,
-        "importance": float(values.sum()),
-        "rows": len(values),
-        "chunks": 1,
-        "aff_ms": a_ms + c_ms_per_row * len(values),
-        "lambda": math.inf,
-    }
-    unique.setdefault(np.packbits(full_mask).tobytes(), full)
-    candidates = list(unique.values())
-    for candidate in candidates:
-        candidate["probe_count"] = probe_count
-    return candidates
-
-
-def select_lagrangian(candidates: list[dict], bound: float) -> dict:
-    """Smallest-latency generated candidate meeting an importance bound."""
-    feasible = [c for c in candidates if c["importance"] >= bound - 1e-14]
-    return min(feasible, key=lambda c: (c["aff_ms"], -c["importance"]))
 
 
 class QuantizedParetoOracle:
@@ -612,17 +511,6 @@ def summarize_coverage(records: list[dict], targets: list[float]) -> list[dict]:
         "coverage_chunks",
         "coverage_aff_ms",
         "coverage_table_ms",
-        "lagrangian_achieved",
-        "lagrangian_overshoot",
-        "lagrangian_rows",
-        "lagrangian_row_fraction",
-        "lagrangian_chunks",
-        "lagrangian_aff_ms",
-        "lagrangian_table_ms",
-        "lagrangian_target_gap_pct",
-        "lagrangian_achieved_gap_pct",
-        "lagrangian_candidate_count",
-        "lagrangian_probe_count",
         "pareto_achieved",
         "pareto_overshoot",
         "pareto_rows",
@@ -664,7 +552,6 @@ PLOT_COLORS = {
     "fixed": "#277DA1",
     "top_r": "#B565A7",
     "coverage": "#2A9D8F",
-    "lagrangian": "#E9A23B",
     "pareto": "#3A506B",
     "lookup": "#6C5B7B",
 }
@@ -699,91 +586,38 @@ def polish_axis(ax) -> None:
     ax.set_axisbelow(True)
 
 
-def plot_results(records: list[dict], summary: list[dict], path: Path) -> None:
-    # Keep Matplotlib's generated cache outside both the repository and the
-    # user's (possibly read-only) home directory.
+def plot_r_ratio(summary: list[dict], path: Path) -> None:
+    """Importance/latency as a function of the fixed row budget R."""
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/vlm-flash-mpl-cache")
     import matplotlib.pyplot as plt
 
     configure_plot_style(plt)
     x = np.asarray([100 * s["budget_fraction"] for s in summary])
-
-    def band(metric: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return tuple(
-            np.asarray([s[metric][key] for s in summary])
-            for key in ("mean", "p05", "p95")
-        )
-
-    colors = {
-        "greedy": "#D55E00",
-        "fixed": "#0072B2",
-        "upper": "#009E73",
-        "lookup": "#6A3D9A",
-        "top_r": "#CC79A7",
-    }
-    fig, axes = plt.subplots(2, 2, figsize=(12.0, 8.2), constrained_layout=True)
-
-    ax = axes[0, 0]
-    for metric, label, color in (
-        ("greedy_aff_ratio", "Paper greedy", colors["greedy"]),
-        ("fixed_opt_aff_ratio", "Exact fixed-R DP", colors["fixed"]),
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 5.0), constrained_layout=True)
+    for ax, ratio_kind, title in (
+        (axes[0], "aff", "A. Fitted affine latency"),
+        (axes[1], "table", "B. Lookup-table latency"),
     ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, mean, marker="o", linewidth=2, label=label, color=color)
-        ax.fill_between(x, lo, hi, alpha=0.16, color=color)
-    ax.set_title("A. Fixed R: affine objective")
-    ax.set_ylabel("Importance / latency (1/ms)")
-    ax.legend(frameon=False)
-
-    ax = axes[0, 1]
-    for metric, label, color, style in (
-        ("fixed_aff_gain_pct", "On affine objective", colors["fixed"], "-"),
-        ("fixed_lookup_gain_pct", "Same masks, lookup re-evaluation", colors["lookup"], "--"),
-    ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, mean, marker="o", linewidth=2, linestyle=style, label=label, color=color)
-        ax.fill_between(x, lo, hi, alpha=0.13, color=color)
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.set_title("B. Fixed R: gain over paper greedy")
-    ax.set_ylabel("Relative I/L gain (%)")
-    ax.legend(frameon=False)
-
-    ax = axes[1, 0]
-    for metric, label, color in (
-        ("greedy_table_ratio", "Paper greedy", colors["greedy"]),
-        ("upper_opt_table_ratio", "Exact upper-bound interval", colors["upper"]),
-    ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, mean, marker="o", linewidth=2, label=label, color=color)
-        ax.fill_between(x, lo, hi, alpha=0.16, color=color)
-    ax.set_title("C. 1 <= rows <= R: lookup-table objective")
-    ax.set_xlabel("Row budget R / N (%)")
-    ax.set_ylabel("Importance / latency (1/ms)")
-    ax.legend(frameon=False)
-
-    ax = axes[1, 1]
-    for metric, label, color in (
-        ("greedy_fill_fraction", "Paper greedy", colors["greedy"]),
-        ("upper_opt_fill_fraction", "Exact upper-bound interval", colors["upper"]),
-    ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, 100 * mean, marker="o", linewidth=2, label=label, color=color)
-        ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.16, color=color)
-    ax.set_title("D. Fraction of available row budget used")
-    ax.set_xlabel("Row budget R / N (%)")
-    ax.set_ylabel("Selected rows / R (%)")
-    ax.set_ylim(bottom=0)
-    ax.legend(frameon=False)
-
-    for ax in axes.flat:
-        ax.grid(alpha=0.22)
+        for prefix, label, color, marker in (
+            ("greedy", "Paper greedy", PLOT_COLORS["greedy"], "o"),
+            ("top_r", "Top-R", PLOT_COLORS["top_r"], "s"),
+            ("fixed_opt", "Exact fixed-R DP", PLOT_COLORS["fixed"], "D"),
+        ):
+            metric = f"{prefix}_{ratio_kind}_ratio"
+            mean = np.asarray([s[metric]["mean"] for s in summary])
+            lo = np.asarray([s[metric]["p05"] for s in summary])
+            hi = np.asarray([s[metric]["p95"] for s in summary])
+            ax.plot(x, mean, marker=marker, label=label, color=color)
+            ax.fill_between(x, lo, hi, alpha=0.12, color=color)
+        ax.set_yscale("log")
+        ax.set_title(title)
+        ax.set_xlabel("Fixed row budget R / N (%)")
+        ax.set_ylabel("Importance / latency (1/ms, log scale)")
         ax.set_xlim(x.min() - 2, x.max() + 2)
-    fig.suptitle(
-        "Random nonnegative importance: paper heuristic vs exact bounded-R solutions\n"
-        "Lines are means; bands are 5th-95th percentiles across paired inputs",
-        fontsize=14,
-    )
-    fig.savefig(path, dpi=180)
+        polish_axis(ax)
+        ax.legend(frameon=False)
+    fig.suptitle("I/L under a fixed row budget", fontsize=13)
+    fig.savefig(path, dpi=200)
     fig.savefig(path.with_suffix(".pdf"))
     plt.close(fig)
 
@@ -856,22 +690,6 @@ def plot_latency_tradeoff(
             label="Quantized Pareto O(qN)",
             color=colors["pareto"],
         )
-        lagrangian_latency = np.asarray(
-            [s[f"lagrangian_{latency_kind}_ms"]["mean"] for s in coverage_summary]
-        )
-        lagrangian_importance = np.asarray(
-            [s["lagrangian_achieved"]["mean"] for s in coverage_summary]
-        )
-        ax.plot(
-            lagrangian_latency,
-            lagrangian_importance,
-            marker="D",
-            markersize=5,
-            linewidth=1.9,
-            linestyle="--",
-            label="Lagrangian O(qN)",
-            color=colors["lagrangian"],
-        )
         for item, x_value, y_value in zip(
             coverage_summary, coverage_latency, coverage_importance
         ):
@@ -894,147 +712,6 @@ def plot_latency_tradeoff(
     fig.suptitle(
         "Importance-latency trade-off: fixed-R and coverage policies\n"
         "Fixed-R labels show R / N; coverage labels show the requested lower bound",
-        fontsize=13,
-    )
-    fig.savefig(path, dpi=180)
-    fig.savefig(path.with_suffix(".pdf"))
-    plt.close(fig)
-
-
-def plot_coverage(coverage_summary: list[dict], path: Path) -> None:
-    """Standalone diagnostics for exact and approximate coverage solvers."""
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/vlm-flash-mpl-cache")
-    import matplotlib.pyplot as plt
-
-    configure_plot_style(plt)
-    x = np.asarray([100 * s["coverage_target"] for s in coverage_summary])
-
-    def band(metric: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return tuple(
-            np.asarray([s[metric][key] for s in coverage_summary])
-            for key in ("mean", "p05", "p95")
-        )
-
-    green = PLOT_COLORS["coverage"]
-    purple = PLOT_COLORS["lookup"]
-    blue = PLOT_COLORS["fixed"]
-    orange = PLOT_COLORS["lagrangian"]
-    navy = PLOT_COLORS["pareto"]
-    fig, axes = plt.subplots(2, 2, figsize=(12.4, 8.2), constrained_layout=True)
-
-    ax = axes[0, 0]
-    for metric, label, color, style in (
-        ("coverage_aff_ms", "Exact affine optimum", green, "-"),
-        ("pareto_aff_ms", "Quantized Pareto O(qN)", navy, "-."),
-        ("lagrangian_aff_ms", "Lagrangian O(qN)", orange, "--"),
-        ("coverage_table_ms", "Exact masks, lookup re-evaluation", purple, ":"),
-    ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, mean, marker="o", linewidth=2, linestyle=style, label=label, color=color)
-        ax.fill_between(x, lo, hi, alpha=0.14, color=color)
-    ax.set_title("A. Minimum latency under an importance lower bound")
-    ax.set_ylabel("Latency (ms)")
-    ax.legend(frameon=False)
-
-    ax = axes[0, 1]
-    mean, lo, hi = band("coverage_achieved")
-    ax.plot(x, 100 * mean, marker="o", color=green, label="Exact achieved")
-    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.16, color=green)
-    mean, lo, hi = band("lagrangian_achieved")
-    ax.plot(x, 100 * mean, marker="D", linestyle="--", color=orange, label="Lagrangian achieved")
-    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.11, color=orange)
-    mean, lo, hi = band("pareto_achieved")
-    ax.plot(x, 100 * mean, marker="P", linestyle="-.", color=navy, label="Pareto achieved")
-    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.10, color=navy)
-    ax.plot(x, x, color="black", linestyle=":", label="Requested lower bound")
-    ax.set_title("B. Requested versus achieved importance")
-    ax.set_ylabel("Achieved importance (%)")
-    ax.legend(frameon=False)
-
-    ax = axes[1, 0]
-    mean, lo, hi = band("coverage_row_fraction")
-    ax.plot(x, 100 * mean, marker="o", color=blue, label="Exact DP")
-    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.16, color=blue)
-    mean, lo, hi = band("lagrangian_row_fraction")
-    ax.plot(x, 100 * mean, marker="D", linestyle="--", color=orange, label="Lagrangian")
-    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.11, color=orange)
-    mean, lo, hi = band("pareto_row_fraction")
-    ax.plot(x, 100 * mean, marker="P", linestyle="-.", color=navy, label="Quantized Pareto")
-    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.10, color=navy)
-    ax.set_title("C. Rows selected by each coverage solver")
-    ax.set_xlabel("Required importance $\\alpha$ (%)")
-    ax.set_ylabel("Selected rows / N (%)")
-    ax.legend(frameon=False)
-
-    ax = axes[1, 1]
-    for metric, label, color, style in (
-        ("pareto_target_gap_pct", "At requested coverage", navy, "-"),
-        ("pareto_achieved_gap_pct", "At achieved coverage", purple, ":"),
-    ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, mean, marker="o", linestyle=style, color=color, label=label)
-        ax.fill_between(x, lo, hi, alpha=0.13, color=color)
-    ax.axhline(0, color="#455A64", linewidth=0.9)
-    ax.set_title("D. Quantized Pareto latency gap to exact DP")
-    ax.set_xlabel("Required importance $\\alpha$ (%)")
-    ax.set_ylabel("Extra affine latency (%)")
-    ax.legend(frameon=False)
-
-    for ax in axes.flat:
-        polish_axis(ax)
-        ax.set_xlim(x.min() - 2, 101)
-    fig.suptitle(
-        "Coverage problem: minimize latency subject to retained importance\n"
-        "Lines are means; bands are 5th-95th percentiles across paired inputs",
-        fontsize=13,
-    )
-    fig.savefig(path, dpi=180)
-    fig.savefig(path.with_suffix(".pdf"))
-    plt.close(fig)
-
-
-def plot_coverage_gap(summary: list[dict], path: Path) -> None:
-    """Compare each fixed-R method with coverage optimum at achieved importance."""
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/vlm-flash-mpl-cache")
-    import matplotlib.pyplot as plt
-
-    x = np.asarray([100 * s["budget_fraction"] for s in summary])
-
-    def band(metric: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return tuple(
-            np.asarray([s[metric][key] for s in summary])
-            for key in ("mean", "p05", "p95")
-        )
-
-    fig, axes = plt.subplots(1, 2, figsize=(12.4, 5.0), constrained_layout=True)
-    ax = axes[0]
-    for metric, label, color in (
-        ("greedy_coverage_gap_pct", "Paper greedy", PLOT_COLORS["greedy"]),
-        ("fixed_opt_coverage_gap_pct", "Exact fixed-R DP", PLOT_COLORS["fixed"]),
-    ):
-        mean, lo, hi = band(metric)
-        ax.plot(x, mean, marker="o", linewidth=2, label=label, color=color)
-        ax.fill_between(x, lo, hi, alpha=0.15, color=color)
-    ax.set_title("A. Chunk-aware fixed-R methods")
-    ax.set_ylabel("Extra latency over coverage optimum (%)")
-    ax.legend(frameon=False)
-
-    ax = axes[1]
-    mean, lo, hi = band("top_r_coverage_gap_pct")
-    ax.plot(x, mean, marker="o", label="Top-R", color=PLOT_COLORS["top_r"])
-    ax.fill_between(x, lo, hi, alpha=0.15, color=PLOT_COLORS["top_r"])
-    ax.set_title("B. Latency-blind Top-R")
-    ax.set_ylabel("Extra latency over coverage optimum (%)")
-    ax.legend(frameon=False)
-
-    for ax in axes:
-        ax.set_xlabel("Fixed row budget R / N (%)")
-        polish_axis(ax)
-        ax.set_xlim(x.min() - 2, x.max() + 2)
-        ax.set_ylim(bottom=0)
-    fig.suptitle(
-        "Latency gap to exact coverage at each method's achieved importance\n"
-        "Lines are means; bands are 5th-95th percentiles across paired inputs",
         fontsize=13,
     )
     fig.savefig(path, dpi=180)
@@ -1171,16 +848,6 @@ def self_check() -> None:
             pareto = pareto_oracle.solve(target)
             assert pareto["importance"] >= target - 1e-12
             assert pareto["aff_ms"] >= best_cost - 1e-12
-        for lam in (0.0, 0.1, 1.0, 10.0):
-            got = solve_lagrangian(values, lam, a_ms, c_ms)
-            got_objective = got["aff_ms"] - lam * got["importance"]
-            brute_objective = min(cost - lam * importance for importance, cost in masks)
-            # Include the empty mask, whose relaxed objective is zero.
-            brute_objective = min(0.0, brute_objective)
-            assert math.isclose(
-                got_objective, brute_objective, rel_tol=1e-10, abs_tol=1e-12
-            )
-
     # A deterministic multi-chunk case guards against accidentally testing
     # only the single-interval regime seen in the default dense random data.
     agx_table = LatencyTable.load("orin-agx")
@@ -1218,12 +885,6 @@ def parse_args() -> argparse.Namespace:
         help="importance lower bounds for the exact coverage problem",
     )
     parser.add_argument(
-        "--lagrangian-q",
-        type=int,
-        default=256,
-        help="number of multiplier evaluations in the O(qN) coverage approximation",
-    )
-    parser.add_argument(
         "--pareto-q",
         type=int,
         default=256,
@@ -1246,8 +907,6 @@ def main() -> None:
     coverage_targets = sorted(set(args.coverage_targets))
     if not coverage_targets or coverage_targets[0] <= 0 or coverage_targets[-1] > 1:
         raise SystemExit("every --coverage-targets value must be in (0, 1]")
-    if args.lagrangian_q < 2:
-        raise SystemExit("--lagrangian-q must be at least 2")
     if args.pareto_q < 2:
         raise SystemExit("--pareto-q must be at least 2")
 
@@ -1268,27 +927,11 @@ def main() -> None:
         pareto_oracle = QuantizedParetoOracle(
             values, a_ms, c_ms_per_row, args.pareto_q
         )
-        lagrangian_pool = lagrangian_candidates(
-            values,
-            a_ms,
-            c_ms_per_row,
-            args.lagrangian_q,
-            coverage_targets[-1] * float(values.sum()),
-        )
         for target in coverage_targets:
             solution = coverage_oracle.solve(target * float(values.sum()))
             coverage_table_ms = table.mask_elat_ms(
                 torch.from_numpy(solution["mask"]), args.row_size_kib
             )
-            lagrangian = select_lagrangian(
-                lagrangian_pool, target * float(values.sum())
-            )
-            lagrangian_table_ms = table.mask_elat_ms(
-                torch.from_numpy(lagrangian["mask"]), args.row_size_kib
-            )
-            achieved_optimum = coverage_oracle.solve(lagrangian["importance"])[
-                "aff_ms"
-            ]
             pareto = pareto_oracle.solve(target * float(values.sum()))
             pareto_table_ms = table.mask_elat_ms(
                 torch.from_numpy(pareto["mask"]), args.row_size_kib
@@ -1309,19 +952,6 @@ def main() -> None:
                     "coverage_chunks": solution["chunks"],
                     "coverage_aff_ms": solution["aff_ms"],
                     "coverage_table_ms": coverage_table_ms,
-                    "lagrangian_achieved": lagrangian["importance"] / float(values.sum()),
-                    "lagrangian_overshoot": lagrangian["importance"] / float(values.sum()) - target,
-                    "lagrangian_rows": lagrangian["rows"],
-                    "lagrangian_row_fraction": lagrangian["rows"] / args.n,
-                    "lagrangian_chunks": lagrangian["chunks"],
-                    "lagrangian_aff_ms": lagrangian["aff_ms"],
-                    "lagrangian_table_ms": lagrangian_table_ms,
-                    "lagrangian_target_gap_pct": 100
-                    * (lagrangian["aff_ms"] / solution["aff_ms"] - 1),
-                    "lagrangian_achieved_gap_pct": 100
-                    * (lagrangian["aff_ms"] / achieved_optimum - 1),
-                    "lagrangian_candidate_count": len(lagrangian_pool),
-                    "lagrangian_probe_count": lagrangian["probe_count"],
                     "pareto_achieved": pareto["importance"]
                     / float(values.sum()),
                     "pareto_overshoot": pareto["importance"]
@@ -1458,16 +1088,14 @@ def main() -> None:
     raw_path = args.output_dir / "trials.csv"
     coverage_raw_path = args.output_dir / "coverage_trials.csv"
     summary_path = args.output_dir / "summary.json"
-    figure_path = args.output_dir / "comparison.png"
+    r_ratio_path = args.output_dir / "r_ratio.png"
     latency_importance_path = args.output_dir / "latency_importance.png"
-    coverage_figure_path = args.output_dir / "coverage.png"
-    coverage_gap_path = args.output_dir / "coverage_gap.png"
     r_importance_path = args.output_dir / "r_importance.png"
     r_latency_path = args.output_dir / "r_latency.png"
     write_csv(raw_path, records)
     write_csv(coverage_raw_path, coverage_records)
     metadata = {
-        "format": "random-r-bound-comparison-v2",
+        "format": "random-r-bound-comparison-v3",
         "seed": args.seed,
         "trials": args.trials,
         "n": args.n,
@@ -1478,11 +1106,6 @@ def main() -> None:
         "profile_device": table.meta.get("device"),
         "budgets": budgets,
         "coverage_targets": coverage_targets,
-        "lagrangian": {
-            "grid_evaluations_q": args.lagrangian_q,
-            "grid": "geometric from data-adaptive lower/upper multipliers",
-            "fallback": "full-selection mask",
-        },
         "quantized_pareto": {
             "coverage_buckets_q": args.pareto_q,
             "representative": "minimum cost per coverage bucket and ending bit",
@@ -1505,28 +1128,18 @@ def main() -> None:
         "coverage_summary": coverage_summary,
     }
     summary_path.write_text(json.dumps(metadata, indent=2) + "\n")
-    plot_results(records, summary, figure_path)
+    plot_r_ratio(summary, r_ratio_path)
     plot_latency_tradeoff(summary, coverage_summary, latency_importance_path)
-    plot_coverage(coverage_summary, coverage_figure_path)
-    plot_coverage_gap(summary, coverage_gap_path)
     plot_r_importance(summary, r_importance_path)
     plot_r_latency(summary, r_latency_path)
 
     print(f"wrote {raw_path}")
     print(f"wrote {coverage_raw_path}")
     print(f"wrote {summary_path}")
-    print(f"wrote {figure_path} and {figure_path.with_suffix('.pdf')}")
+    print(f"wrote {r_ratio_path} and {r_ratio_path.with_suffix('.pdf')}")
     print(
         f"wrote {latency_importance_path} and "
         f"{latency_importance_path.with_suffix('.pdf')}"
-    )
-    print(
-        f"wrote {coverage_figure_path} and "
-        f"{coverage_figure_path.with_suffix('.pdf')}"
-    )
-    print(
-        f"wrote {coverage_gap_path} and "
-        f"{coverage_gap_path.with_suffix('.pdf')}"
     )
     print(f"wrote {r_importance_path} and {r_importance_path.with_suffix('.pdf')}")
     print(f"wrote {r_latency_path} and {r_latency_path.with_suffix('.pdf')}")
