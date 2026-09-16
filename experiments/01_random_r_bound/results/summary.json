@@ -1,5 +1,5 @@
 {
-  "format": "random-r-bound-comparison-v3",
+  "format": "experiment-01-random-r-bound-v3",
   "seed": 20260916,
   "trials": 200,
   "n": 256,

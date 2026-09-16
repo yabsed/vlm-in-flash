@@ -2,7 +2,7 @@
 
 This experiment compares conventional Top-`R`, the paper's released greedy
 Neuron Chunking policy, and the exact results proved in
-`research/final_email/idea.md`.
+`preliminary_research/final_email/idea.md`.
 
 The three formulations are intentionally reported separately:
 
@@ -31,7 +31,7 @@ the profiled range.
 Run from the repository root:
 
 ```bash
-python3 research/experiments/random_r_bound/run_experiment.py
+python3 experiments/01_random_r_bound/run_experiment.py
 ```
 
 The script first checks all three exact solvers against exhaustive enumeration
@@ -55,9 +55,9 @@ most `2(q+1)` live representatives and `O(qN)` backtracking storage.
 Distribution sensitivity can be reproduced with:
 
 ```bash
-python3 research/experiments/random_r_bound/run_experiment.py \
+python3 experiments/01_random_r_bound/run_experiment.py \
   --distribution lognormal --output-dir /tmp/random-r-lognormal
-python3 research/experiments/random_r_bound/run_experiment.py \
+python3 experiments/01_random_r_bound/run_experiment.py \
   --distribution correlated --output-dir /tmp/random-r-correlated
 ```
 

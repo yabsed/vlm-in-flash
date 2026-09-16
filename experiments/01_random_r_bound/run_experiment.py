@@ -5,7 +5,8 @@ The experiment deliberately separates three optimization problems:
 
 1. Fixed budget: R(M) = R, evaluated under the fitted affine latency
    L_aff(M) = a K(M) + c R.  This is solved exactly with Dinkelbach's
-   method and the two-state chain DP from ``research/final_email/idea.md``.
+   method and the two-state chain DP from
+   ``preliminary_research/final_email/idea.md``.
 2. Upper budget: 1 <= R(M) <= R, evaluated with the released lookup table.
    The exact solution is the best single contiguous interval of length at
    most R, by the weighted-average theorem in the same document.
@@ -34,8 +35,9 @@ import torch
 
 
 HERE = Path(__file__).resolve().parent
-RESEARCH = HERE.parents[1]
-VLM_FLASH = RESEARCH / "vlm-flash"
+PROJECT_ROOT = HERE.parents[1]
+PRELIMINARY_RESEARCH = PROJECT_ROOT / "preliminary_research"
+VLM_FLASH = PRELIMINARY_RESEARCH / "vlm-flash"
 sys.path.insert(0, str(VLM_FLASH / "src"))
 
 from vlmflash import ChunkParams, LatencyTable, select_chunks, select_topk  # noqa: E402
@@ -1095,7 +1097,7 @@ def main() -> None:
     write_csv(raw_path, records)
     write_csv(coverage_raw_path, coverage_records)
     metadata = {
-        "format": "random-r-bound-comparison-v3",
+        "format": "experiment-01-random-r-bound-v3",
         "seed": args.seed,
         "trials": args.trials,
         "n": args.n,
