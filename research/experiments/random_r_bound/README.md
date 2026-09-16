@@ -16,11 +16,10 @@ The three formulations are intentionally reported separately:
    rows, so it should not be interpreted as a quality-matched replacement.
 3. **Importance coverage, `I(M) >= alpha I_total`.** The exact `(r,k)` chain
    DP minimizes `a K(M) + c R(M)` while allowing both row and chunk counts to
-   vary. It is compared with a fast Lagrangian approximation: for each of
-   `q=256` multipliers, a two-state chain DP solves
-   `min aK+cR-lambda I` in `O(N)`, and the least-cost feasible generated mask
-   is returned. The complete approximation is `O(qN)`. The default sweep
-   uses `alpha=0.10,...,0.90,0.95,0.97,0.99`.
+   vary. Two `O(qN)` approximations are compared: a Lagrangian multiplier
+   grid, and a quantized Pareto DP that retains the least-cost representative
+   in each of `q=256` coverage buckets and each chain-ending state. The
+   default sweep uses `alpha=0.10,...,0.90,0.95,0.97,0.99`.
 
 Default inputs are 200 independent nonnegative vectors generated as
 `abs(N(0,1))` and normalized to total importance 1. The setup uses `N=256`,
@@ -37,13 +36,14 @@ python3 research/experiments/random_r_bound/run_experiment.py
 
 The script first checks all three exact solvers and every fixed-multiplier
 Lagrangian inner solve against exhaustive enumeration on small random
-instances. It then writes per-trial CSV, JSON summaries, and PNG/PDF plots to
-`results/`. `comparison.png` remains the original bounded-`R` four-panel
-comparison. `latency_importance.png` plots retained importance against
-latency for the three fixed-`R` methods, the exact coverage frontier, and the
-Lagrangian approximation, under both affine and lookup-table latency.
-`coverage.png` contains standalone exact-versus-Lagrangian coverage
-diagnostics, and
+instances. It also checks that every quantized-Pareto result is feasible and
+cannot beat the exhaustive optimum. It then writes per-trial CSV, JSON
+summaries, and PNG/PDF plots to `results/`. `comparison.png` remains the
+original bounded-`R` four-panel comparison. `latency_importance.png` plots
+retained importance against latency for the three fixed-`R` methods, the
+exact coverage frontier, and both approximations, under affine and
+lookup-table latency. `coverage.png` contains standalone coverage diagnostics,
+and
 `coverage_gap.png` compares every fixed-`R` policy with the exact coverage
 latency at that policy's actually achieved importance.
 `r_importance.png` and `r_latency.png` directly plot retained importance and
@@ -56,6 +56,13 @@ mask retaining 98.15% importance on average. Its latency is exact at that
 *achieved* coverage, but is 17.4--236.7% above the exact DP at the *requested*
 coverage. Increasing `q` alone cannot recover Pareto points that are not
 supported by a linear scalarization.
+
+The quantized Pareto DP does preserve those intermediate points. With
+`q=256`, its mean affine-latency gap to the exact requested-coverage optimum
+is 0.083% across the 13 targets (0.165% at worst when target means are
+compared); the largest target-wise 95th percentile is 1.034%. Final
+feasibility always uses unquantized importance. The implementation uses at
+most `2(q+1)` live representatives and `O(qN)` backtracking storage.
 
 Distribution sensitivity can be reproduced with:
 

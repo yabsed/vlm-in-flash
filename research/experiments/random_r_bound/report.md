@@ -100,8 +100,11 @@ importance를 받아들이면서 latency를 크게 줄인다.
 `min aK+cR-lambda I`를 `O(N)`에 푸는 Lagrangian inner solver를 추가했다.
 기본 설정은 데이터에 맞춘 기하 간격 multiplier `q=256`개를 평가하고,
 하한을 만족하는 생성 mask 중 latency가 가장 작은 것을 택한다. 따라서
-전체 근사 복잡도는 `O(qN)`이다. 200개 입력과 13개 threshold, 총 2,600개
-문제를 계산했다.
+전체 근사 복잡도는 `O(qN)`이다. 비교를 위해 importance coverage를 직접
+`q=256`개 bucket으로 나누고, 각 bucket과 ending bit마다 최소비용 대표를
+남기는 quantized Pareto DP도 추가했다. 이 방법도 시간 `O(qN)`, mask
+복원을 포함한 메모리 `O(qN)`이다. 200개 입력과 13개 threshold, 총
+2,600개 문제를 계산했다.
 
 | `alpha` | 평균 달성 importance | 평균 선택 행/N | 평균 chunk 수 | 최소 affine ms | lookup 재평가 ms |
 |---:|---:|---:|---:|---:|---:|
@@ -143,6 +146,52 @@ Pareto 점을 선형 스칼라화가 만들지 못했다. 그러므로 이는 �
 늘려서 해결되는 grid-resolution 문제가 아니다. 빠른 방법을 실제
 coverage solver로 쓰려면 infeasible 해를 보정하는 primal repair나 다른
 frontier 탐색이 추가로 필요하다.
+
+### Quantized Pareto DP의 결과
+
+Quantized DP는 Lagrangian이 놓친 중간 coverage 상태를 직접 보존했다.
+최종 feasibility는 bucket index가 아니라 양자화하지 않은 실제 importance로
+검사했으며, 모든 2,600개 결과가 요청 하한을 만족했다.
+
+| `alpha` | Pareto 달성 importance | Pareto affine ms | exact 대비 평균 gap | gap 95th percentile |
+|---:|---:|---:|---:|---:|
+| 0.10 | 0.1033 | 0.01358 | 0.165% | 1.034% |
+| 0.30 | 0.3029 | 0.02039 | 0.107% | 0.691% |
+| 0.50 | 0.5028 | 0.02766 | 0.033% | 0.498% |
+| 0.70 | 0.7026 | 0.03517 | 0.054% | 0.404% |
+| 0.80 | 0.8028 | 0.03891 | 0.054% | 0.361% |
+| 0.90 | 0.9030 | 0.04272 | 0.074% | 0.332% |
+| 0.95 | 0.9527 | 0.04466 | 0.061% | 0.315% |
+| 0.99 | 0.9930 | 0.04635 | 0.099% | 0.605% |
+
+13개 target의 평균 gap을 다시 평균하면 **0.083%**였고, target별 평균
+중 최댓값은 **0.165%**였다. 달성 importance에서 exact frontier와 비교한
+gap도 target별 평균 0--0.012%였다. 따라서 이 입력에서는 `q=256`만으로
+exact frontier와 거의 겹쳤으며, 2,600개 중 2,199개(84.6%)는 exact와
+동일한 비용을 찾았다. 개별 worst-case gap은 2.09%였다. Lagrangian의
+unsupported-point 문제도 해결했다.
+
+다만 현재 구현의 단일-process 참고 시간은 `N=256`에서 exact 31 ms,
+Pareto 60 ms로, NumPy로 벡터화된 exact DP보다 아직 느렸다. `N=384`에서는
+각각 98 ms와 100 ms, `N=512`에서는 221 ms와 130 ms였다. 즉 복잡도와
+메모리 scaling은 개선됐지만 작은 `N`의 wall-clock speedup까지 얻으려면
+Pareto transition의 벡터화 또는 compiled implementation이 필요하다.
+이 수치는 정식 timing benchmark가 아닌 한 프로세스의 참고 측정이다.
+
+주 랜덤 입력의 exact 해가 모두 한 chunk였다는 편향을 확인하기 위해,
+실제 affine 계수에서 128행가량 떨어진 세 위치에 importance
+`(0.34, 0.33, 0.33)`만 배치한 adversarial 입력도 검사했다.
+
+| `alpha` | Exact `(K,R)` | Pareto `(K,R)` | Pareto latency gap | Lagrangian latency gap |
+|---:|---:|---:|---:|---:|
+| 0.30 | (1, 1) | (1, 1) | 0.0% | 200.0% |
+| 0.50 | (2, 2) | (2, 2) | 0.0% | 50.0% |
+| 0.66 | (2, 2) | (2, 2) | 0.0% | 50.0% |
+| 0.90 | (3, 3) | (3, 3) | 0.0% | 0.0% |
+
+따라서 Quantized Pareto DP의 좋은 결과가 single-chunk 가정에 의존한 것은
+아니다. 적어도 이 명시적인 multi-chunk 반례에서는 exact frontier를 모두
+복원했다. 다만 이것 역시 모든 일반 입력에 대한 formal bound는 아니다.
 
 각 기존 방법이 실제로 달성한 importance를 하한으로 다시 exact coverage
 latency를 계산하면 다음과 같다.
@@ -223,12 +272,15 @@ fixed sparsity나 동일 accuracy를 요구하는 실제 정책과는 다른 문
 4. Lagrangian 방법은 `O(qN)`으로 빠르지만 이 실험에서는 중간 coverage
    점을 대부분 건너뛰었다. 지원점만 생성하는 scalarization의 구조적
    한계이므로 `q`가 크다는 사실만으로 근사 품질이 보장되지는 않는다.
-5. Fixed-budget exact 보장은 fitted affine latency에 대한 것이다. 원래
+5. Quantized Pareto DP는 `q=256`에서 매우 정확했지만 일반 입력에 대한
+   formal approximation bound를 아직 증명한 것은 아니다. 또한 현재
+   Python 구현은 `N=256`에서 vectorized exact DP보다 빠르지 않다.
+6. Fixed-budget exact 보장은 fitted affine latency에 대한 것이다. 원래
    lookup-table fixed-`R` 목적에 대한 exact 보장은 아니다.
 
 재현 코드는 [`run_experiment.py`](run_experiment.py), 원자료는
 [`results/trials.csv`](results/trials.csv), 집계값은
 [`results/summary.json`](results/summary.json), 그림은
 [`results/comparison.png`](results/comparison.png)에 있다. 실행 시 먼저
-작은 `N`의 모든 binary mask와 세 exact solver를 대조하는 self-check를
-수행한다.
+작은 `N`의 모든 binary mask와 세 exact solver를 대조하고, 근사해의
+feasibility와 exact lower bound를 확인하는 self-check를 수행한다.

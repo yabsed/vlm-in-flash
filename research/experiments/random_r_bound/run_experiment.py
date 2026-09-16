@@ -11,7 +11,8 @@ The experiment deliberately separates three optimization problems:
    most R, by the weighted-average theorem in the same document.
 3. Importance coverage: I(M) >= alpha I_total.  An exact (r,k) chain DP is
    compared with an O(qN) Lagrangian relaxation that solves q two-state
-   chain problems and keeps the feasible supported-frontier candidates.
+   chain problems and keeps the feasible supported-frontier candidates, and
+   with an O(qN) quantized Pareto DP that preserves q coverage buckets.
 
 The paper heuristic is the repository's actual ``select_chunks`` function,
 and the latency-blind baseline is its ``select_topk`` function.  All
@@ -332,6 +333,174 @@ def select_lagrangian(candidates: list[dict], bound: float) -> dict:
     return min(feasible, key=lambda c: (c["aff_ms"], -c["importance"]))
 
 
+class QuantizedParetoOracle:
+    """Approximate the coverage frontier in O(qN) using importance buckets.
+
+    For each prefix, coverage bucket, and ending bit, the DP retains the
+    lowest-cost representative (breaking cost ties toward higher actual
+    importance).  Dominated representatives are removed within each ending
+    state.  Actual, rather than quantized, importance is used for the final
+    feasibility check, so every returned mask satisfies the requested bound.
+    """
+
+    def __init__(
+        self, values: np.ndarray, a_ms: float, c_ms_per_row: float, q: int
+    ) -> None:
+        if q < 2:
+            raise ValueError("the quantized Pareto solver needs q >= 2")
+        self.values = np.asarray(values, dtype=np.float64)
+        self.a_ms = a_ms
+        self.c_ms_per_row = c_ms_per_row
+        self.q = q
+        self.total = float(self.values.sum())
+        if self.total <= 0:
+            raise ValueError("coverage importance must have positive total mass")
+
+        n = len(self.values)
+        inf = math.inf
+        costs = np.full((2, q + 1), inf, dtype=np.float64)
+        importance = np.full((2, q + 1), -np.inf, dtype=np.float64)
+        costs[0, 0] = 0.0
+        importance[0, 0] = 0.0
+
+        self.parent_state = np.full((n + 1, 2, q + 1), 255, dtype=np.uint8)
+        self.parent_bucket = np.full((n + 1, 2, q + 1), -1, dtype=np.int32)
+        self.peak_states = 1
+
+        def bucket_of(value: float) -> int:
+            scaled = q * value / self.total
+            return min(q, max(0, int(math.floor(scaled + 1e-12))))
+
+        def offer(
+            new_costs: np.ndarray,
+            new_importance: np.ndarray,
+            i: int,
+            ending: int,
+            bucket: int,
+            candidate_cost: float,
+            candidate_importance: float,
+            previous_state: int,
+            previous_bucket: int,
+        ) -> None:
+            old_cost = new_costs[ending, bucket]
+            old_importance = new_importance[ending, bucket]
+            if candidate_cost < old_cost - 1e-15 or (
+                math.isclose(candidate_cost, old_cost, rel_tol=0.0, abs_tol=1e-15)
+                and candidate_importance > old_importance
+            ):
+                new_costs[ending, bucket] = candidate_cost
+                new_importance[ending, bucket] = candidate_importance
+                self.parent_state[i, ending, bucket] = previous_state
+                self.parent_bucket[i, ending, bucket] = previous_bucket
+
+        for i, value in enumerate(self.values, start=1):
+            new_costs = np.full((2, q + 1), inf, dtype=np.float64)
+            new_importance = np.full((2, q + 1), -np.inf, dtype=np.float64)
+            for previous_state in (0, 1):
+                for previous_bucket in np.flatnonzero(
+                    np.isfinite(costs[previous_state])
+                ):
+                    old_cost = float(costs[previous_state, previous_bucket])
+                    old_importance = float(
+                        importance[previous_state, previous_bucket]
+                    )
+                    offer(
+                        new_costs,
+                        new_importance,
+                        i,
+                        0,
+                        bucket_of(old_importance),
+                        old_cost,
+                        old_importance,
+                        previous_state,
+                        int(previous_bucket),
+                    )
+                    selected_importance = old_importance + float(value)
+                    selected_cost = old_cost + c_ms_per_row
+                    if previous_state == 0:
+                        selected_cost += a_ms
+                    offer(
+                        new_costs,
+                        new_importance,
+                        i,
+                        1,
+                        bucket_of(selected_importance),
+                        selected_cost,
+                        selected_importance,
+                        previous_state,
+                        int(previous_bucket),
+                    )
+
+            # With the ending bit fixed, a higher-importance state with no
+            # larger cost dominates all future extensions of a lower state.
+            for ending in (0, 1):
+                best_higher_cost = inf
+                for bucket in range(q, -1, -1):
+                    candidate_cost = new_costs[ending, bucket]
+                    if not math.isfinite(candidate_cost):
+                        continue
+                    if candidate_cost >= best_higher_cost - 1e-15:
+                        new_costs[ending, bucket] = inf
+                        new_importance[ending, bucket] = -np.inf
+                    else:
+                        best_higher_cost = candidate_cost
+
+            costs, importance = new_costs, new_importance
+            self.peak_states = max(self.peak_states, int(np.isfinite(costs).sum()))
+
+        self.costs = costs
+        self.importance = importance
+
+    def solve(self, bound: float) -> dict:
+        """Return the cheapest retained representative meeting an exact bound."""
+        if bound <= 0 or bound > self.total + 1e-12:
+            raise ValueError("coverage bound must lie in (0, total importance]")
+        best_key = (math.inf, math.inf)
+        best_state: int | None = None
+        best_bucket: int | None = None
+        for ending in (0, 1):
+            for bucket in np.flatnonzero(np.isfinite(self.costs[ending])):
+                actual_importance = float(self.importance[ending, bucket])
+                if actual_importance < bound - 1e-14:
+                    continue
+                key = (float(self.costs[ending, bucket]), -actual_importance)
+                if key < best_key:
+                    best_key = key
+                    best_state = ending
+                    best_bucket = int(bucket)
+
+        full_cost = self.a_ms + self.c_ms_per_row * len(self.values)
+        if best_state is None or full_cost < best_key[0] - 1e-15:
+            mask = np.ones(len(self.values), dtype=bool)
+        else:
+            mask = np.zeros(len(self.values), dtype=bool)
+            state = best_state
+            bucket = best_bucket
+            for i in range(len(self.values), 0, -1):
+                if state == 1:
+                    mask[i - 1] = True
+                previous_state = int(self.parent_state[i, state, bucket])
+                previous_bucket = int(self.parent_bucket[i, state, bucket])
+                if previous_state == 255 or previous_bucket < 0:
+                    raise RuntimeError(
+                        "quantized-Pareto backtracking reached an invalid state"
+                    )
+                state, bucket = previous_state, previous_bucket
+
+        rows, chunks = mask_stats(mask)
+        actual_importance = float(self.values[mask].sum())
+        if actual_importance < bound - 1e-12:
+            raise RuntimeError("quantized Pareto solver returned an infeasible mask")
+        return {
+            "mask": mask,
+            "importance": actual_importance,
+            "rows": rows,
+            "chunks": chunks,
+            "aff_ms": self.a_ms * chunks + self.c_ms_per_row * rows,
+            "peak_states": self.peak_states,
+        }
+
+
 def exact_upper_r_table(
     values: np.ndarray,
     row_bound: int,
@@ -454,6 +623,16 @@ def summarize_coverage(records: list[dict], targets: list[float]) -> list[dict]:
         "lagrangian_achieved_gap_pct",
         "lagrangian_candidate_count",
         "lagrangian_probe_count",
+        "pareto_achieved",
+        "pareto_overshoot",
+        "pareto_rows",
+        "pareto_row_fraction",
+        "pareto_chunks",
+        "pareto_aff_ms",
+        "pareto_table_ms",
+        "pareto_target_gap_pct",
+        "pareto_achieved_gap_pct",
+        "pareto_peak_states",
     ]
     output = []
     for target in targets:
@@ -486,6 +665,7 @@ PLOT_COLORS = {
     "top_r": "#B565A7",
     "coverage": "#2A9D8F",
     "lagrangian": "#E9A23B",
+    "pareto": "#3A506B",
     "lookup": "#6C5B7B",
 }
 
@@ -660,6 +840,22 @@ def plot_latency_tradeoff(
             label="Exact coverage DP",
             color=colors["coverage"],
         )
+        pareto_latency = np.asarray(
+            [s[f"pareto_{latency_kind}_ms"]["mean"] for s in coverage_summary]
+        )
+        pareto_importance = np.asarray(
+            [s["pareto_achieved"]["mean"] for s in coverage_summary]
+        )
+        ax.plot(
+            pareto_latency,
+            pareto_importance,
+            marker="P",
+            markersize=5.5,
+            linewidth=2.0,
+            linestyle="-.",
+            label="Quantized Pareto O(qN)",
+            color=colors["pareto"],
+        )
         lagrangian_latency = np.asarray(
             [s[f"lagrangian_{latency_kind}_ms"]["mean"] for s in coverage_summary]
         )
@@ -706,7 +902,7 @@ def plot_latency_tradeoff(
 
 
 def plot_coverage(coverage_summary: list[dict], path: Path) -> None:
-    """Standalone diagnostics for exact and Lagrangian coverage solvers."""
+    """Standalone diagnostics for exact and approximate coverage solvers."""
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/vlm-flash-mpl-cache")
     import matplotlib.pyplot as plt
 
@@ -723,11 +919,13 @@ def plot_coverage(coverage_summary: list[dict], path: Path) -> None:
     purple = PLOT_COLORS["lookup"]
     blue = PLOT_COLORS["fixed"]
     orange = PLOT_COLORS["lagrangian"]
+    navy = PLOT_COLORS["pareto"]
     fig, axes = plt.subplots(2, 2, figsize=(12.4, 8.2), constrained_layout=True)
 
     ax = axes[0, 0]
     for metric, label, color, style in (
         ("coverage_aff_ms", "Exact affine optimum", green, "-"),
+        ("pareto_aff_ms", "Quantized Pareto O(qN)", navy, "-."),
         ("lagrangian_aff_ms", "Lagrangian O(qN)", orange, "--"),
         ("coverage_table_ms", "Exact masks, lookup re-evaluation", purple, ":"),
     ):
@@ -745,6 +943,9 @@ def plot_coverage(coverage_summary: list[dict], path: Path) -> None:
     mean, lo, hi = band("lagrangian_achieved")
     ax.plot(x, 100 * mean, marker="D", linestyle="--", color=orange, label="Lagrangian achieved")
     ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.11, color=orange)
+    mean, lo, hi = band("pareto_achieved")
+    ax.plot(x, 100 * mean, marker="P", linestyle="-.", color=navy, label="Pareto achieved")
+    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.10, color=navy)
     ax.plot(x, x, color="black", linestyle=":", label="Requested lower bound")
     ax.set_title("B. Requested versus achieved importance")
     ax.set_ylabel("Achieved importance (%)")
@@ -757,6 +958,9 @@ def plot_coverage(coverage_summary: list[dict], path: Path) -> None:
     mean, lo, hi = band("lagrangian_row_fraction")
     ax.plot(x, 100 * mean, marker="D", linestyle="--", color=orange, label="Lagrangian")
     ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.11, color=orange)
+    mean, lo, hi = band("pareto_row_fraction")
+    ax.plot(x, 100 * mean, marker="P", linestyle="-.", color=navy, label="Quantized Pareto")
+    ax.fill_between(x, 100 * lo, 100 * hi, alpha=0.10, color=navy)
     ax.set_title("C. Rows selected by each coverage solver")
     ax.set_xlabel("Required importance $\\alpha$ (%)")
     ax.set_ylabel("Selected rows / N (%)")
@@ -764,14 +968,14 @@ def plot_coverage(coverage_summary: list[dict], path: Path) -> None:
 
     ax = axes[1, 1]
     for metric, label, color, style in (
-        ("lagrangian_target_gap_pct", "At requested coverage", orange, "-"),
-        ("lagrangian_achieved_gap_pct", "At achieved coverage", purple, "--"),
+        ("pareto_target_gap_pct", "At requested coverage", navy, "-"),
+        ("pareto_achieved_gap_pct", "At achieved coverage", purple, ":"),
     ):
         mean, lo, hi = band(metric)
         ax.plot(x, mean, marker="o", linestyle=style, color=color, label=label)
         ax.fill_between(x, lo, hi, alpha=0.13, color=color)
     ax.axhline(0, color="#455A64", linewidth=0.9)
-    ax.set_title("D. Lagrangian latency gap to exact DP")
+    ax.set_title("D. Quantized Pareto latency gap to exact DP")
     ax.set_xlabel("Required importance $\\alpha$ (%)")
     ax.set_ylabel("Extra affine latency (%)")
     ax.legend(frameon=False)
@@ -940,6 +1144,7 @@ def self_check() -> None:
             assert math.isclose(upper_got, brute_upper, rel_tol=1e-10, abs_tol=1e-12)
 
         coverage_oracle = ExactCoverageOracle(values, a_ms, c_ms)
+        pareto_oracle = QuantizedParetoOracle(values, a_ms, c_ms, q=256)
         masks = []
         for bits in product((False, True), repeat=n):
             mask = np.asarray(bits, dtype=bool)
@@ -963,6 +1168,9 @@ def self_check() -> None:
             assert math.isclose(
                 got["importance"], best_importance, rel_tol=1e-10, abs_tol=1e-12
             )
+            pareto = pareto_oracle.solve(target)
+            assert pareto["importance"] >= target - 1e-12
+            assert pareto["aff_ms"] >= best_cost - 1e-12
         for lam in (0.0, 0.1, 1.0, 10.0):
             got = solve_lagrangian(values, lam, a_ms, c_ms)
             got_objective = got["aff_ms"] - lam * got["importance"]
@@ -972,6 +1180,25 @@ def self_check() -> None:
             assert math.isclose(
                 got_objective, brute_objective, rel_tol=1e-10, abs_tol=1e-12
             )
+
+    # A deterministic multi-chunk case guards against accidentally testing
+    # only the single-interval regime seen in the default dense random data.
+    agx_table = LatencyTable.load("orin-agx")
+    agx_a_ms, agx_c_ms, _ = affine_fit(agx_table, 1.0)
+    separated = np.zeros(256, dtype=np.float64)
+    separated[[0, 127, 255]] = [0.34, 0.33, 0.33]
+    exact_separated = ExactCoverageOracle(separated, agx_a_ms, agx_c_ms)
+    pareto_separated = QuantizedParetoOracle(
+        separated, agx_a_ms, agx_c_ms, q=256
+    )
+    for target, expected_chunks in ((0.5, 2), (0.9, 3)):
+        exact = exact_separated.solve(target)
+        pareto = pareto_separated.solve(target)
+        assert exact["chunks"] == expected_chunks
+        assert pareto["importance"] >= target - 1e-12
+        assert math.isclose(
+            pareto["aff_ms"], exact["aff_ms"], rel_tol=1e-10, abs_tol=1e-12
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -996,6 +1223,12 @@ def parse_args() -> argparse.Namespace:
         default=256,
         help="number of multiplier evaluations in the O(qN) coverage approximation",
     )
+    parser.add_argument(
+        "--pareto-q",
+        type=int,
+        default=256,
+        help="number of coverage buckets in the O(qN) quantized Pareto DP",
+    )
     parser.add_argument("--start-kib", type=float, default=8.0)
     parser.add_argument("--jump-cap-kib", type=float, default=8.0)
     parser.add_argument("--output-dir", type=Path, default=HERE / "results")
@@ -1015,6 +1248,8 @@ def main() -> None:
         raise SystemExit("every --coverage-targets value must be in (0, 1]")
     if args.lagrangian_q < 2:
         raise SystemExit("--lagrangian-q must be at least 2")
+    if args.pareto_q < 2:
+        raise SystemExit("--pareto-q must be at least 2")
 
     if not args.skip_self_check:
         self_check()
@@ -1030,6 +1265,9 @@ def main() -> None:
         values = random_importance(rng, args.n, args.distribution)
         values_t = torch.from_numpy(values.astype(np.float32))
         coverage_oracle = ExactCoverageOracle(values, a_ms, c_ms_per_row)
+        pareto_oracle = QuantizedParetoOracle(
+            values, a_ms, c_ms_per_row, args.pareto_q
+        )
         lagrangian_pool = lagrangian_candidates(
             values,
             a_ms,
@@ -1051,6 +1289,15 @@ def main() -> None:
             achieved_optimum = coverage_oracle.solve(lagrangian["importance"])[
                 "aff_ms"
             ]
+            pareto = pareto_oracle.solve(target * float(values.sum()))
+            pareto_table_ms = table.mask_elat_ms(
+                torch.from_numpy(pareto["mask"]), args.row_size_kib
+            )
+            pareto_achieved_optimum = coverage_oracle.solve(pareto["importance"])[
+                "aff_ms"
+            ]
+            if pareto["aff_ms"] < solution["aff_ms"] - 1e-12:
+                raise RuntimeError("quantized Pareto result beat the exact coverage DP")
             coverage_records.append(
                 {
                     "trial": trial,
@@ -1075,6 +1322,21 @@ def main() -> None:
                     * (lagrangian["aff_ms"] / achieved_optimum - 1),
                     "lagrangian_candidate_count": len(lagrangian_pool),
                     "lagrangian_probe_count": lagrangian["probe_count"],
+                    "pareto_achieved": pareto["importance"]
+                    / float(values.sum()),
+                    "pareto_overshoot": pareto["importance"]
+                    / float(values.sum())
+                    - target,
+                    "pareto_rows": pareto["rows"],
+                    "pareto_row_fraction": pareto["rows"] / args.n,
+                    "pareto_chunks": pareto["chunks"],
+                    "pareto_aff_ms": pareto["aff_ms"],
+                    "pareto_table_ms": pareto_table_ms,
+                    "pareto_target_gap_pct": 100
+                    * (pareto["aff_ms"] / solution["aff_ms"] - 1),
+                    "pareto_achieved_gap_pct": 100
+                    * (pareto["aff_ms"] / pareto_achieved_optimum - 1),
+                    "pareto_peak_states": pareto["peak_states"],
                 }
             )
         for budget in budgets:
@@ -1219,6 +1481,13 @@ def main() -> None:
         "lagrangian": {
             "grid_evaluations_q": args.lagrangian_q,
             "grid": "geometric from data-adaptive lower/upper multipliers",
+            "fallback": "full-selection mask",
+        },
+        "quantized_pareto": {
+            "coverage_buckets_q": args.pareto_q,
+            "representative": "minimum cost per coverage bucket and ending bit",
+            "pruning": "exact dominance within each ending bit",
+            "feasibility": "checked using unquantized importance",
             "fallback": "full-selection mask",
         },
         "greedy_chunk_params": {
