@@ -29,5 +29,9 @@ reading, paper notes, and preliminary derivations live separately in
     from its saved states and re-evaluates DP-Cover, Paper, DP-R, and Top-R
     with the released latency lookup table without rebuilding the `O(N^3)`
     frontier.
+11. `11_affine_lookup_gap`: decomposes why the Experiment 07 Paper gap shrinks
+    under Experiment 10's lookup evaluation, quantifies out-of-profile chunk
+    lengths, and tests sensitivity to alternative tail extrapolations without
+    rerunning any selector or DP.
 
 Future experiments should use the next numbered directory.

@@ -1,0 +1,258 @@
+{
+  "format": "experiment-11-affine-lookup-gap-v1",
+  "source_experiment": "10_exact_lookup_recheck",
+  "source_results": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/10_exact_lookup_recheck/results",
+  "source_sha256": {
+    "summary.json": "2792613b0c27ccace6f5d21eb44f7cbc968b51421469454671752b5d1a5b7166",
+    "fixed_r_lookup_trials.csv": "6d3818cd39ac4d02f1e51ba31a2c3490d6c4307be5186c39ccdb17ba3bad5bef"
+  },
+  "n": 4864,
+  "profile": "orin-agx",
+  "row_size_kib": 1.75,
+  "primary_vlm_cases": 378,
+  "measured_table": {
+    "max_kib": 255.0,
+    "max_rows": 145.71428571428572,
+    "released_extrapolation_ms_per_row": 0.00033231816658287245,
+    "tail_fit_start_kib": 128,
+    "tail_fit_slope_ms_per_kib": 0.00016676958283175718,
+    "tail_fit_ms_per_row": 0.00029184676995557506,
+    "tail_fit_r_squared": 0.9947993541890601
+  },
+  "affine_fit": {
+    "a_ms_per_chunk": 0.011000885814170374,
+    "c_ms_per_row": 0.00024467227359926746,
+    "r_squared": 0.9867192824299305,
+    "released_affine_break_even_rows": 125.51513185253523
+  },
+  "run_length_evidence": {
+    "paper": {
+      "mean_chunks": 25.243386243386244,
+      "run_length_median": 84.0,
+      "case_mean_run_length_median": 94.03589743589743,
+      "mean_case_rows_beyond_profile_pct": 20.8256393711589,
+      "lookup_over_affine_mean": 1.0091587384923124
+    },
+    "paper_cover": {
+      "mean_chunks": 4.724867724867725,
+      "run_length_median": 206.5,
+      "case_mean_run_length_median": 678.6833333333334,
+      "mean_case_rows_beyond_profile_pct": 90.31340881964991,
+      "lookup_over_affine_mean": 1.2472984066834958
+    },
+    "dpr": {
+      "mean_chunks": 2.9788359788359786,
+      "run_length_median": 423.0,
+      "case_mean_run_length_median": 912.0,
+      "mean_case_rows_beyond_profile_pct": 95.25883367479545,
+      "lookup_over_affine_mean": 1.2693255489869448
+    },
+    "dpr_cover": {
+      "mean_chunks": 4.743386243386244,
+      "run_length_median": 179.0,
+      "case_mean_run_length_median": 608.0,
+      "mean_case_rows_beyond_profile_pct": 87.21844371779885,
+      "lookup_over_affine_mean": 1.2357122142888242
+    },
+    "top": {
+      "mean_chunks": 557.7460317460317,
+      "run_length_median": 2.0,
+      "case_mean_run_length_median": 4.585218702865761,
+      "mean_case_rows_beyond_profile_pct": 5.952080515442045,
+      "lookup_over_affine_mean": 1.0118850921432834
+    },
+    "top_cover": {
+      "mean_chunks": 3.8915343915343916,
+      "run_length_median": 333.0,
+      "case_mean_run_length_median": 1479.75,
+      "mean_case_rows_beyond_profile_pct": 94.80198670131658,
+      "lookup_over_affine_mean": 1.2823700487337166
+    }
+  },
+  "paper_gap_factorization": {
+    "affine_ratio": {
+      "mean": 1.300147508705251,
+      "median": 1.2847049342137922,
+      "p05": 1.1338065225690763,
+      "p95": 1.47937543308501,
+      "min": 1.037303114406494,
+      "max": 1.9374541628852493
+    },
+    "paper_lookup_over_affine": {
+      "mean": 1.0091587384923124,
+      "median": 0.9941353484272335,
+      "p05": 0.9645725535705212,
+      "p95": 1.0983595511390387,
+      "min": 0.9490000388200527,
+      "max": 1.1455206493153218
+    },
+    "cover_lookup_over_affine": {
+      "mean": 1.2472984066834958,
+      "median": 1.2758729101275195,
+      "p05": 1.0409909707130738,
+      "p95": 1.3412406149367422,
+      "min": 0.9681308812065033,
+      "max": 1.3444788570795767
+    },
+    "relative_rescale_correction": {
+      "mean": 0.8128702628678223,
+      "median": 0.7981842575284359,
+      "p05": 0.7502299503059287,
+      "p95": 0.9371623990155281,
+      "min": 0.7262294193878389,
+      "max": 1.011594151157757
+    },
+    "released_lookup_ratio": {
+      "mean": 1.053459983550794,
+      "median": 1.0381821881190918,
+      "p05": 0.9431030085551516,
+      "p95": 1.21231950718804,
+      "min": 0.8695356123144206,
+      "max": 1.443472302071931
+    },
+    "max_identity_error": 5.329070518200751e-15
+  },
+  "extrapolation_sensitivity": {
+    "affine_fit": {
+      "paper": {
+        "matched_ratio": {
+          "mean": 1.300147508705251,
+          "median": 1.2847049342137922,
+          "p05": 1.1338065225690765,
+          "p95": 1.4793754330850104,
+          "min": 1.0373031144064941,
+          "max": 1.9374541628852493
+        },
+        "method_cheaper_rate": 0.0
+      },
+      "dpr": {
+        "matched_ratio": {
+          "mean": 1.0156600589811116,
+          "median": 1.0,
+          "p05": 1.0,
+          "p95": 1.0829686774589649,
+          "min": 1.0,
+          "max": 1.2921198779999785
+        },
+        "method_cheaper_rate": 0.0
+      },
+      "top": {
+        "matched_ratio": {
+          "mean": 8.602107348822006,
+          "median": 8.493684461464726,
+          "p05": 2.753948876943281,
+          "p95": 16.00121662469092,
+          "min": 1.852233974564734,
+          "max": 20.139998830945075
+        },
+        "method_cheaper_rate": 0.0
+      }
+    },
+    "released": {
+      "paper": {
+        "matched_ratio": {
+          "mean": 1.053459983550794,
+          "median": 1.038182188119092,
+          "p05": 0.9431030085551516,
+          "p95": 1.2123195071880402,
+          "min": 0.8695356123144206,
+          "max": 1.443472302071931
+        },
+        "method_cheaper_rate": 0.25396825396825395
+      },
+      "dpr": {
+        "matched_ratio": {
+          "mean": 1.0476136583687898,
+          "median": 1.0,
+          "p05": 1.0,
+          "p95": 1.2201287777275374,
+          "min": 0.9389061951214559,
+          "max": 1.4937156032043948
+        },
+        "method_cheaper_rate": 0.005291005291005291
+      },
+      "top": {
+        "matched_ratio": {
+          "mean": 6.604452435803357,
+          "median": 6.294884526093326,
+          "p05": 2.2108510178738126,
+          "p95": 11.595102149905943,
+          "min": 1.4664359625048164,
+          "max": 14.661505478493837
+        },
+        "method_cheaper_rate": 0.0
+      }
+    },
+    "tail_linear": {
+      "paper": {
+        "matched_ratio": {
+          "mean": 1.1429593882080296,
+          "median": 1.1267484572341024,
+          "p05": 1.0275432851911932,
+          "p95": 1.3015689265065578,
+          "min": 0.9642082425173061,
+          "max": 1.621372738658357
+        },
+        "method_cheaper_rate": 0.005291005291005291
+      },
+      "dpr": {
+        "matched_ratio": {
+          "mean": 1.0338650669178575,
+          "median": 1.0,
+          "p05": 1.0,
+          "p95": 1.1605811494820966,
+          "min": 0.9655326087887047,
+          "max": 1.3779534437796546
+        },
+        "method_cheaper_rate": 0.005291005291005291
+      },
+      "top": {
+        "matched_ratio": {
+          "mean": 7.362295190844834,
+          "median": 7.127483582063295,
+          "p05": 2.447233308562335,
+          "p95": 13.041560714845419,
+          "min": 1.6331965362386691,
+          "max": 16.330052025382884
+        },
+        "method_cheaper_rate": 0.0
+      }
+    },
+    "block_split": {
+      "paper": {
+        "matched_ratio": {
+          "mean": 1.0499090010240997,
+          "median": 1.0428569304951085,
+          "p05": 0.9203658509740329,
+          "p95": 1.2252070027391428,
+          "min": 0.8354670465054426,
+          "max": 1.450763830008039
+        },
+        "method_cheaper_rate": 0.3148148148148148
+      },
+      "dpr": {
+        "matched_ratio": {
+          "mean": 1.0459903730978364,
+          "median": 1.0,
+          "p05": 1.0,
+          "p95": 1.2455129854632019,
+          "min": 0.9457812290712174,
+          "max": 1.533328385129532
+        },
+        "method_cheaper_rate": 0.010582010582010581
+      },
+      "top": {
+        "matched_ratio": {
+          "mean": 6.528255630066755,
+          "median": 6.283818490379619,
+          "p05": 2.1729367776240607,
+          "p95": 11.533223266322157,
+          "min": 1.490879035967735,
+          "max": 14.238788961636264
+        },
+        "method_cheaper_rate": 0.0
+      }
+    }
+  },
+  "interpretation": "The released evaluator is measured only through 255 KiB. Beyond that it scales the endpoint proportionally. Affine DP-Cover is much more exposed to this extrapolated region than Paper."
+}
