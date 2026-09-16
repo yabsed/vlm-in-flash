@@ -20,5 +20,7 @@ reading, paper notes, and preliminary derivations live separately in
    to beat Paper greedy reliably.
 7. `07_exact_n4864`: exact `O(N^3)` DP-Cover with `O(N^2)` memory at the
    realistic `N=4,864`, compared with Paper greedy, exact DP-R, and Top-R.
+8. `08_greedy_refinement`: reuses Experiment 07's exact results and adds a
+   coverage-preserving gap-merge and boundary-trim refinement to Paper greedy.
 
 Future experiments should use the next numbered directory.

@@ -1,0 +1,246 @@
+{
+  "format": "experiment-08-greedy-refinement-v1",
+  "source_experiment": "07_exact_n4864",
+  "source_results": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/07_exact_n4864/results",
+  "source_sha256": {
+    "summary.json": "2904cec64c24606e7e5743eef19dd73baa6cf7ac74e315e8718751c0e5f09da5",
+    "fixed_r_trials.csv": "713a89a1644b079575637f122110e7bf46f406d7e8259bf258dd912f3d72fc63",
+    "coverage_trials.csv": "5c8dadec4ae7a39e85aa5a48875fa429e15e1b2fa641ab4a85958c52a1cfd43e",
+    "input_trials.csv": "03e66a38cd7a64e04f385005f6c948dfdce037bc93b5ec51df27792ab5d403b8"
+  },
+  "reused_expensive_results": [
+    "DP-Cover exact",
+    "DP-R exact",
+    "Top-R"
+  ],
+  "n": 4864,
+  "model": "LLaVA-OneVision-0.5B",
+  "shape": "4864x896",
+  "trials_per_cv": 3,
+  "seed": 20261007,
+  "cv_targets": [
+    1.07,
+    1.25,
+    1.44,
+    2.48,
+    3.3,
+    4.55,
+    9.19
+  ],
+  "coverage_targets": [
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    0.9,
+    0.95,
+    0.99
+  ],
+  "budget_fractions": [
+    0.125,
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75,
+    0.875
+  ],
+  "methods": [
+    "DP-Cover exact",
+    "Paper greedy",
+    "Paper + merge + trim",
+    "DP-R exact",
+    "Top-R"
+  ],
+  "affine_fit": {
+    "a_ms_per_chunk": 0.011000885814170374,
+    "c_ms_per_row": 0.00024467227359926746,
+    "r_squared": 0.9867192824299305,
+    "chunk_open_equivalent_rows": 44.96171818874744
+  },
+  "refinement": {
+    "coverage_target": "importance attained by Paper greedy",
+    "largest_strictly_profitable_gap_rows": 44,
+    "complexity_after_paper": "O(N log N) time, O(N) memory",
+    "strict_win_rate": 0.9338624338624338,
+    "nonworse_rate": 1.0,
+    "exact_target_rate": 0.05555555555555555,
+    "merge_saving_vs_paper_pct": {
+      "mean": 11.00349363052685,
+      "median": 11.305695756548829,
+      "p05": 0.0,
+      "p95": 22.355648341081153,
+      "min": 0.0,
+      "max": 28.28391594288223
+    },
+    "saving_vs_paper_pct": {
+      "mean": 16.43928453730915,
+      "median": 16.75849207521432,
+      "p05": 0.0,
+      "p95": 31.277250487513133,
+      "min": 0.0,
+      "max": 48.38587569417365
+    },
+    "paper_excess_gap_recovered_pct": {
+      "mean": 66.78894292965434,
+      "median": 72.98457264455004,
+      "p05": 0.0,
+      "p95": 100.0,
+      "min": 0.0,
+      "max": 100.0
+    },
+    "target_gap_to_exact_pct": {
+      "mean": 7.5910350481033495,
+      "median": 7.208241859651898,
+      "p05": 0.0,
+      "p95": 17.823398707945717,
+      "min": 0.0,
+      "max": 24.08242655247004
+    },
+    "target_ratio_to_exact": {
+      "mean": 1.0759103504810335,
+      "median": 1.072082418596519,
+      "p05": 1.0,
+      "p95": 1.1782339870794571,
+      "min": 1.0,
+      "max": 1.2408242655247004
+    },
+    "importance_overshoot": {
+      "mean": 0.0001767402849141063,
+      "median": 7.997408126719785e-05,
+      "p05": 0.0,
+      "p95": 0.0006854237587518738,
+      "min": 0.0,
+      "max": 0.002726796341525506
+    },
+    "chunks": {
+      "mean": 9.82010582010582,
+      "median": 10.0,
+      "p05": 1.0,
+      "p95": 22.0,
+      "min": 1.0,
+      "max": 27.0
+    },
+    "chunk_reduction_vs_paper_pct": {
+      "mean": 55.0058151566984,
+      "median": 59.6875,
+      "p05": 0.0,
+      "p95": 96.15384615384616,
+      "min": 0.0,
+      "max": 98.21428571428571
+    },
+    "rows": {
+      "mean": 2432.410052910053,
+      "median": 2440.0,
+      "p05": 606.0,
+      "p95": 4377.25,
+      "min": 574.0,
+      "max": 4693.0
+    },
+    "replayed_paper_runtime_ms": {
+      "mean": 7.169440582010582,
+      "median": 7.1239835,
+      "p05": 2.5656798000000003,
+      "p95": 12.3910904,
+      "min": 2.077644,
+      "max": 14.092285
+    },
+    "post_runtime_ms": {
+      "mean": 1.394463470899471,
+      "median": 1.361956,
+      "p05": 0.32143635,
+      "p95": 2.4240179499999996,
+      "min": 0.296324,
+      "max": 3.411708
+    },
+    "replayed_total_runtime_ms": {
+      "mean": 8.563904052910052,
+      "median": 8.5472945,
+      "p05": 3.0010499999999998,
+      "p95": 14.741511049999998,
+      "min": 2.4021809999999997,
+      "max": 17.124684000000002
+    }
+  },
+  "experiment_07_reference": {
+    "dp_cover": {
+      "build_ms": {
+        "mean": 14125.56315201852,
+        "median": 14128.3859325,
+        "p05": 13021.10658275,
+        "p95": 15186.168593949998,
+        "min": 12191.426453,
+        "max": 15912.906293
+      },
+      "buffer_gib": {
+        "mean": 0.1763782650232315,
+        "median": 0.1763782650232315,
+        "p05": 0.1763782650232315,
+        "p95": 0.1763782650232315,
+        "min": 0.1763782650232315,
+        "max": 0.1763782650232315
+      }
+    },
+    "method_runtime_ms": {
+      "paper": {
+        "mean": 7.656481079365079,
+        "median": 7.729877999999999,
+        "p05": 2.9446841,
+        "p95": 12.8740315,
+        "min": 2.31567,
+        "max": 14.515901
+      },
+      "dpr": {
+        "mean": 321.4233991878307,
+        "median": 315.3646755,
+        "p05": 238.57255475,
+        "p95": 422.0223089,
+        "min": 201.916252,
+        "max": 471.958801
+      },
+      "top_query": {
+        "mean": 0.0341851216931217,
+        "median": 0.033863000000000004,
+        "p05": 0.0255365,
+        "p95": 0.0436455,
+        "min": 0.020839,
+        "max": 0.097652
+      },
+      "top_build": {
+        "mean": 0.3446836851851852,
+        "median": 0.32904,
+        "p05": 0.31104325,
+        "p95": 0.4076127,
+        "min": 0.303006,
+        "max": 0.427449
+      }
+    },
+    "coverage_ratio": {
+      "paper": {
+        "mean": 1.300147508705251,
+        "median": 1.2847049342137922,
+        "p05": 1.1338065225690763,
+        "p95": 1.4793754330850102,
+        "min": 1.0373031144064941,
+        "max": 1.9374541628852493
+      },
+      "dpr": {
+        "mean": 1.0156600589811116,
+        "median": 1.0,
+        "p05": 1.0,
+        "p95": 1.0829686774589649,
+        "min": 1.0,
+        "max": 1.2921198779999783
+      },
+      "top": {
+        "mean": 8.602107348822006,
+        "median": 8.493684461464724,
+        "p05": 2.753948876943281,
+        "p95": 16.001216624690915,
+        "min": 1.852233974564734,
+        "max": 20.139998830945068
+      }
+    }
+  },
+  "timing_scope": "single-process CPU; exact and baseline metrics reused from Experiment 07"
+}
