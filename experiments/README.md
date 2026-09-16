@@ -25,5 +25,9 @@ reading, paper notes, and preliminary derivations live separately in
 9. `09_paper_refinement_scale`: large paired Paper-versus-refinement benchmark
    across four realistic channel counts, with clustered confidence intervals
    and affine/lookup latency sensitivity analysis.
+10. `10_exact_lookup_recheck`: reconstructs Experiment 07's affine-exact masks
+    from its saved states and re-evaluates DP-Cover, Paper, DP-R, and Top-R
+    with the released latency lookup table without rebuilding the `O(N^3)`
+    frontier.
 
 Future experiments should use the next numbered directory.

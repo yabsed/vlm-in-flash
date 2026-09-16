@@ -1,0 +1,142 @@
+{
+  "format": "experiment-10-exact-lookup-recheck-v1",
+  "source_experiment": "07_exact_n4864",
+  "source_results": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/07_exact_n4864/results",
+  "source_sha256": {
+    "summary.json": "2904cec64c24606e7e5743eef19dd73baa6cf7ac74e315e8718751c0e5f09da5",
+    "fixed_r_trials.csv": "713a89a1644b079575637f122110e7bf46f406d7e8259bf258dd912f3d72fc63",
+    "coverage_trials.csv": "5c8dadec4ae7a39e85aa5a48875fa429e15e1b2fa641ab4a85958c52a1cfd43e",
+    "input_trials.csv": "03e66a38cd7a64e04f385005f6c948dfdce037bc93b5ec51df27792ab5d403b8"
+  },
+  "n": 4864,
+  "model": "LLaVA-OneVision-0.5B",
+  "shape": "4864x896",
+  "profile": "orin-agx",
+  "row_size_kib": 1.75,
+  "trials_per_cv": 3,
+  "seed": 20261007,
+  "cv_targets": [
+    1.07,
+    1.25,
+    1.44,
+    2.48,
+    3.3,
+    4.55,
+    9.19
+  ],
+  "coverage_targets": [
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    0.9,
+    0.95,
+    0.99
+  ],
+  "budget_fractions": [
+    0.125,
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75,
+    0.875
+  ],
+  "methods": [
+    "Affine DP-Cover",
+    "Paper greedy",
+    "DP-R exact",
+    "Top-R"
+  ],
+  "interpretation_warning": "DP-Cover is exact for fitted affine latency, then evaluated under the lookup table; it is not an exact lookup-latency oracle.",
+  "reconstruction": {
+    "algorithm": "saved (R,K,I) states + exact O(N R K_max) backtracking DP",
+    "full_o_n3_frontier_recomputed": false,
+    "runtime_ms": {
+      "mean": 279.96749396825396,
+      "median": 234.861555,
+      "p05": 110.5125748,
+      "p95": 539.9645088999999,
+      "min": 105.893978,
+      "max": 644.140176
+    },
+    "buffer_gib": {
+      "mean": 0.17635158329669917,
+      "median": 0.13187323696911335,
+      "p05": 0.042061243951320645,
+      "p95": 0.3782157165929675,
+      "min": 0.041575754061341286,
+      "max": 0.46394286677241325
+    },
+    "max_required_chunks": 20,
+    "persisted_representation": "zero-based selected runs as start:length"
+  },
+  "matched_lookup_comparison_vlm_cvs": {
+    "paper": {
+      "matched_lookup_ratio": {
+        "mean": 1.053459983550794,
+        "median": 1.038182188119092,
+        "p05": 0.9431030085551516,
+        "p95": 1.2123195071880402,
+        "min": 0.8695356123144206,
+        "max": 1.443472302071931
+      },
+      "lookup_delta_pct": {
+        "mean": 5.345998355079411,
+        "median": 3.818218811909202,
+        "p05": -5.6896991444848375,
+        "p95": 21.231950718804008,
+        "min": -13.046438768557945,
+        "max": 44.34723020719309
+      },
+      "lower_lookup_than_affine_dp_cover_rate": 0.25396825396825395,
+      "same_lookup_as_affine_dp_cover_rate": 0.0
+    },
+    "dpr": {
+      "matched_lookup_ratio": {
+        "mean": 1.0476136583687898,
+        "median": 1.0,
+        "p05": 1.0,
+        "p95": 1.2201287777275374,
+        "min": 0.9389061951214559,
+        "max": 1.4937156032043948
+      },
+      "lookup_delta_pct": {
+        "mean": 4.761365836878976,
+        "median": 0.0,
+        "p05": 0.0,
+        "p95": 22.012877772753736,
+        "min": -6.10938048785441,
+        "max": 49.37156032043948
+      },
+      "lower_lookup_than_affine_dp_cover_rate": 0.005291005291005291,
+      "same_lookup_as_affine_dp_cover_rate": 0.5185185185185185
+    },
+    "top": {
+      "matched_lookup_ratio": {
+        "mean": 6.604452435803357,
+        "median": 6.294884526093326,
+        "p05": 2.2108510178738126,
+        "p95": 11.595102149905943,
+        "min": 1.4664359625048164,
+        "max": 14.661505478493837
+      },
+      "lookup_delta_pct": {
+        "mean": 560.4452435803356,
+        "median": 529.4884526093326,
+        "p05": 121.08510178738126,
+        "p95": 1059.5102149905945,
+        "min": 46.64359625048164,
+        "max": 1366.1505478493837
+      },
+      "lower_lookup_than_affine_dp_cover_rate": 0.0,
+      "same_lookup_as_affine_dp_cover_rate": 0.0
+    }
+  },
+  "cases": {
+    "inputs": 63,
+    "coverage_points": 441,
+    "fixed_r_points": 441,
+    "primary_vlm_fixed_r_points": 378
+  }
+}
