@@ -13,12 +13,10 @@ exactly the same values and CV:
 - `hot-cold`: ranks induced by a persistent neuron-hotness profile plus
   per-input noise, approximating offline hot-cold reordering.
 
-The compared policies are Paper greedy, the exact fixed-`R` DP, and the
-`O(qN)` Quantized Pareto solver. Fixed-`R` policies are compared with Pareto
-at their individually achieved importance, rather than at unmatched quality.
-The resulting latency difference is signed: a negative value means that the
-fixed-`R` solution beat the quantized approximation at that particular
-importance target.
+The compared policies are Paper greedy, the exact fixed-`R` DP, the Exact
+Coverage DP, and the `O(qN)` Quantized Pareto solver. Exact Coverage supplies
+the minimum-latency reference at each method's achieved importance. This
+separates fixed-budget loss from Quantized Pareto's approximation error.
 
 Run from the repository root:
 

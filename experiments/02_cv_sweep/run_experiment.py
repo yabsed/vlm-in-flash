@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Experiment 02: CV- and ordering-controlled importance distributions.
 
-The experiment compares Paper greedy, the exact fixed-R DP, and the O(qN)
-quantized Pareto coverage solver.  Each base value multiset is calibrated to
-an exact target coefficient of variation, then reused under random, locally
-clustered, and persistent hot-cold orderings so marginal dispersion and
-spatial structure are not confounded.
+The experiment compares Paper greedy, the exact fixed-R DP, the exact
+coverage DP, and the O(qN) quantized Pareto coverage solver.  Each base value
+multiset is calibrated to an exact target coefficient of variation, then
+reused under random, locally clustered, and persistent hot-cold orderings so
+marginal dispersion and spatial structure are not confounded.
 """
 
 from __future__ import annotations
@@ -225,16 +225,22 @@ def plot_matched_latency(condition_summary: list[dict], path: Path) -> None:
         x = np.asarray([item["target_cv"] for item in points])
         for metric, label, color, marker in (
             (
-                "greedy_extra_vs_pareto_pct",
+                "greedy_extra_vs_exact_pct",
                 "Paper greedy",
                 BASE.PLOT_COLORS["greedy"],
                 "o",
             ),
             (
-                "fixed_extra_vs_pareto_pct",
+                "fixed_extra_vs_exact_pct",
                 "Exact fixed-R DP",
                 BASE.PLOT_COLORS["fixed"],
                 "D",
+            ),
+            (
+                "pareto_extra_vs_exact_pct",
+                "Quantized Pareto O(qN)",
+                BASE.PLOT_COLORS["pareto"],
+                "P",
             ),
         ):
             mean = np.asarray([item[metric]["mean"] for item in points])
@@ -244,9 +250,9 @@ def plot_matched_latency(condition_summary: list[dict], path: Path) -> None:
             ax.fill_between(x, lo, hi, alpha=0.12, color=color)
         ax.axhline(
             0,
-            color=BASE.PLOT_COLORS["pareto"],
+            color=BASE.PLOT_COLORS["coverage"],
             linestyle=":",
-            label="Quantized Pareto reference",
+            label="Exact Coverage DP reference",
         )
         ax.set_xscale("log")
         ax.set_xticks(x)
@@ -260,7 +266,7 @@ def plot_matched_latency(condition_summary: list[dict], path: Path) -> None:
     axes[0].set_ylabel("Extra latency at matched importance (%)")
     axes[-1].legend(frameon=False, fontsize=8.5)
     fig.suptitle(
-        "Latency relative to Quantized Pareto at each fixed-R method's achieved importance",
+        "Latency overhead relative to Exact Coverage DP at matched importance",
         fontsize=13,
     )
     fig.savefig(path, dpi=200)
@@ -302,6 +308,14 @@ def plot_frontiers(
                 key=lambda item: item["coverage_target"],
             )
             ax.plot(
+                [item["exact_aff_ms"]["mean"] for item in pareto_points],
+                [item["exact_achieved"]["mean"] for item in pareto_points],
+                marker="X",
+                linestyle="--",
+                color=BASE.PLOT_COLORS["coverage"],
+                label="Exact Coverage DP",
+            )
+            ax.plot(
                 [item["pareto_aff_ms"]["mean"] for item in pareto_points],
                 [item["pareto_achieved"]["mean"] for item in pareto_points],
                 marker="P",
@@ -315,7 +329,7 @@ def plot_frontiers(
             ax.set_ylabel("Retained importance")
             BASE.polish_axis(ax)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="outside upper center", ncol=3, frameon=False)
+    fig.legend(handles, labels, loc="outside upper center", ncol=4, frameon=False)
     fig.savefig(path, dpi=200)
     fig.savefig(path.with_suffix(".pdf"))
     plt.close(fig)
@@ -413,6 +427,9 @@ def main() -> None:
                 pareto_oracle = BASE.QuantizedParetoOracle(
                     values, a_ms, c_ms_per_row, args.pareto_q
                 )
+                exact_coverage_oracle = BASE.ExactCoverageOracle(
+                    values, a_ms, c_ms_per_row
+                )
                 condition_rows.append(
                     {
                         "trial": trial,
@@ -425,18 +442,29 @@ def main() -> None:
                     }
                 )
                 for coverage_target in coverage_targets:
+                    exact_coverage = exact_coverage_oracle.solve(coverage_target)
                     pareto = pareto_oracle.solve(coverage_target)
+                    if exact_coverage["aff_ms"] > pareto["aff_ms"] + 1e-12:
+                        raise RuntimeError("Exact Coverage DP lost to Quantized Pareto")
                     frontier_rows.append(
                         {
                             "trial": trial,
                             "target_cv": target_cv,
                             "spatial_mode": spatial_mode,
                             "coverage_target": coverage_target,
+                            "exact_achieved": exact_coverage["importance"],
+                            "exact_overshoot": exact_coverage["importance"]
+                            - coverage_target,
+                            "exact_rows": exact_coverage["rows"],
+                            "exact_chunks": exact_coverage["chunks"],
+                            "exact_aff_ms": exact_coverage["aff_ms"],
                             "pareto_achieved": pareto["importance"],
                             "pareto_overshoot": pareto["importance"] - coverage_target,
                             "pareto_rows": pareto["rows"],
                             "pareto_chunks": pareto["chunks"],
                             "pareto_aff_ms": pareto["aff_ms"],
+                            "pareto_extra_vs_exact_pct": 100
+                            * (pareto["aff_ms"] / exact_coverage["aff_ms"] - 1),
                         }
                     )
                 for budget in budgets:
@@ -468,6 +496,22 @@ def main() -> None:
                         raise RuntimeError("exact fixed-R DP lost to a feasible greedy mask")
                     pareto_at_greedy = pareto_oracle.solve(greedy_importance)
                     pareto_at_fixed = pareto_oracle.solve(fixed_importance)
+                    exact_at_greedy = exact_coverage_oracle.solve(greedy_importance)
+                    exact_at_fixed = exact_coverage_oracle.solve(fixed_importance)
+                    if exact_at_greedy["aff_ms"] > min(
+                        greedy_latency, pareto_at_greedy["aff_ms"]
+                    ) + 1e-12:
+                        raise RuntimeError("Exact Coverage DP lost at greedy importance")
+                    if exact_at_fixed["aff_ms"] > min(
+                        fixed_latency, pareto_at_fixed["aff_ms"]
+                    ) + 1e-12:
+                        raise RuntimeError("Exact Coverage DP lost at fixed-R importance")
+                    pareto_at_greedy_gap = 100 * (
+                        pareto_at_greedy["aff_ms"] / exact_at_greedy["aff_ms"] - 1
+                    )
+                    pareto_at_fixed_gap = 100 * (
+                        pareto_at_fixed["aff_ms"] / exact_at_fixed["aff_ms"] - 1
+                    )
                     fixed_rows.append(
                         {
                             "trial": trial,
@@ -489,12 +533,28 @@ def main() -> None:
                             "fixed_aff_ms": fixed_latency,
                             "fixed_aff_ratio": fixed_ratio,
                             "fixed_gain_pct": 100 * (fixed_ratio / greedy_ratio - 1),
+                            "exact_at_greedy_importance": exact_at_greedy["importance"],
+                            "exact_at_greedy_rows": exact_at_greedy["rows"],
+                            "exact_at_greedy_chunks": exact_at_greedy["chunks"],
+                            "exact_at_greedy_aff_ms": exact_at_greedy["aff_ms"],
+                            "greedy_extra_vs_exact_pct": 100
+                            * (greedy_latency / exact_at_greedy["aff_ms"] - 1),
                             "pareto_at_greedy_importance": pareto_at_greedy["importance"],
                             "pareto_at_greedy_aff_ms": pareto_at_greedy["aff_ms"],
+                            "pareto_at_greedy_extra_vs_exact_pct": pareto_at_greedy_gap,
                             "greedy_extra_vs_pareto_pct": 100
                             * (greedy_latency / pareto_at_greedy["aff_ms"] - 1),
+                            "exact_at_fixed_importance": exact_at_fixed["importance"],
+                            "exact_at_fixed_rows": exact_at_fixed["rows"],
+                            "exact_at_fixed_chunks": exact_at_fixed["chunks"],
+                            "exact_at_fixed_aff_ms": exact_at_fixed["aff_ms"],
+                            "fixed_extra_vs_exact_pct": 100
+                            * (fixed_latency / exact_at_fixed["aff_ms"] - 1),
                             "pareto_at_fixed_importance": pareto_at_fixed["importance"],
                             "pareto_at_fixed_aff_ms": pareto_at_fixed["aff_ms"],
+                            "pareto_at_fixed_extra_vs_exact_pct": pareto_at_fixed_gap,
+                            "pareto_extra_vs_exact_pct": 0.5
+                            * (pareto_at_greedy_gap + pareto_at_fixed_gap),
                             "fixed_extra_vs_pareto_pct": 100
                             * (fixed_latency / pareto_at_fixed["aff_ms"] - 1),
                             "dinkelbach_iterations": iterations,
@@ -521,6 +581,11 @@ def main() -> None:
         "fixed_aff_ms",
         "fixed_aff_ratio",
         "fixed_gain_pct",
+        "greedy_extra_vs_exact_pct",
+        "fixed_extra_vs_exact_pct",
+        "pareto_at_greedy_extra_vs_exact_pct",
+        "pareto_at_fixed_extra_vs_exact_pct",
+        "pareto_extra_vs_exact_pct",
         "greedy_extra_vs_pareto_pct",
         "fixed_extra_vs_pareto_pct",
         "dinkelbach_iterations",
@@ -536,6 +601,11 @@ def main() -> None:
             "lag1_corr",
             "first_half_mass",
             "fixed_gain_pct",
+            "greedy_extra_vs_exact_pct",
+            "fixed_extra_vs_exact_pct",
+            "pareto_at_greedy_extra_vs_exact_pct",
+            "pareto_at_fixed_extra_vs_exact_pct",
+            "pareto_extra_vs_exact_pct",
             "greedy_extra_vs_pareto_pct",
             "fixed_extra_vs_pareto_pct",
         ),
@@ -549,11 +619,17 @@ def main() -> None:
         frontier_rows,
         ("target_cv", "spatial_mode", "coverage_target"),
         (
+            "exact_achieved",
+            "exact_overshoot",
+            "exact_rows",
+            "exact_chunks",
+            "exact_aff_ms",
             "pareto_achieved",
             "pareto_overshoot",
             "pareto_rows",
             "pareto_chunks",
             "pareto_aff_ms",
+            "pareto_extra_vs_exact_pct",
         ),
     )
 
@@ -569,7 +645,7 @@ def main() -> None:
     write_csv(frontier_path, frontier_rows)
     write_csv(conditions_path, condition_rows)
     metadata = {
-        "format": "experiment-02-cv-sweep-v1",
+        "format": "experiment-02-cv-sweep-v2",
         "seed": args.seed,
         "trials_per_cv": args.trials,
         "n": args.n,
