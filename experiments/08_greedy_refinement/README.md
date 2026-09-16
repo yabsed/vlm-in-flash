@@ -20,4 +20,5 @@ python3 experiments/08_greedy_refinement/run_experiment.py
 
 The output contains the same five figures as Experiment 07, with the refined
 method added, along with an enriched `fixed_r_trials.csv` and `summary.json`.
-Measured results and interpretation are in `report.md`.
+The algorithm and its guarantees are derived in `algorithm.md`. Measured
+results and interpretation are in `report.md`.
