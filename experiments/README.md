@@ -22,5 +22,8 @@ reading, paper notes, and preliminary derivations live separately in
    realistic `N=4,864`, compared with Paper greedy, exact DP-R, and Top-R.
 8. `08_greedy_refinement`: reuses Experiment 07's exact results and adds a
    coverage-preserving gap-merge and boundary-trim refinement to Paper greedy.
+9. `09_paper_refinement_scale`: large paired Paper-versus-refinement benchmark
+   across four realistic channel counts, with clustered confidence intervals
+   and affine/lookup latency sensitivity analysis.
 
 Future experiments should use the next numbered directory.
