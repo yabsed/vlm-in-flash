@@ -1,0 +1,128 @@
+{
+  "format": "experiment-06-quant-scale-v1",
+  "trials_per_cv": 2,
+  "seed": 20265865,
+  "n": 4864,
+  "model": "LLaVA-OneVision-0.5B",
+  "shape_rows_x_cols": "4864x896",
+  "row_size_kib": 1.75,
+  "q_values": [
+    2048
+  ],
+  "max_q": 2048,
+  "minimum_stable_q": 2048,
+  "stability_definition": "100% non-worse than Paper, >=95% strict wins, and p05 gain >=0 on VLM-CV Paper-matched cases",
+  "cv_targets": [
+    1.07,
+    1.25,
+    1.44,
+    2.48,
+    3.3,
+    4.55
+  ],
+  "coverage_targets": [
+    0.5
+  ],
+  "budget_fractions": [
+    0.125,
+    0.25,
+    0.375,
+    0.5,
+    0.625,
+    0.75,
+    0.875
+  ],
+  "affine_fit": {
+    "a_ms_per_chunk": 0.011000885814170374,
+    "c_ms_per_row": 0.00024467227359926746,
+    "r_squared": 0.9867192824299305,
+    "chunk_open_equivalent_rows": 44.96171818874744
+  },
+  "q_summary_vlm": [
+    {
+      "q": 2048,
+      "q_over_n": 0.42105263157894735,
+      "cases": 252,
+      "nonworse_rate": 1.0,
+      "strict_win_rate": 1.0,
+      "full_mask_rate": 0.023809523809523808,
+      "paper_extra_vs_quant_pct": {
+        "mean": 28.424790155895376,
+        "median": 27.5474934421339,
+        "p05": 13.023666960490281,
+        "p95": 50.82187754171139,
+        "min": 7.901353822831525,
+        "max": 78.66377427738465
+      },
+      "build_ms": {
+        "mean": 115.34681483333331,
+        "median": 91.189663,
+        "p05": 67.2252065,
+        "p95": 113.42208525000001,
+        "min": 53.052812,
+        "max": 994.342255
+      },
+      "build_ms_median": 91.189663,
+      "one_query_ms": {
+        "mean": 115.78896625396824,
+        "median": 91.667892,
+        "p05": 65.9190354,
+        "p95": 113.99971215000001,
+        "min": 53.285807000000005,
+        "max": 994.98719
+      },
+      "stable_better": true
+    }
+  ],
+  "max_q_method_comparison_vlm": {
+    "paper_extra_vs_top_pct": {
+      "mean": -79.91988873379864,
+      "median": -85.43842791138678,
+      "p05": -92.35984956170847,
+      "p95": -54.34935755978322,
+      "min": -93.72408698443819,
+      "max": -42.11478843482644
+    },
+    "paper_extra_vs_single_pct": {
+      "mean": 18.9851287489359,
+      "median": 23.79587936591242,
+      "p05": -26.735110722579083,
+      "p95": 51.66104645825311,
+      "min": -60.271766009346514,
+      "max": 79.2895738243911
+    },
+    "paper_extra_vs_quant_pct": {
+      "mean": 28.424790155895376,
+      "median": 27.5474934421339,
+      "p05": 13.023666960490281,
+      "p95": 50.82187754171139,
+      "min": 7.901353822831525,
+      "max": 78.66377427738465
+    },
+    "top_chunks": {
+      "mean": 478.2142857142857,
+      "median": 392.0,
+      "p05": 101.55,
+      "p95": 1159.1499999999999,
+      "min": 50.0,
+      "max": 1236.0
+    },
+    "paper_chunks": {
+      "mean": 25.067460317460316,
+      "median": 24.0,
+      "p05": 7.0,
+      "p95": 46.0,
+      "min": 5.0,
+      "max": 55.0
+    },
+    "quant_chunks": {
+      "mean": 4.428571428571429,
+      "median": 2.0,
+      "p05": 1.0,
+      "p95": 12.0,
+      "min": 1.0,
+      "max": 16.0
+    }
+  },
+  "timing_scope": "single-process CPU; q one-query time includes frontier build"
+}

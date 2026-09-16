@@ -1,0 +1,104 @@
+{
+  "format": "experiment-06-threshold-validation-v1",
+  "independent_multisets_per_cv": 3,
+  "cv_targets": [
+    1.07,
+    1.25,
+    1.44,
+    2.48,
+    3.3,
+    4.55
+  ],
+  "orderings": [
+    "random",
+    "local",
+    "hot-cold"
+  ],
+  "paper_budget_fractions": 7,
+  "per_n": {
+    "4864": {
+      "q": 2048,
+      "q_over_n": 0.42105263157894735,
+      "cases": 378,
+      "nonworse_cases": 378,
+      "strict_win_cases": 378,
+      "failures": 0,
+      "full_mask_cases": 9,
+      "paper_extra_vs_quant_pct": {
+        "mean": 28.186085037340135,
+        "median": 27.345619538575495,
+        "p05": 11.916351380976183,
+        "min": 3.156315759326489,
+        "p95": 47.8599554579094,
+        "max": 78.66377427738465
+      },
+      "quant_build_ms": {
+        "median": 91.653774,
+        "p95": 113.549463
+      }
+    },
+    "8960": {
+      "q": 16384,
+      "q_over_n": 1.8285714285714285,
+      "cases": 378,
+      "nonworse_cases": 378,
+      "strict_win_cases": 378,
+      "failures": 0,
+      "full_mask_cases": 2,
+      "paper_extra_vs_quant_pct": {
+        "mean": 19.05816430263047,
+        "median": 17.87297292744382,
+        "p05": 9.367976016295158,
+        "min": 0.0866855910480746,
+        "p95": 30.786773667040595,
+        "max": 40.75823707971289
+      },
+      "quant_build_ms": {
+        "median": 1528.375118,
+        "p95": 2068.648418
+      }
+    },
+    "14336": {
+      "q": 131072,
+      "q_over_n": 9.142857142857142,
+      "cases": 378,
+      "nonworse_cases": 378,
+      "strict_win_cases": 378,
+      "failures": 0,
+      "full_mask_cases": 0,
+      "paper_extra_vs_quant_pct": {
+        "mean": 16.589807835464253,
+        "median": 16.271472202976522,
+        "p05": 6.336449403182139,
+        "min": 3.2413009388874148,
+        "p95": 26.3991245581041,
+        "max": 32.22410846784693
+      },
+      "quant_build_ms": {
+        "median": 18192.5157395,
+        "p95": 24264.659268
+      }
+    },
+    "18944": {
+      "q": 131072,
+      "q_over_n": 6.918918918918919,
+      "cases": 378,
+      "nonworse_cases": 378,
+      "strict_win_cases": 378,
+      "failures": 0,
+      "full_mask_cases": 0,
+      "paper_extra_vs_quant_pct": {
+        "mean": 16.285820395409853,
+        "median": 15.547352293709416,
+        "p05": 6.755754809980384,
+        "min": 3.693963107396425,
+        "p95": 26.14020615410991,
+        "max": 29.593955111076077
+      },
+      "quant_build_ms": {
+        "median": 23756.7776595,
+        "p95": 29441.716782
+      }
+    }
+  }
+}

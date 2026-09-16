@@ -1,0 +1,529 @@
+{
+  "format": "experiment-06-quant-scale-aggregate-v1",
+  "trials_per_cv": 2,
+  "q_values": [
+    2048,
+    16384,
+    131072
+  ],
+  "n_values": [
+    4864,
+    8960,
+    14336,
+    18944
+  ],
+  "per_n": [
+    {
+      "format": "experiment-06-quant-scale-v1",
+      "trials_per_cv": 2,
+      "seed": 20265865,
+      "n": 4864,
+      "model": "LLaVA-OneVision-0.5B",
+      "shape_rows_x_cols": "4864x896",
+      "row_size_kib": 1.75,
+      "q_values": [
+        2048
+      ],
+      "max_q": 2048,
+      "minimum_stable_q": 2048,
+      "stability_definition": "100% non-worse than Paper, >=95% strict wins, and p05 gain >=0 on VLM-CV Paper-matched cases",
+      "cv_targets": [
+        1.07,
+        1.25,
+        1.44,
+        2.48,
+        3.3,
+        4.55
+      ],
+      "coverage_targets": [
+        0.5
+      ],
+      "budget_fractions": [
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875
+      ],
+      "affine_fit": {
+        "a_ms_per_chunk": 0.011000885814170374,
+        "c_ms_per_row": 0.00024467227359926746,
+        "r_squared": 0.9867192824299305,
+        "chunk_open_equivalent_rows": 44.96171818874744
+      },
+      "q_summary_vlm": [
+        {
+          "q": 2048,
+          "q_over_n": 0.42105263157894735,
+          "cases": 252,
+          "nonworse_rate": 1.0,
+          "strict_win_rate": 1.0,
+          "full_mask_rate": 0.023809523809523808,
+          "paper_extra_vs_quant_pct": {
+            "mean": 28.424790155895376,
+            "median": 27.5474934421339,
+            "p05": 13.023666960490281,
+            "p95": 50.82187754171139,
+            "min": 7.901353822831525,
+            "max": 78.66377427738465
+          },
+          "build_ms": {
+            "mean": 115.34681483333331,
+            "median": 91.189663,
+            "p05": 67.2252065,
+            "p95": 113.42208525000001,
+            "min": 53.052812,
+            "max": 994.342255
+          },
+          "build_ms_median": 91.189663,
+          "one_query_ms": {
+            "mean": 115.78896625396824,
+            "median": 91.667892,
+            "p05": 65.9190354,
+            "p95": 113.99971215000001,
+            "min": 53.285807000000005,
+            "max": 994.98719
+          },
+          "stable_better": true
+        }
+      ],
+      "max_q_method_comparison_vlm": {
+        "paper_extra_vs_top_pct": {
+          "mean": -79.91988873379864,
+          "median": -85.43842791138678,
+          "p05": -92.35984956170847,
+          "p95": -54.34935755978322,
+          "min": -93.72408698443819,
+          "max": -42.11478843482644
+        },
+        "paper_extra_vs_single_pct": {
+          "mean": 18.9851287489359,
+          "median": 23.79587936591242,
+          "p05": -26.735110722579083,
+          "p95": 51.66104645825311,
+          "min": -60.271766009346514,
+          "max": 79.2895738243911
+        },
+        "paper_extra_vs_quant_pct": {
+          "mean": 28.424790155895376,
+          "median": 27.5474934421339,
+          "p05": 13.023666960490281,
+          "p95": 50.82187754171139,
+          "min": 7.901353822831525,
+          "max": 78.66377427738465
+        },
+        "top_chunks": {
+          "mean": 478.2142857142857,
+          "median": 392.0,
+          "p05": 101.55,
+          "p95": 1159.1499999999999,
+          "min": 50.0,
+          "max": 1236.0
+        },
+        "paper_chunks": {
+          "mean": 25.067460317460316,
+          "median": 24.0,
+          "p05": 7.0,
+          "p95": 46.0,
+          "min": 5.0,
+          "max": 55.0
+        },
+        "quant_chunks": {
+          "mean": 4.428571428571429,
+          "median": 2.0,
+          "p05": 1.0,
+          "p95": 12.0,
+          "min": 1.0,
+          "max": 16.0
+        }
+      },
+      "timing_scope": "single-process CPU; q one-query time includes frontier build"
+    },
+    {
+      "format": "experiment-06-quant-scale-v1",
+      "trials_per_cv": 2,
+      "seed": 20269961,
+      "n": 8960,
+      "model": "NVILA-Lite-2B",
+      "shape_rows_x_cols": "8960x1536",
+      "row_size_kib": 3.0,
+      "q_values": [
+        16384
+      ],
+      "max_q": 16384,
+      "minimum_stable_q": 16384,
+      "stability_definition": "100% non-worse than Paper, >=95% strict wins, and p05 gain >=0 on VLM-CV Paper-matched cases",
+      "cv_targets": [
+        1.07,
+        1.25,
+        1.44,
+        2.48,
+        3.3,
+        4.55
+      ],
+      "coverage_targets": [
+        0.5
+      ],
+      "budget_fractions": [
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875
+      ],
+      "affine_fit": {
+        "a_ms_per_chunk": 0.011000885814170374,
+        "c_ms_per_row": 0.0004194381833130299,
+        "r_squared": 0.9867192824299305,
+        "chunk_open_equivalent_rows": 26.227668943436008
+      },
+      "q_summary_vlm": [
+        {
+          "q": 16384,
+          "q_over_n": 1.8285714285714285,
+          "cases": 252,
+          "nonworse_rate": 1.0,
+          "strict_win_rate": 1.0,
+          "full_mask_rate": 0.007936507936507936,
+          "paper_extra_vs_quant_pct": {
+            "mean": 19.268906888197183,
+            "median": 17.96211219738433,
+            "p05": 9.362357575963653,
+            "p95": 30.915538690560457,
+            "min": 0.0866855910480746,
+            "max": 40.75823707971289
+          },
+          "build_ms": {
+            "mean": 1510.7222511944447,
+            "median": 1514.3464325,
+            "p05": 902.3655385,
+            "p95": 2080.4315877500003,
+            "min": 787.087909,
+            "max": 2758.587998
+          },
+          "build_ms_median": 1514.3464325,
+          "one_query_ms": {
+            "mean": 1512.8955345952381,
+            "median": 1516.9868965,
+            "p05": 791.46418565,
+            "p95": 2117.3800959,
+            "min": 788.1638489999999,
+            "max": 2762.933357
+          },
+          "stable_better": true
+        }
+      ],
+      "max_q_method_comparison_vlm": {
+        "paper_extra_vs_top_pct": {
+          "mean": -72.65474532758898,
+          "median": -78.68399916072589,
+          "p05": -87.53029777884092,
+          "p95": -44.222404738466665,
+          "min": -90.07141952789506,
+          "max": -33.72812897202502
+        },
+        "paper_extra_vs_single_pct": {
+          "mean": 5.711832122121869,
+          "median": 13.953820513856519,
+          "p05": -36.90882483035319,
+          "p95": 28.11511443020367,
+          "min": -64.91984678195941,
+          "max": 38.34205093449412
+        },
+        "paper_extra_vs_quant_pct": {
+          "mean": 19.268906888197183,
+          "median": 17.96211219738433,
+          "p05": 9.362357575963653,
+          "p95": 30.915538690560457,
+          "min": 0.0866855910480746,
+          "max": 40.75823707971289
+        },
+        "top_chunks": {
+          "mean": 896.5,
+          "median": 781.0,
+          "p05": 204.0,
+          "p95": 2136.35,
+          "min": 139.0,
+          "max": 2275.0
+        },
+        "paper_chunks": {
+          "mean": 57.13492063492063,
+          "median": 49.0,
+          "p05": 22.0,
+          "p95": 116.0,
+          "min": 14.0,
+          "max": 136.0
+        },
+        "quant_chunks": {
+          "mean": 12.694444444444445,
+          "median": 8.0,
+          "p05": 1.0,
+          "p95": 34.0,
+          "min": 1.0,
+          "max": 42.0
+        }
+      },
+      "timing_scope": "single-process CPU; q one-query time includes frontier build"
+    },
+    {
+      "format": "experiment-06-quant-scale-v1",
+      "trials_per_cv": 2,
+      "seed": 20275337,
+      "n": 14336,
+      "model": "VILA1.5-8B",
+      "shape_rows_x_cols": "14336x4096",
+      "row_size_kib": 8.0,
+      "q_values": [
+        131072
+      ],
+      "max_q": 131072,
+      "minimum_stable_q": 131072,
+      "stability_definition": "100% non-worse than Paper, >=95% strict wins, and p05 gain >=0 on VLM-CV Paper-matched cases",
+      "cv_targets": [
+        1.07,
+        1.25,
+        1.44,
+        2.48,
+        3.3,
+        4.55
+      ],
+      "coverage_targets": [
+        0.5
+      ],
+      "budget_fractions": [
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875
+      ],
+      "affine_fit": {
+        "a_ms_per_chunk": 0.011000885814170374,
+        "c_ms_per_row": 0.0011185018221680798,
+        "r_squared": 0.9867192824299305,
+        "chunk_open_equivalent_rows": 9.835375853788502
+      },
+      "q_summary_vlm": [
+        {
+          "q": 131072,
+          "q_over_n": 9.142857142857142,
+          "cases": 252,
+          "nonworse_rate": 1.0,
+          "strict_win_rate": 1.0,
+          "full_mask_rate": 0.0,
+          "paper_extra_vs_quant_pct": {
+            "mean": 16.67162051846807,
+            "median": 16.54841989431179,
+            "p05": 6.264982843981171,
+            "p95": 26.54080786496786,
+            "min": 3.2413009388874148,
+            "max": 32.22410846784693
+          },
+          "build_ms": {
+            "mean": 19103.63136055555,
+            "median": 20337.303572999997,
+            "p05": 13955.82063175,
+            "p95": 23845.53462925,
+            "min": 11044.406622,
+            "max": 24439.865127
+          },
+          "build_ms_median": 20337.303572999997,
+          "one_query_ms": {
+            "mean": 19113.834984055557,
+            "median": 20346.942494,
+            "p05": 13406.964781900002,
+            "p95": 23933.538251600003,
+            "min": 11048.803388,
+            "max": 24460.783434
+          },
+          "stable_better": true
+        }
+      ],
+      "max_q_method_comparison_vlm": {
+        "paper_extra_vs_top_pct": {
+          "mean": -51.20604535622269,
+          "median": -56.178760865847764,
+          "p05": -70.56939870274033,
+          "p95": -19.6085307035468,
+          "min": -74.35894691760227,
+          "max": -15.364976017216758
+        },
+        "paper_extra_vs_single_pct": {
+          "mean": -2.0563622949760707,
+          "median": 9.198344486406253,
+          "p05": -49.81034444394381,
+          "p95": 23.73632470253385,
+          "min": -72.94065834479959,
+          "max": 29.77527881107116
+        },
+        "paper_extra_vs_quant_pct": {
+          "mean": 16.67162051846807,
+          "median": 16.54841989431179,
+          "p05": 6.264982843981171,
+          "p95": 26.54080786496786,
+          "min": 3.2413009388874148,
+          "max": 32.22410846784693
+        },
+        "top_chunks": {
+          "mean": 1515.75,
+          "median": 1486.5,
+          "p05": 406.7,
+          "p95": 3492.15,
+          "min": 315.0,
+          "max": 3610.0
+        },
+        "paper_chunks": {
+          "mean": 209.22619047619048,
+          "median": 167.5,
+          "p05": 87.55,
+          "p95": 444.74999999999983,
+          "min": 72.0,
+          "max": 550.0
+        },
+        "quant_chunks": {
+          "mean": 56.09126984126984,
+          "median": 53.0,
+          "p05": 2.5500000000000007,
+          "p95": 149.24999999999994,
+          "min": 1.0,
+          "max": 200.0
+        }
+      },
+      "timing_scope": "single-process CPU; q one-query time includes frontier build"
+    },
+    {
+      "format": "experiment-06-quant-scale-v1",
+      "trials_per_cv": 2,
+      "seed": 20279945,
+      "n": 18944,
+      "model": "LLaVA-OneVision-7B / LongVA-7B",
+      "shape_rows_x_cols": "18944x3584",
+      "row_size_kib": 7.0,
+      "q_values": [
+        131072
+      ],
+      "max_q": 131072,
+      "minimum_stable_q": 131072,
+      "stability_definition": "100% non-worse than Paper, >=95% strict wins, and p05 gain >=0 on VLM-CV Paper-matched cases",
+      "cv_targets": [
+        1.07,
+        1.25,
+        1.44,
+        2.48,
+        3.3,
+        4.55
+      ],
+      "coverage_targets": [
+        0.5
+      ],
+      "budget_fractions": [
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875
+      ],
+      "affine_fit": {
+        "a_ms_per_chunk": 0.011000885814170374,
+        "c_ms_per_row": 0.0009786890943970698,
+        "r_squared": 0.9867192824299305,
+        "chunk_open_equivalent_rows": 11.24042954718686
+      },
+      "q_summary_vlm": [
+        {
+          "q": 131072,
+          "q_over_n": 6.918918918918919,
+          "cases": 252,
+          "nonworse_rate": 1.0,
+          "strict_win_rate": 1.0,
+          "full_mask_rate": 0.0,
+          "paper_extra_vs_quant_pct": {
+            "mean": 16.277569676154005,
+            "median": 15.500343249603599,
+            "p05": 6.898808674728323,
+            "p95": 26.18322686423552,
+            "min": 4.2536233241758925,
+            "max": 28.679642132776962
+          },
+          "build_ms": {
+            "mean": 24117.88033888889,
+            "median": 24634.224954999998,
+            "p05": 16038.332688999999,
+            "p95": 29153.009623500002,
+            "min": 11467.991887,
+            "max": 30868.550833
+          },
+          "build_ms_median": 24634.224954999998,
+          "one_query_ms": {
+            "mean": 24129.400675638888,
+            "median": 24642.064909,
+            "p05": 15415.05446215,
+            "p95": 29454.338652450002,
+            "min": 11472.657679,
+            "max": 30892.941409000003
+          },
+          "stable_better": true
+        }
+      ],
+      "max_q_method_comparison_vlm": {
+        "paper_extra_vs_top_pct": {
+          "mean": -55.16413085697596,
+          "median": -60.52001157242606,
+          "p05": -73.96877071025715,
+          "p95": -25.057685593042695,
+          "min": -78.13704505815309,
+          "max": -17.327980960936497
+        },
+        "paper_extra_vs_single_pct": {
+          "mean": -1.5197087185244984,
+          "median": 9.437604624083518,
+          "p05": -49.606105679552655,
+          "p95": 23.314026125226004,
+          "min": -67.54109553891338,
+          "max": 27.371800385893884
+        },
+        "paper_extra_vs_quant_pct": {
+          "mean": 16.277569676154005,
+          "median": 15.500343249603599,
+          "p05": 6.898808674728323,
+          "p95": 26.18322686423552,
+          "min": 4.2536233241758925,
+          "max": 28.679642132776962
+        },
+        "top_chunks": {
+          "mean": 1991.638888888889,
+          "median": 1896.5,
+          "p05": 529.35,
+          "p95": 4599.75,
+          "min": 427.0,
+          "max": 4767.0
+        },
+        "paper_chunks": {
+          "mean": 238.27380952380952,
+          "median": 189.0,
+          "p05": 101.0,
+          "p95": 512.45,
+          "min": 75.0,
+          "max": 611.0
+        },
+        "quant_chunks": {
+          "mean": 61.37301587301587,
+          "median": 57.0,
+          "p05": 2.0,
+          "p95": 151.45,
+          "min": 1.0,
+          "max": 231.0
+        }
+      },
+      "timing_scope": "single-process CPU; q one-query time includes frontier build"
+    }
+  ]
+}

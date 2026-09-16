@@ -15,5 +15,8 @@ reading, paper notes, and preliminary derivations live separately in
 5. `05_realistic_n`: model-scale down-projection channel counts comparing
    Paper greedy, single interval, and Quantized Pareto `q=1024` without the
    unscalable Exact Coverage oracle.
+6. `06_quant_scale`: realistic-N Top-R comparison, true chunk-count
+   histograms, and a large-q sweep testing how much quantization is required
+   to beat Paper greedy reliably.
 
 Future experiments should use the next numbered directory.
