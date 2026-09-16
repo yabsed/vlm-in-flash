@@ -1,0 +1,28 @@
+{
+  "format": "random-r-bound-distribution-sensitivity-v1",
+  "seed": 20260916,
+  "trials_per_distribution": 200,
+  "n": 256,
+  "budget_rows": [32, 64, 96, 128, 160, 192, 224],
+  "metric": "100 * (fixed_opt_aff_ratio / greedy_aff_ratio - 1)",
+  "distributions": {
+    "half-normal": {
+      "overall_mean_pct": 7.148768690282258,
+      "overall_median_pct": 1.2250165801721113,
+      "mean_pct_by_budget": [2.777550, 1.492579, 1.102695, 2.585050, 1.551474, 25.278130, 15.253902],
+      "median_pct_by_budget": [2.379498, 1.172211, 0.814406, 0.669663, 0.514773, 27.284815, 22.730296]
+    },
+    "lognormal": {
+      "overall_mean_pct": 9.000485272998246,
+      "overall_median_pct": 2.0144203684937856,
+      "mean_pct_by_budget": [3.298525, 2.179651, 4.222876, 6.555627, 5.803963, 23.150796, 17.791960],
+      "median_pct_by_budget": [2.118013, 1.697591, 1.200576, 1.034374, 0.920249, 25.560782, 22.966237]
+    },
+    "correlated": {
+      "overall_mean_pct": 6.263917312109043,
+      "overall_median_pct": 0.5249735362989782,
+      "mean_pct_by_budget": [1.302844, 0.656127, 0.429871, 1.102922, 1.010430, 25.158619, 14.186609],
+      "median_pct_by_budget": [0.830136, 0.495838, 0.264024, 0.192581, 0.217166, 27.309594, 22.274483]
+    }
+  }
+}
