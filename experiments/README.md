@@ -41,5 +41,8 @@ reading, paper notes, and preliminary derivations live separately in
 14. `14_dense_lookup_validation`: repeats the high-q Quant versus Paper lookup
     comparison with 50 trials per paper CV, 19 fixed-R budgets, and paired
     cluster-bootstrap confidence intervals under the constant-throughput tail.
+15. `15_coverage_stopping_greedy`: keeps Paper greedy's candidates and utility
+    ordering but replaces its fixed-R stop with cumulative-importance coverage,
+    reusing Experiment 14's expensive high-q results.
 
 Future experiments should use the next numbered directory.
