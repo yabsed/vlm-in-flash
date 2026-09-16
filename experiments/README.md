@@ -12,5 +12,8 @@ reading, paper notes, and preliminary derivations live separately in
    computation–accuracy trade-off against Exact Coverage and Paper greedy.
 4. `04_single_interval`: `O(N)` single-interval coverage solver versus Paper
    greedy and Exact Coverage, including the exact optimum's chunk distribution.
+5. `05_realistic_n`: model-scale down-projection channel counts comparing
+   Paper greedy, single interval, and Quantized Pareto `q=1024` without the
+   unscalable Exact Coverage oracle.
 
 Future experiments should use the next numbered directory.
