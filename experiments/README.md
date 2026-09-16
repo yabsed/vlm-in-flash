@@ -18,5 +18,7 @@ reading, paper notes, and preliminary derivations live separately in
 6. `06_quant_scale`: realistic-N Top-R comparison, true chunk-count
    histograms, and a large-q sweep testing how much quantization is required
    to beat Paper greedy reliably.
+7. `07_exact_n4864`: exact `O(N^3)` DP-Cover with `O(N^2)` memory at the
+   realistic `N=4,864`, compared with Paper greedy, exact DP-R, and Top-R.
 
 Future experiments should use the next numbered directory.
