@@ -10,5 +10,7 @@ reading, paper notes, and preliminary derivations live separately in
    Paper greedy, exact fixed-`R`, Exact Coverage, and Quantized Pareto.
 3. `03_quant_tradeoff`: Quantized Pareto `q` sweep measuring the
    computation–accuracy trade-off against Exact Coverage and Paper greedy.
+4. `04_single_interval`: `O(N)` single-interval coverage solver versus Paper
+   greedy and Exact Coverage, including the exact optimum's chunk distribution.
 
 Future experiments should use the next numbered directory.
