@@ -89,6 +89,90 @@ importance를 받아들이면서 latency를 크게 줄인다.
 평균이며, 왼쪽은 fitted affine latency, 오른쪽은 lookup-table latency다.
 가로축은 큰 latency 범위를 읽기 위해 log scale을 사용했다.
 
+## Importance 하한 문제: `I(M) >= alpha I_total`
+
+새로 정의한 coverage 문제
+
+`min aK(M)+cR(M) subject to I(M) >= alpha I_total`
+
+를 모든 `(r,k)` 상태를 보존하는 exact offline DP로 풀었다. 또한 multiplier
+`lambda`가 고정되면 두 상태(현재 행 미선택/선택)만 유지해
+`min aK+cR-lambda I`를 `O(N)`에 푸는 Lagrangian inner solver를 추가했다.
+기본 설정은 데이터에 맞춘 기하 간격 multiplier `q=256`개를 평가하고,
+하한을 만족하는 생성 mask 중 latency가 가장 작은 것을 택한다. 따라서
+전체 근사 복잡도는 `O(qN)`이다. 200개 입력과 13개 threshold, 총 2,600개
+문제를 계산했다.
+
+| `alpha` | 평균 달성 importance | 평균 선택 행/N | 평균 chunk 수 | 최소 affine ms | lookup 재평가 ms |
+|---:|---:|---:|---:|---:|---:|
+| 0.10 | 0.1027 | 7.15% | 1.00 | 0.01356 | 0.01507 |
+| 0.30 | 0.3024 | 26.18% | 1.00 | 0.02037 | 0.02007 |
+| 0.50 | 0.5026 | 46.51% | 1.00 | 0.02765 | 0.02618 |
+| 0.70 | 0.7022 | 67.46% | 1.00 | 0.03515 | 0.03469 |
+| 0.80 | 0.8024 | 77.90% | 1.00 | 0.03888 | 0.03918 |
+| 0.90 | 0.9023 | 88.54% | 1.00 | 0.04269 | 0.04397 |
+| 0.95 | 0.9522 | 93.97% | 1.00 | 0.04463 | 0.04596 |
+| 0.99 | 0.9923 | 98.63% | 1.00 | 0.04630 | 0.04789 |
+
+모든 시행에서 exact coverage mask는 한 개의 연속 chunk였다. Importance
+하한을 높이면 필요한 행 수와 최소 latency가 단조 증가했고, 달성
+importance는 요청 하한을 평균적으로 약 0.22--0.27 percentage point만
+초과했다. 이는 이번 i.i.d. half-normal 입력과 affine 비용에서의 관측
+결과이며, 일반적인 single-chunk 정리는 아니다.
+
+### 빠른 Lagrangian 근사의 결과
+
+| `alpha` | 근사 달성 importance | 근사 선택 행/N | 근사 affine ms | 요청 하한 기준 latency gap |
+|---:|---:|---:|---:|---:|
+| 0.10 | 0.9815 | 96.82% | 0.04566 | 236.7% |
+| 0.50 | 0.9815 | 96.82% | 0.04566 | 65.2% |
+| 0.80 | 0.9815 | 96.82% | 0.04566 | 17.4% |
+| 0.90 | 0.9831 | 97.05% | 0.04574 | 7.1% |
+| 0.95 | 0.9879 | 97.73% | 0.04598 | 3.0% |
+| 0.99 | 0.9965 | 99.13% | 0.04648 | 0.4% |
+
+이 근사는 낮은 하한에서 좋지 않았다. `q=256`개의 multiplier를
+평가했지만 입력당 서로 다른 mask는 평균 3.75개뿐이었고, 10--80% 하한은
+평균 98.15% importance를 보존하는 거의 전체 mask로 점프했다. 따라서
+요청한 하한의 exact optimum과 비교한 latency gap은 17.4--236.7%였다.
+
+반면 Lagrangian mask가 *실제로 달성한* importance를 하한으로 놓고 exact
+DP와 비교한 gap은 모든 시행에서 0이었다. 즉 생성된 점 자체는 이번
+표본의 supported frontier 위에 있지만, 그 사이의 비지지(non-supported)
+Pareto 점을 선형 스칼라화가 만들지 못했다. 그러므로 이는 단순히 `q`를
+늘려서 해결되는 grid-resolution 문제가 아니다. 빠른 방법을 실제
+coverage solver로 쓰려면 infeasible 해를 보정하는 primal repair나 다른
+frontier 탐색이 추가로 필요하다.
+
+각 기존 방법이 실제로 달성한 importance를 하한으로 다시 exact coverage
+latency를 계산하면 다음과 같다.
+
+| `R/N` | Greedy 추가 latency | Fixed-`R` exact 추가 latency | Top-`R` 추가 latency |
+|---:|---:|---:|---:|
+| 12.5% | 0.51% | 0.00% | 1421.5% |
+| 25.0% | 0.43% | 0.00% | 1804.7% |
+| 37.5% | 0.48% | 0.00% | 1886.3% |
+| 50.0% | 2.26% | 0.00% | 1785.2% |
+| 62.5% | 1.26% | 0.00% | 1537.1% |
+| 75.0% | 25.52% | 0.00% | 1161.2% |
+| 87.5% | 15.34% | 0.00% | 653.4% |
+
+이번 표본에서는 fixed-`R` ratio-optimal mask가 자기 achieved importance에
+대한 coverage optimum과 전부 일치했다. 이는 두 문제의 목적이 일반적으로
+동일하다는 뜻이 아니라, 이 설정에서 두 해가 같은 단일-run frontier에
+놓였다는 뜻이다. Greedy의 gap은 여러 run을 만드는 큰 `R`에서 커졌고,
+Top-`R`은 높은 fragmentation 때문에 매우 큰 latency gap을 보였다.
+
+단독 결과는 [`results/coverage.png`](results/coverage.png), 동일
+importance에서의 gap은 [`results/coverage_gap.png`](results/coverage_gap.png),
+전체 방법과 결합한 frontier는
+[`results/latency_importance.png`](results/latency_importance.png)에 있다.
+`R`을 직접 가로축으로 둔 fixed-budget 그림은
+[`results/r_importance.png`](results/r_importance.png)와
+[`results/r_latency.png`](results/r_latency.png)에 있다.
+Per-trial coverage 결과는
+[`results/coverage_trials.csv`](results/coverage_trials.csv)에 기록했다.
+
 ### 입력 분포 민감도
 
 같은 200개 입력 수, seed, `R`, latency 설정으로 lognormal heavy-tail과
@@ -136,12 +220,15 @@ fixed sparsity나 동일 accuracy를 요구하는 실제 정책과는 다른 문
 3. 이 실험은 synthetic importance에 대한 optimization-quality 실험이다.
    실제 VLM accuracy, 실제 activation 분포, selection runtime, SSD 실측
    latency를 검증하지 않는다.
-4. Fixed-budget exact 보장은 fitted affine latency에 대한 것이다. 원래
+4. Lagrangian 방법은 `O(qN)`으로 빠르지만 이 실험에서는 중간 coverage
+   점을 대부분 건너뛰었다. 지원점만 생성하는 scalarization의 구조적
+   한계이므로 `q`가 크다는 사실만으로 근사 품질이 보장되지는 않는다.
+5. Fixed-budget exact 보장은 fitted affine latency에 대한 것이다. 원래
    lookup-table fixed-`R` 목적에 대한 exact 보장은 아니다.
 
 재현 코드는 [`run_experiment.py`](run_experiment.py), 원자료는
 [`results/trials.csv`](results/trials.csv), 집계값은
 [`results/summary.json`](results/summary.json), 그림은
 [`results/comparison.png`](results/comparison.png)에 있다. 실행 시 먼저
-작은 `N`의 모든 binary mask와 두 exact solver를 대조하는 self-check를
+작은 `N`의 모든 binary mask와 세 exact solver를 대조하는 self-check를
 수행한다.
