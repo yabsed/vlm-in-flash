@@ -211,69 +211,6 @@ def plot_cv_fixed_gain(summary: list[dict], path: Path) -> None:
     plt.close(fig)
 
 
-def plot_matched_latency(condition_summary: list[dict], path: Path) -> None:
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/vlm-flash-mpl-cache")
-    import matplotlib.pyplot as plt
-
-    BASE.configure_plot_style(plt)
-    fig, axes = plt.subplots(1, 3, figsize=(15.2, 4.8), sharey=True, constrained_layout=True)
-    for ax, mode in zip(axes, SPATIAL_MODES):
-        points = sorted(
-            select(condition_summary, spatial_mode=mode),
-            key=lambda item: item["target_cv"],
-        )
-        x = np.asarray([item["target_cv"] for item in points])
-        for metric, label, color, marker in (
-            (
-                "greedy_extra_vs_exact_pct",
-                "Paper greedy",
-                BASE.PLOT_COLORS["greedy"],
-                "o",
-            ),
-            (
-                "fixed_extra_vs_exact_pct",
-                "Exact fixed-R DP",
-                BASE.PLOT_COLORS["fixed"],
-                "D",
-            ),
-            (
-                "pareto_extra_vs_exact_pct",
-                "Quantized Pareto O(qN)",
-                BASE.PLOT_COLORS["pareto"],
-                "P",
-            ),
-        ):
-            mean = np.asarray([item[metric]["mean"] for item in points])
-            lo = np.asarray([item[metric]["p05"] for item in points])
-            hi = np.asarray([item[metric]["p95"] for item in points])
-            ax.plot(x, mean, marker=marker, color=color, label=label)
-            ax.fill_between(x, lo, hi, alpha=0.12, color=color)
-        ax.axhline(
-            0,
-            color=BASE.PLOT_COLORS["coverage"],
-            linestyle=":",
-            label="Exact Coverage DP reference",
-        )
-        ax.set_xscale("log")
-        ax.set_xticks(x)
-        ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
-        ax.tick_params(axis="x", labelrotation=35)
-        for label in ax.get_xticklabels():
-            label.set_horizontalalignment("right")
-        ax.set_title(SPATIAL_LABELS[mode])
-        ax.set_xlabel("Target coefficient of variation")
-        BASE.polish_axis(ax)
-    axes[0].set_ylabel("Extra latency at matched importance (%)")
-    axes[-1].legend(frameon=False, fontsize=8.5)
-    fig.suptitle(
-        "Latency overhead relative to Exact Coverage DP at matched importance",
-        fontsize=13,
-    )
-    fig.savefig(path, dpi=200)
-    fig.savefig(path.with_suffix(".pdf"))
-    plt.close(fig)
-
-
 def plot_frontiers(
     fixed_summary: list[dict], frontier_summary: list[dict], path: Path
 ) -> None:
@@ -639,7 +576,6 @@ def main() -> None:
     conditions_path = args.output_dir / "condition_trials.csv"
     summary_path = args.output_dir / "summary.json"
     gain_path = args.output_dir / "cv_fixed_r_gain.png"
-    matched_path = args.output_dir / "cv_matched_latency.png"
     frontier_figure_path = args.output_dir / "importance_latency_frontiers.png"
     write_csv(fixed_path, fixed_rows)
     write_csv(frontier_path, frontier_rows)
@@ -672,7 +608,6 @@ def main() -> None:
     }
     summary_path.write_text(json.dumps(metadata, indent=2) + "\n")
     plot_cv_fixed_gain(fixed_summary, gain_path)
-    plot_matched_latency(comparison_summary, matched_path)
     plot_frontiers(fixed_summary, frontier_summary, frontier_figure_path)
 
     for path in (
@@ -681,7 +616,6 @@ def main() -> None:
         conditions_path,
         summary_path,
         gain_path,
-        matched_path,
         frontier_figure_path,
     ):
         if path.suffix == ".png":

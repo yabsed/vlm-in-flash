@@ -91,8 +91,6 @@ Ordering별 VLM 평균에서 Paper greedy overhead는 random `13.80%`, local
 `18.22%`, hot-cold `9.60%`였다. Quantized Pareto overhead는 각각 `0.41%`,
 `3.00%`, `1.31%`였다.
 
-![Matched latency](results/cv_matched_latency.png)
-
 ## 결과 3: `q=256` Pareto의 한계
 
 고정 coverage grid `0.10, ..., 0.99`에서는 Quantized Pareto의 Exact Coverage
