@@ -38,5 +38,8 @@ reading, paper notes, and preliminary derivations live separately in
 13. `13_two_line_lagrangian`: fits that two-line model and evaluates a dense
     `q=131,072` lambda-grid `O(qN)` coverage heuristic against Experiment 11's
     Paper, affine-DP, and lookup-sensitivity results.
+14. `14_dense_lookup_validation`: repeats the high-q Quant versus Paper lookup
+    comparison with 50 trials per paper CV, 19 fixed-R budgets, and paired
+    cluster-bootstrap confidence intervals under the constant-throughput tail.
 
 Future experiments should use the next numbered directory.
