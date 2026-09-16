@@ -1,0 +1,48 @@
+{
+  "format": "experiment-13-released-lookup-plots-v1",
+  "latency_evaluator": "released Orin AGX lookup table with endpoint scaling beyond 255 KiB",
+  "quant_definition": "two-line Lagrangian supported-point heuristic with q=131072 multipliers; all masks are re-evaluated under released lookup latency",
+  "coverage_ratio_denominator": "high-q Quant at the same Paper importance target; this is not an exact lookup-aware coverage optimum",
+  "paper_vs_quant_lookup_ratio": {
+    "mean": 1.086645032432245,
+    "median": 1.0713277249063267,
+    "p05": 0.9658221514606922,
+    "p95": 1.2710433325242079,
+    "min": 0.8372323611874539,
+    "max": 1.4580568271158887
+  },
+  "top_r_matched_vs_quant_lookup_ratio": {
+    "mean": 6.990719331303449,
+    "median": 6.788162904263497,
+    "p05": 2.7256640339415954,
+    "p95": 12.120926607463774,
+    "min": 1.8237634387249686,
+    "max": 14.544498352170546
+  },
+  "paper_matched_chunk_count": {
+    "paper": {
+      "mean": 25.243386243386244,
+      "median": 24.0,
+      "p05": 7.0,
+      "p95": 46.0,
+      "min": 4.0,
+      "max": 56.0
+    },
+    "lag": {
+      "mean": 16.243386243386244,
+      "median": 17.0,
+      "p05": 5.0,
+      "p95": 25.0,
+      "min": 3.0,
+      "max": 28.0
+    },
+    "top_matched": {
+      "mean": 475.9232804232804,
+      "median": 394.5,
+      "p05": 96.85,
+      "p95": 1167.3999999999996,
+      "min": 51.0,
+      "max": 1231.0
+    }
+  }
+}

@@ -33,5 +33,10 @@ reading, paper notes, and preliminary derivations live separately in
     under Experiment 10's lookup evaluation, quantifies out-of-profile chunk
     lengths, and tests sensitivity to alternative tail extrapolations without
     rerunning any selector or DP.
+12. `12_note`: working notes that replace the single affine model with a
+    saturation-aware two-line cost and derive the resulting algorithms.
+13. `13_two_line_lagrangian`: fits that two-line model and evaluates a dense
+    `q=131,072` lambda-grid `O(qN)` coverage heuristic against Experiment 11's
+    Paper, affine-DP, and lookup-sensitivity results.
 
 Future experiments should use the next numbered directory.
