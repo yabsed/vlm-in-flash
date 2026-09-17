@@ -55,5 +55,10 @@ reading, paper notes, and preliminary derivations live separately in
     spanning target-directed two-line DP, endpoint trim, saturation tiles,
     and bucketed Paper ordering under separate coverage-only and row-budget
     validity rules and an explicit 2 ms p95 deadline.
+19. `19_candidate_importance_latency`: plots Experiment 18's fourteen
+    configurations with latency on the x-axis and retained importance on the
+    y-axis, separating measured host selector latency from predicted lookup
+    and two-line I/O latency; I/O frontiers are also split into CV 1.25/3.30/4.55
+    rows and random/local/persistent-hot-cold columns.
 
 Future experiments should use the next numbered directory.
