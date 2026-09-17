@@ -60,5 +60,10 @@ reading, paper notes, and preliminary derivations live separately in
     y-axis, separating measured host selector latency from predicted lookup
     and two-line I/O latency; I/O frontiers are also split into CV 1.25/3.30/4.55
     rows and random/local/persistent-hot-cold columns.
+20. `20_remaining_sub2ms_candidates`: implements the six remaining candidate
+    families—small lambda banks, piecewise-linear DP, Paper local edits,
+    target-directed lookup DP, lambda prediction/correction, and capped-label
+    DP—and screens eighteen settings against Paper and the Experiment 18
+    incumbent under the same 2 ms p95 contract.
 
 Future experiments should use the next numbered directory.

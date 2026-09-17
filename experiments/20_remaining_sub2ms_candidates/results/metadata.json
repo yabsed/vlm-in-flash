@@ -1,0 +1,40 @@
+{
+  "two_line_model": {
+    "a_ms": 0.011080616884153835,
+    "c1_ms_per_row": 0.00024315393210444196,
+    "c2_ms_per_row": 0.00032531952340643014,
+    "d_ms_per_excess_row": 8.216559130198818e-05,
+    "saturation_kib": 236.0,
+    "saturation_rows": 134.85714285714286,
+    "short_max_rows": 134,
+    "r_squared": 0.9876264166468851,
+    "mape_pct": 4.107508659415217
+  },
+  "lookup_model": {
+    "cap_rows": 146,
+    "tail_ms_per_row": 0.00033231816658287245
+  },
+  "method_labels": {
+    "paper": "Paper",
+    "incumbent_td16_trim256": "TD-2L (16) + trim 256",
+    "lambda_bank4": "Lambda bank (4)",
+    "lambda_bank8": "Lambda bank (8)",
+    "lambda_bank16": "Lambda bank (16)",
+    "pwl_j4_c4": "PWL DP (J=4, calls=4)",
+    "pwl_j4_c8": "PWL DP (J=4, calls=8)",
+    "pwl_j8_c4": "PWL DP (J=8, calls=4)",
+    "pwl_j8_c8": "PWL DP (J=8, calls=8)",
+    "paper_local64": "Paper + local edits (64)",
+    "paper_local256": "Paper + local edits (256)",
+    "td_lookup_c2": "TD lookup DP (2)",
+    "td_lookup_c4": "TD lookup DP (4)",
+    "td_lookup_c8": "TD lookup DP (8)",
+    "predict_correct_c2": "Lambda predict + correct (2)",
+    "predict_correct_c4": "Lambda predict + correct (4)",
+    "predict_correct_c8": "Lambda predict + correct (8)",
+    "capped_label2": "Capped-label DP (2)",
+    "capped_label4": "Capped-label DP (4)",
+    "capped_label8": "Capped-label DP (8)"
+  },
+  "method_count": 20
+}
