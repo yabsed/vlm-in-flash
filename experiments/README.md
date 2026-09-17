@@ -48,5 +48,8 @@ reading, paper notes, and preliminary derivations live separately in
     Pareto-label DP for the two-line model and an exact fixed-lambda `O(Nm)`
     released-lookup optimizer, then compares the true coverage optimum with
     both supported frontiers, `q=131,072` Quant, and Paper greedy.
+17. `17_online_selection_runtime`: plots Paper-greedy and supported
+    importance-latency curves while varying `N`, with separate result
+    directories for the two-line and released-lookup latency models.
 
 Future experiments should use the next numbered directory.
