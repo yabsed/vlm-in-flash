@@ -44,9 +44,9 @@ reading, paper notes, and preliminary derivations live separately in
 15. `15_coverage_stopping_greedy`: keeps Paper greedy's candidates and utility
     ordering but replaces its fixed-R stop with cumulative-importance coverage,
     reusing Experiment 14's expensive high-q results.
-16. `16_saturation_global_chain`: interprets the two-line Lagrangian masks as
-    exact scalarized binary-chain optima, compares them with Paper greedy at
-    matched importance, validates the row-plus-shortfall latency identity, and
-    plots I-L, I-R, L-R, and true chunk-length distributions.
+16. `16_saturation_global_chain`: adaptively enumerates the exact strongly
+    supported two-line frontier, compares it with the fixed `q=131,072` Quant
+    grid and Paper greedy, and evaluates all headline curves with Experiment
+    15's released-lookup plus endpoint-proportional tail rule.
 
 Future experiments should use the next numbered directory.

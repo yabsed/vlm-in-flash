@@ -1,18 +1,20 @@
-# Experiment 16: Saturation-aware global chain versus Paper greedy
+# Experiment 16: Global supported frontier versus Quant and Paper
 
-This experiment compares the saturation-aware binary-chain solution with the
-Neuron Chunking Paper greedy baseline at matched importance targets.
+This experiment compares three selectors at Paper-greedy achieved-importance
+targets:
 
-The chain method reuses Experiment 13's dense `q=131,072` multiplier sweep.
-Every mask in that sweep is a global optimum of its scalarized objective
+- **Global supported**: adaptive enumeration of every strongly supported
+  optimum of the scalarized two-line binary-chain objective;
+- **Quant**: the existing fixed `q=131,072` lambda grid; and
+- **Paper greedy**: Neuron Chunking under its fixed-R stopping rule.
 
-```text
-maximize lambda * importance - two_line_latency,
-```
+The selection surrogate is the continuous two-line model. The primary latency
+evaluator is the same as Experiment 15: released Orin AGX lookup values through
+255 KiB and endpoint-proportional, constant-throughput scaling afterwards.
 
-but choosing a feasible point from the sweep is only a supported-point
-heuristic for the constrained coverage problem. It is not labeled as an exact
-coverage oracle.
+Global supported is exact for the supported scalarized frontier. It is not an
+exact constrained-coverage oracle because unsupported Pareto points remain
+outside any weighted-sum method.
 
 Run:
 
@@ -22,12 +24,13 @@ python3 experiments/16_saturation_global_chain/run_experiment.py
 
 Outputs:
 
-- `paired_trials.csv`: matched Paper and global-chain operating points;
+- `paired_trials.csv`: 378 matched method comparisons;
+- `input_trials.csv`: supported-frontier size and build runtime;
 - `chunk_lengths.csv`: one row per true maximal selected run;
-- `summary.json`: latency-policy sensitivity and structural summaries;
-- `importance_latency.{png,pdf}`: I-L curves;
+- `summary.json`: primary lookup results and tail sensitivity;
+- `importance_latency.{png,pdf}`: released-lookup I-L curves;
 - `importance_rows.{png,pdf}`: I-R curves;
-- `latency_rows.{png,pdf}`: L-R curves; and
+- `latency_rows.{png,pdf}`: released-lookup L-R curves; and
 - `chunk_length_histogram.{png,pdf}`: true run-length distributions.
 
-See `report.md` for the findings and scope of the optimality claim.
+See `report.md` for the results and optimality scope.
