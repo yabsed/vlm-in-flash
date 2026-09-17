@@ -71,5 +71,11 @@ reading, paper notes, and preliminary derivations live separately in
     it with the paper's fixed-row-budget selector at paired retained importance
     across all 16 Table-2 matrix shapes, with separate host and CUDA-round-trip
     timing tracks.
+23. `23_idea_fixed_r`: derives exact and row-price approximations for fixed-row
+    importance-per-latency optimization under the two-line cost.
+24. `24_fixed_r_ratio`: implements the row-price fixed-R approximation, forces
+    exact equality with Paper's actual selected-row count, validates against a
+    small exhaustive oracle, and benchmarks all 16 shapes on host and CUDA
+    round-trip timing tracks.
 
 Future experiments should use the next numbered directory.
