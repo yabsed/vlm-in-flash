@@ -1,0 +1,130 @@
+{
+  "shape_specs": [
+    {
+      "shape": "3584x3584",
+      "n": 3584,
+      "d": 3584,
+      "start_kib": 20.0,
+      "jump_kib": 20.0
+    },
+    {
+      "shape": "8960x1536",
+      "n": 8960,
+      "d": 1536,
+      "start_kib": 16.0,
+      "jump_kib": 16.0
+    },
+    {
+      "shape": "896x4864",
+      "n": 896,
+      "d": 4864,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    },
+    {
+      "shape": "4096x1024",
+      "n": 4096,
+      "d": 1024,
+      "start_kib": 12.0,
+      "jump_kib": 12.0
+    },
+    {
+      "shape": "3584x18944",
+      "n": 3584,
+      "d": 18944,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    },
+    {
+      "shape": "4096x4096",
+      "n": 4096,
+      "d": 4096,
+      "start_kib": 20.0,
+      "jump_kib": 20.0
+    },
+    {
+      "shape": "18944x3584",
+      "n": 18944,
+      "d": 3584,
+      "start_kib": 32.0,
+      "jump_kib": 32.0
+    },
+    {
+      "shape": "1536x1536",
+      "n": 1536,
+      "d": 1536,
+      "start_kib": 16.0,
+      "jump_kib": 12.0
+    },
+    {
+      "shape": "1536x256",
+      "n": 1536,
+      "d": 256,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    },
+    {
+      "shape": "896x128",
+      "n": 896,
+      "d": 128,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    },
+    {
+      "shape": "14336x4096",
+      "n": 14336,
+      "d": 4096,
+      "start_kib": 32.0,
+      "jump_kib": 32.0
+    },
+    {
+      "shape": "4864x896",
+      "n": 4864,
+      "d": 896,
+      "start_kib": 12.0,
+      "jump_kib": 16.0
+    },
+    {
+      "shape": "3584x512",
+      "n": 3584,
+      "d": 512,
+      "start_kib": 8.0,
+      "jump_kib": 12.0
+    },
+    {
+      "shape": "896x896",
+      "n": 896,
+      "d": 896,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    },
+    {
+      "shape": "4096x14336",
+      "n": 4096,
+      "d": 14336,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    },
+    {
+      "shape": "1536x8960",
+      "n": 1536,
+      "d": 8960,
+      "start_kib": 8.0,
+      "jump_kib": 8.0
+    }
+  ],
+  "method_labels": {
+    "paper": "Paper",
+    "predict_correct_c8": "Predicted-lambda TD-2L(8)",
+    "predict_correct_c8_trim64": "Predicted-lambda TD-2L(8) + trim 64",
+    "predict_correct_c8_trim256": "Predicted-lambda TD-2L(8) + trim 256"
+  },
+  "requested_tracks": [
+    "host",
+    "cuda"
+  ],
+  "executed_tracks": [
+    "host",
+    "cuda"
+  ]
+}

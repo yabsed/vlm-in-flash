@@ -65,5 +65,11 @@ reading, paper notes, and preliminary derivations live separately in
     target-directed lookup DP, lambda prediction/correction, and capped-label
     DP—and screens eighteen settings against Paper and the Experiment 18
     incumbent under the same 2 ms p95 contract.
+21. `21_best_way`: working derivation of predicted-lambda TD-2L(8) followed by
+    coverage-preserving endpoint trim.
+22. `22_predicted_lambda_trim`: implements that combined method and compares
+    it with the paper's fixed-row-budget selector at paired retained importance
+    across all 16 Table-2 matrix shapes, with separate host and CUDA-round-trip
+    timing tracks.
 
 Future experiments should use the next numbered directory.
