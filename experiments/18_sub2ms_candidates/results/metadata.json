@@ -1,0 +1,30 @@
+{
+  "two_line_model": {
+    "a_ms": 0.011080616884153835,
+    "c1_ms_per_row": 0.00024315393210444196,
+    "c2_ms_per_row": 0.00032531952340643014,
+    "d_ms_per_excess_row": 8.216559130198818e-05,
+    "saturation_kib": 236.0,
+    "saturation_rows": 134.85714285714286,
+    "short_max_rows": 134,
+    "r_squared": 0.9876264166468851,
+    "mape_pct": 4.107508659415217
+  },
+  "method_labels": {
+    "paper": "Paper",
+    "supported_full": "Full supported",
+    "td_2l_c4": "TD-2L (4)",
+    "td_2l_c8": "TD-2L (8)",
+    "td_2l_c16": "TD-2L (16)",
+    "td_2l_c32": "TD-2L (32)",
+    "td_2l_c8_trim64": "TD-2L (8) + trim 64",
+    "td_2l_c16_trim256": "TD-2L (16) + trim 256",
+    "tiles_half_s": "Tiles (s/2)",
+    "tiles_s": "Tiles (s)",
+    "tiles_2s": "Tiles (2s)",
+    "paper_bucket64": "Paper bucket 64",
+    "paper_bucket256": "Paper bucket 256",
+    "paper_bucket1024": "Paper bucket 1024"
+  },
+  "method_count": 14
+}

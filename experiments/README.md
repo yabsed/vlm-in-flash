@@ -51,5 +51,9 @@ reading, paper notes, and preliminary derivations live separately in
 17. `17_online_selection_runtime`: plots Paper-greedy and supported
     importance-latency curves while varying `N`, with separate result
     directories for the two-line and released-lookup latency models.
+18. `18_sub2ms_candidates`: implements and screens fourteen configurations
+    spanning target-directed two-line DP, endpoint trim, saturation tiles,
+    and bucketed Paper ordering under separate coverage-only and row-budget
+    validity rules and an explicit 2 ms p95 deadline.
 
 Future experiments should use the next numbered directory.
