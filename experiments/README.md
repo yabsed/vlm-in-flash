@@ -44,9 +44,9 @@ reading, paper notes, and preliminary derivations live separately in
 15. `15_coverage_stopping_greedy`: keeps Paper greedy's candidates and utility
     ordering but replaces its fixed-R stop with cumulative-importance coverage,
     reusing Experiment 14's expensive high-q results.
-16. `16_saturation_global_chain`: adds an exact fixed-lambda `O(Nm)` optimizer
-    for the released lookup plus proportional tail, enumerates its supported
-    frontier, and compares it with the two-line supported frontier, the fixed
-    `q=131,072` Quant grid, and Paper greedy.
+16. `16_saturation_global_chain`: adds an untruncated exact constrained-coverage
+    Pareto-label DP for the two-line model and an exact fixed-lambda `O(Nm)`
+    released-lookup optimizer, then compares the true coverage optimum with
+    both supported frontiers, `q=131,072` Quant, and Paper greedy.
 
 Future experiments should use the next numbered directory.

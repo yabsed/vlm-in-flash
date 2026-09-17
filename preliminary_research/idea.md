@@ -1176,6 +1176,82 @@ for one multiplier. When the fitted breakpoint is nonintegral, the boundary tran
 
 Every fixed-$\lambda$ solution is globally optimal for its scalarized objective. A finite $\lambda$ grid, however, recovers only supported points of the discrete importance--latency frontier. It may miss an unsupported minimum-latency mask satisfying a particular coverage threshold. An exact coverage certificate therefore requires either nondominated $(I,L)$ sets at the chain states or sufficient additional structural state, such as $(R,\text{shortfall})$.
 
+### Exact constrained-coverage dynamic program
+
+The unsupported points can be recovered without quantizing importance. For an
+integer breakpoint, define
+
+$$
+F_i(k,r,h)
+=max I(M_{1:i}),
+$$
+
+where $k\in\{0,1,\ldots,s\}$ is the capped active-run length, $r$ is the
+number of selected rows, and $h$ is the shortfall accumulated by completed
+short runs. Skipping a row closes the active run and adds $s-k$ to $h$ when
+$1\le k<s$; selecting a row increments $r$ and advances the capped run state.
+After closing the final active run, the exact optimum is
+
+$$
+\boxed{
+L^*(Q)=
+\min_{k,r,h:F_N(k,r,h)\ge Q}
+\left[c_2r+\delta\bar h\right],
+}
+$$
+
+where $\bar h$ includes the last active run's deficit. Equivalently, append an
+unselected sentinel row. Every binary mask corresponds to exactly one DP path,
+and every DP path corresponds to a mask. For fixed $(i,k,r,h)$, retaining only
+the largest importance is therefore Bellman-exact.
+
+For a noninteger breakpoint, set $m=\lceil s\rceil$ and let $k=m$ represent a
+run of length at least $m$. The fitted breakpoint in Experiment 16 is rational,
+$s=944/7$, so a shortfall can be represented exactly by the integer
+
+$$
+h_{\mathrm{scaled}}
+=944K_{\mathrm{short}}-7R_{\mathrm{short}}.
+$$
+
+An equivalent implementation charges the exact integer-length marginal run
+cost on each selected-row transition and stores all nondominated $(L,I)$ labels
+at each $(i,k)$. Scalar $L=c_2R+\delta H$ is sufficient for dominance because
+future transitions depend only on $k$. This form also avoids a separate final
+closure operation because all run cost has already been charged incrementally.
+
+The only exact-safe reductions are dominance, infeasible-suffix removal, and
+valid lower/upper-bound pruning. Importance binning, epsilon-dominance, label
+caps, beams, or early stopping destroy the global-optimality guarantee. A
+feasible supported or Quant solution supplies an upper bound. A backward
+fixed-$\lambda$ chain DP supplies the safe suffix lower bound
+
+$$
+L_{\mathrm{prefix}}
++\lambda(Q-I_{\mathrm{prefix}})
+-V_{\mathrm{suffix}}(i,k;\lambda).
+$$
+
+If this bound is no smaller than the incumbent feasible latency, the label
+cannot lead to a better coverage solution and may be removed without losing an
+unsupported optimum.
+
+The distinction from scalarization is real even when the saturated branch
+passes through the origin. Let $s=2$, $T(1)=5$, $T(\ell)=4\ell$ for
+$\ell\ge2$, row importances $(6,0,5,5)$, and $Q=6$. Selecting only the first
+row gives $(I,L)=(6,5)$ and is the constrained optimum; selecting the last two
+rows gives $(10,8)$. The first mask beats the empty mask only when
+$\lambda\ge5/6$, but it beats the last-two-row mask only when
+$\lambda\le3/4$. Hence it is optimal for the coverage constraint but for no
+scalarized multiplier.
+
+Experiment 16 implements the untruncated Pareto-label form and recovers the
+optimal mask with checkpointed lineage. Across 378 Paper-matched targets, the
+two-line supported solution exceeded the exact constrained optimum by $2.143\%$
+on average; the gap was positive for $369/378$ targets and reached $18.306\%$.
+Thus the high-resolution Quant grid converges to the supported frontier, but
+the supported frontier is not generally the true coverage frontier.
+
 ---
 
 ## Saturation alone does not force a zero-intercept post-saturation latency model.

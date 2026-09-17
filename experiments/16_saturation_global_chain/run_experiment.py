@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
-"""Experiment 16: direct-lookup and two-line supported frontiers.
+"""Experiment 16: exact coverage and supported-frontier optimizers.
 
 The primary evaluator is exactly the Experiment 15 released Orin AGX lookup
 rule: table lookup through 255 KiB and endpoint-proportional scaling
 afterwards. ``Lookup supported`` directly optimizes that rule with an O(Nm)
 capped-run DP. ``Two-line supported`` uses the continuous two-line surrogate,
-and ``Quant`` is Experiment 13's fixed q=131,072 lambda grid.
+and ``Quant`` is Experiment 13's fixed q=131,072 lambda grid. ``Exact
+coverage`` retains every nondominated constrained-DP label under the two-line
+model, including unsupported Pareto points.
 
-The adaptive methods enumerate their complete strongly-supported scalarized
-frontiers. They are not exact oracles for unsupported points of the constrained
-coverage problem.
+The adaptive lambda methods enumerate their complete strongly-supported
+scalarized frontiers; only Exact coverage is a constrained-coverage oracle.
 """
 
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import hashlib
 import importlib.util
 import json
 import math
+import multiprocessing
 import os
 from pathlib import Path
 import time
@@ -39,6 +42,7 @@ DEFAULT_INPUT_SUMMARY = (
 GLOBAL_COLOR = "#2A9D8F"
 QUANT_COLOR = "#E6A700"
 LOOKUP_COLOR = "#6D28D9"
+EXACT_COLOR = "#2563EB"
 
 
 def load_experiment_13():
@@ -64,6 +68,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-limit", type=int, default=None,
         help="development-only number of spatial inputs",
+    )
+    parser.add_argument(
+        "--exact-workers", type=int, default=min(4, os.cpu_count() or 1),
+        help="parallel workers for the exact constrained-coverage oracle",
     )
     return parser.parse_args()
 
@@ -829,6 +837,582 @@ def self_check_lookup_solver() -> None:
             )
 
 
+def _two_line_integer_costs(model: dict, maximum: int) -> np.ndarray:
+    costs = np.zeros(maximum + 1, dtype=np.float64)
+    for length in range(1, maximum + 1):
+        costs[length] = EXP13.two_line_chunk_ms(length, model)
+    return costs
+
+
+def _trim_feasible_mask(mask: np.ndarray, values: np.ndarray, bound: float,
+                        model: dict) -> np.ndarray:
+    """Greedily tighten a feasible mask; used only as a safe upper bound."""
+    result = np.asarray(mask, dtype=bool).copy()
+    importance = float(values[result].sum())
+    if importance < bound - 1e-13:
+        raise ValueError("upper-bound seed does not meet the coverage target")
+    costs = _two_line_integer_costs(model, len(result))
+    while True:
+        transitions = np.diff(np.r_[False, result, False].astype(np.int8))
+        starts = np.flatnonzero(transitions == 1)
+        ends = np.flatnonzero(transitions == -1) - 1
+        candidates = []
+        for start, end in zip(starts, ends):
+            length = int(end - start + 1)
+            saving = float(costs[length] - costs[length - 1])
+            if saving <= 0:
+                continue
+            for index in {int(start), int(end)}:
+                loss = float(values[index])
+                if importance - loss >= bound - 1e-13:
+                    candidates.append((loss / saving, loss, -saving, index))
+        if not candidates:
+            break
+        _, loss, _, index = min(candidates)
+        result[index] = False
+        importance -= loss
+    return result
+
+
+def _supported_dual_multiplier(nodes: list[dict], bound: float) -> float:
+    high = next(
+        index for index, node in enumerate(nodes)
+        if node["importance"] >= bound - 1e-14
+    )
+    if high == 0:
+        return max(0.0, float(nodes[high]["lambda"]))
+    low_node = nodes[high - 1]
+    high_node = nodes[high]
+    delta_importance = high_node["importance"] - low_node["importance"]
+    if delta_importance <= 0:
+        raise RuntimeError("supported points did not bracket coverage in order")
+    return float(
+        (high_node["two_line_ms"] - low_node["two_line_ms"])
+        / delta_importance
+    )
+
+
+def _suffix_scalarized_potential(values: np.ndarray, multiplier: float,
+                                 increments: np.ndarray,
+                                 tail_increment: float) -> np.ndarray:
+    """Best remaining lambda*importance-cost for every position/run state."""
+    n = len(values)
+    saturation = len(increments)
+    potential = np.empty((n + 1, saturation + 1), dtype=np.float64)
+    potential[n, :] = 0.0
+    for index in range(n - 1, -1, -1):
+        skip = potential[index + 1, 0]
+        gain = multiplier * values[index]
+        potential[index, 0] = max(
+            skip, gain - increments[0] + potential[index + 1, 1]
+        )
+        potential[index, 1:saturation] = np.maximum(
+            skip,
+            gain - increments[1:saturation]
+            + potential[index + 1, 2:saturation + 1],
+        )
+        potential[index, saturation] = max(
+            skip,
+            gain - tail_increment + potential[index + 1, saturation],
+        )
+    return potential
+
+
+def _set_mask_block(mask: np.ndarray, block: int, bits: int,
+                    block_rows: int) -> None:
+    start = block * block_rows
+    value = int(bits)
+    while value:
+        least = value & -value
+        offset = least.bit_length() - 1
+        position = start + offset
+        if position < len(mask):
+            mask[position] = True
+        value ^= least
+
+
+def exact_two_line_coverage(values: np.ndarray, bound: float, model: dict,
+                            dual_multiplier: float,
+                            seed_masks: list[np.ndarray],
+                            checkpoint_rows: int = 64) -> dict:
+    """Exact constrained two-line solver using untruncated Pareto labels.
+
+    Every chain path is represented. Dominance, suffix feasibility, and the
+    Lagrangian suffix lower bound are exact-safe pruning rules. Checkpointed
+    64-bit lineage recovers the optimal mask without retaining parents for
+    every intermediate label.
+    """
+    values = np.asarray(values, dtype=np.float64)
+    n = len(values)
+    saturation = int(math.ceil(float(model["saturation_rows"])))
+    if checkpoint_rows < 1 or checkpoint_rows > 64:
+        raise ValueError("checkpoint_rows must be in [1, 64]")
+    chunk_costs = _two_line_integer_costs(model, saturation)
+    increments = np.diff(chunk_costs)
+    tail_increment = float(model["c2_ms_per_row"])
+    if np.any(increments <= 0) or tail_increment <= 0:
+        raise ValueError("exact coverage pruning requires positive marginal costs")
+    suffix = np.r_[np.cumsum(values[::-1])[::-1], 0.0]
+    potential = _suffix_scalarized_potential(
+        values, dual_multiplier, increments, tail_increment
+    )
+
+    feasible_seeds = []
+    for seed in seed_masks:
+        candidate = _trim_feasible_mask(seed, values, bound, model)
+        encoded = EXP13.EXP10.encode_runs(candidate)
+        feasible_seeds.append((
+            EXP13.two_line_mask_ms(encoded, model),
+            -float(values[candidate].sum()),
+            candidate,
+        ))
+    if not feasible_seeds:
+        raise ValueError("exact coverage solver needs a feasible upper bound")
+    best_cost, negative_importance, best_mask = min(
+        feasible_seeds, key=lambda item: (item[0], item[1])
+    )
+    best_importance = -negative_importance
+    best_mask = best_mask.copy()
+    best_lineage = None
+
+    empty_float = lambda: np.empty(0, dtype=np.float64)
+    empty_int = lambda: np.empty(0, dtype=np.int32)
+    empty_bits = lambda: np.empty(0, dtype=np.uint64)
+    costs = [empty_float() for _ in range(saturation + 1)]
+    importance = [empty_float() for _ in range(saturation + 1)]
+    origins = [empty_int() for _ in range(saturation + 1)]
+    bits = [empty_bits() for _ in range(saturation + 1)]
+    costs[0] = np.asarray([0.0])
+    importance[0] = np.asarray([0.0])
+    origins[0] = np.asarray([0], dtype=np.int32)
+    bits[0] = np.asarray([0], dtype=np.uint64)
+
+    checkpoint_parents: list[np.ndarray] = []
+    checkpoint_bits: list[np.ndarray] = []
+    completed_checkpoints = 0
+    peak_labels = 1
+    generated_labels = 0
+    checkpoint_labels = 0
+    started = time.perf_counter_ns()
+    numerical_margin = 2e-11
+
+    def filter_candidates(candidate_cost, candidate_importance,
+                          candidate_origins, candidate_bits,
+                          position: int, state: int, merge: bool):
+        nonlocal best_cost, best_importance, best_lineage, generated_labels
+        generated_labels += len(candidate_cost)
+        if len(candidate_cost) == 0:
+            return empty_float(), empty_float(), empty_int(), empty_bits()
+
+        feasible = candidate_importance >= bound - 1e-13
+        if np.any(feasible):
+            feasible_indices = np.flatnonzero(feasible)
+            order = np.lexsort((
+                -candidate_importance[feasible_indices],
+                candidate_cost[feasible_indices],
+            ))
+            winner = int(feasible_indices[order[0]])
+            winner_cost = float(candidate_cost[winner])
+            winner_importance = float(candidate_importance[winner])
+            if (
+                winner_cost < best_cost - 1e-13
+                or (
+                    abs(winner_cost - best_cost) <= 1e-13
+                    and winner_importance > best_importance + 1e-14
+                )
+            ):
+                best_cost = winner_cost
+                best_importance = winner_importance
+                best_lineage = (
+                    completed_checkpoints,
+                    int(candidate_origins[winner]),
+                    int(candidate_bits[winner]),
+                )
+
+        lower_bound = (
+            candidate_cost
+            + dual_multiplier * (bound - candidate_importance)
+            - potential[position, state]
+        )
+        keep = (
+            (candidate_importance < bound - 1e-13)
+            & (candidate_importance + suffix[position] >= bound - 1e-13)
+            & (candidate_cost < best_cost + numerical_margin)
+            & (lower_bound < best_cost + numerical_margin)
+        )
+        kept_cost = candidate_cost[keep]
+        if len(kept_cost) == 0:
+            return empty_float(), empty_float(), empty_int(), empty_bits()
+        kept_importance = candidate_importance[keep]
+        kept_origins = candidate_origins[keep]
+        kept_bits = candidate_bits[keep]
+        if merge:
+            order = np.lexsort((-kept_importance, kept_cost))
+            kept_cost = kept_cost[order]
+            kept_importance = kept_importance[order]
+            kept_origins = kept_origins[order]
+            kept_bits = kept_bits[order]
+            cumulative = np.maximum.accumulate(kept_importance)
+            nondominated = np.r_[
+                True, kept_importance[1:] > cumulative[:-1]
+            ]
+            kept_cost = kept_cost[nondominated]
+            kept_importance = kept_importance[nondominated]
+            kept_origins = kept_origins[nondominated]
+            kept_bits = kept_bits[nondominated]
+        return kept_cost, kept_importance, kept_origins, kept_bits
+
+    for index, value in enumerate(values):
+        position = index + 1
+        offset = index % checkpoint_rows
+        selected_bit = np.uint64(1) << np.uint64(offset)
+        next_costs = [empty_float() for _ in range(saturation + 1)]
+        next_importance = [empty_float() for _ in range(saturation + 1)]
+        next_origins = [empty_int() for _ in range(saturation + 1)]
+        next_bits = [empty_bits() for _ in range(saturation + 1)]
+
+        active = [state for state in range(saturation + 1) if len(costs[state])]
+        closed_cost = np.concatenate([costs[state] for state in active])
+        closed_importance = np.concatenate([
+            importance[state] for state in active
+        ])
+        closed_origins = np.concatenate([origins[state] for state in active])
+        closed_bits = np.concatenate([bits[state] for state in active])
+        (
+            next_costs[0], next_importance[0],
+            next_origins[0], next_bits[0],
+        ) = filter_candidates(
+            closed_cost, closed_importance, closed_origins, closed_bits,
+            position, 0, True,
+        )
+
+        if len(costs[0]):
+            (
+                next_costs[1], next_importance[1],
+                next_origins[1], next_bits[1],
+            ) = filter_candidates(
+                costs[0] + increments[0],
+                importance[0] + value,
+                origins[0], bits[0] | selected_bit,
+                position, 1, False,
+            )
+
+        for state in range(2, saturation):
+            previous = state - 1
+            if not len(costs[previous]):
+                continue
+            (
+                next_costs[state], next_importance[state],
+                next_origins[state], next_bits[state],
+            ) = filter_candidates(
+                costs[previous] + increments[previous],
+                importance[previous] + value,
+                origins[previous], bits[previous] | selected_bit,
+                position, state, False,
+            )
+
+        tail_cost_parts = []
+        tail_importance_parts = []
+        tail_origin_parts = []
+        tail_bit_parts = []
+        if len(costs[saturation - 1]):
+            tail_cost_parts.append(
+                costs[saturation - 1] + increments[saturation - 1]
+            )
+            tail_importance_parts.append(
+                importance[saturation - 1] + value
+            )
+            tail_origin_parts.append(origins[saturation - 1])
+            tail_bit_parts.append(bits[saturation - 1] | selected_bit)
+        if len(costs[saturation]):
+            tail_cost_parts.append(costs[saturation] + tail_increment)
+            tail_importance_parts.append(importance[saturation] + value)
+            tail_origin_parts.append(origins[saturation])
+            tail_bit_parts.append(bits[saturation] | selected_bit)
+        if tail_cost_parts:
+            (
+                next_costs[saturation], next_importance[saturation],
+                next_origins[saturation], next_bits[saturation],
+            ) = filter_candidates(
+                np.concatenate(tail_cost_parts),
+                np.concatenate(tail_importance_parts),
+                np.concatenate(tail_origin_parts),
+                np.concatenate(tail_bit_parts),
+                position, saturation, len(tail_cost_parts) > 1,
+            )
+
+        costs, importance = next_costs, next_importance
+        origins, bits = next_origins, next_bits
+        label_count = sum(len(frontier) for frontier in costs)
+        peak_labels = max(peak_labels, label_count)
+        if label_count == 0:
+            break
+
+        if position % checkpoint_rows == 0:
+            parent_array = np.concatenate([
+                origins[state] for state in range(saturation + 1)
+                if len(origins[state])
+            ])
+            bit_array = np.concatenate([
+                bits[state] for state in range(saturation + 1)
+                if len(bits[state])
+            ])
+            checkpoint_parents.append(parent_array)
+            checkpoint_bits.append(bit_array)
+            checkpoint_labels += len(parent_array)
+            cursor = 0
+            for state in range(saturation + 1):
+                count = len(origins[state])
+                if count:
+                    origins[state] = np.arange(
+                        cursor, cursor + count, dtype=np.int32
+                    )
+                    bits[state] = np.zeros(count, dtype=np.uint64)
+                    cursor += count
+            completed_checkpoints += 1
+
+    if best_lineage is not None:
+        checkpoint_count, origin, final_bits = best_lineage
+        recovered = np.zeros(n, dtype=bool)
+        _set_mask_block(
+            recovered, checkpoint_count, final_bits, checkpoint_rows
+        )
+        for checkpoint in range(checkpoint_count - 1, -1, -1):
+            _set_mask_block(
+                recovered, checkpoint,
+                int(checkpoint_bits[checkpoint][origin]), checkpoint_rows,
+            )
+            origin = int(checkpoint_parents[checkpoint][origin])
+        if origin != 0:
+            raise RuntimeError("exact-DP checkpoint lineage did not reach the root")
+        best_mask = recovered
+
+    encoded = EXP13.EXP10.encode_runs(best_mask)
+    replay_cost = EXP13.two_line_mask_ms(encoded, model)
+    replay_importance = float(values[best_mask].sum())
+    if replay_importance < bound - 1e-12:
+        raise RuntimeError("recovered exact-coverage mask missed its target")
+    if not math.isclose(
+        replay_cost, best_cost, rel_tol=1e-10, abs_tol=1e-10
+    ):
+        raise RuntimeError(
+            f"exact-DP replay cost mismatch: {replay_cost} != {best_cost}"
+        )
+    return {
+        "mask": best_mask,
+        "importance": replay_importance,
+        "two_line_ms": float(replay_cost),
+        "runtime_ms": (time.perf_counter_ns() - started) / 1e6,
+        "peak_labels": int(peak_labels),
+        "generated_labels": int(generated_labels),
+        "checkpoint_labels": int(checkpoint_labels),
+        "dual_multiplier": float(dual_multiplier),
+    }
+
+
+def self_check_exact_coverage_solver() -> None:
+    """Compare the constrained Pareto-label solver with all small masks."""
+    rng = np.random.default_rng(1619)
+    saturation = 2.5
+    c1 = 0.07
+    c2 = 0.13
+    model = {
+        "a_ms": (c2 - c1) * saturation,
+        "c1_ms_per_row": c1,
+        "c2_ms_per_row": c2,
+        "d_ms_per_excess_row": c2 - c1,
+        "saturation_rows": saturation,
+        "short_max_rows": int(math.floor(saturation)),
+    }
+    for _ in range(2):
+        n = 9
+        values = rng.lognormal(size=n)
+        values /= values.sum()
+        masks = []
+        for bits_value in range(1 << n):
+            mask = np.asarray([
+                (bits_value >> index) & 1 for index in range(n)
+            ], dtype=bool)
+            encoded = EXP13.EXP10.encode_runs(mask)
+            masks.append((
+                float(values[mask].sum()),
+                EXP13.two_line_mask_ms(encoded, model),
+                mask,
+            ))
+        oracle = ExactSupportedOracle(values, model)
+        for bound in (0.2, 0.45, 0.7):
+            expected = min(
+                (item for item in masks if item[0] >= bound - 1e-13),
+                key=lambda item: (item[1], -item[0]),
+            )
+            seed = oracle.solve(bound)["mask"]
+            actual = exact_two_line_coverage(
+                values, bound, model,
+                _supported_dual_multiplier(oracle.nodes, bound),
+                [seed], checkpoint_rows=4,
+            )
+            if not math.isclose(
+                actual["two_line_ms"], expected[1],
+                rel_tol=1e-10, abs_tol=1e-11,
+            ):
+                raise RuntimeError(
+                    "exact coverage self-check failed: "
+                    f"{actual['two_line_ms']} != {expected[1]}"
+                )
+
+
+def _exact_coverage_worker(payload: dict) -> dict:
+    values = np.asarray(payload["values"], dtype=np.float64)
+    masks = [
+        EXP13.EXP10.decode_runs(encoded, len(values))
+        for encoded in payload["seed_runs"]
+    ]
+    result = exact_two_line_coverage(
+        values, payload["bound"], payload["model"],
+        payload["dual_multiplier"], masks,
+    )
+    return {
+        "row_index": payload["row_index"],
+        "runs": EXP13.EXP10.encode_runs(result.pop("mask")),
+        **result,
+    }
+
+
+def add_exact_coverage_results(
+        paired: pd.DataFrame, chunks: pd.DataFrame, inputs: pd.DataFrame,
+        values_by_input: dict, model: dict, affine: tuple[float, float],
+        row_size_kib: float, policies, workers: int,
+        ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Compute and attach exact constrained two-line solutions."""
+    tasks = []
+    grouped = paired.groupby(
+        ["trial", "target_cv", "spatial_mode"], sort=True
+    )
+    for (trial, target_cv, spatial_mode), group in grouped:
+        key = (int(trial), round(float(target_cv), 10), spatial_mode)
+        values = values_by_input[key]
+        oracle = ExactSupportedOracle(values, model)
+        for row_index, row in group.sort_values("budget_fraction").iterrows():
+            tasks.append({
+                "row_index": int(row_index),
+                "values": values,
+                "bound": float(row.target_importance),
+                "model": model,
+                "dual_multiplier": _supported_dual_multiplier(
+                    oracle.nodes, float(row.target_importance)
+                ),
+                "seed_runs": [
+                    row.global_supported_runs,
+                    row.lookup_supported_runs,
+                    row.quant_runs,
+                    row.paper_runs,
+                ],
+            })
+
+    results: dict[int, dict] = {}
+    if workers <= 1:
+        for completed, task in enumerate(tasks, 1):
+            result = _exact_coverage_worker(task)
+            results[result["row_index"]] = result
+            print(
+                f"exact coverage {completed}/{len(tasks)}: "
+                f"{result['runtime_ms']:.1f} ms, "
+                f"peak {result['peak_labels']} labels",
+                flush=True,
+            )
+    else:
+        context = multiprocessing.get_context("fork")
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=workers, mp_context=context
+        ) as executor:
+            futures = [
+                executor.submit(_exact_coverage_worker, task) for task in tasks
+            ]
+            for completed, future in enumerate(
+                    concurrent.futures.as_completed(futures), 1):
+                result = future.result()
+                results[result["row_index"]] = result
+                print(
+                    f"exact coverage {completed}/{len(tasks)}: "
+                    f"{result['runtime_ms']:.1f} ms, "
+                    f"peak {result['peak_labels']} labels",
+                    flush=True,
+                )
+
+    exact_chunk_rows: list[dict] = []
+    for row_index, row in paired.iterrows():
+        result = results[int(row_index)]
+        key = (
+            int(row.trial), round(float(row.target_cv), 10), row.spatial_mode
+        )
+        values = values_by_input[key]
+        mask = EXP13.EXP10.decode_runs(result["runs"], len(values))
+        metrics = EXP13.mask_metrics(
+            mask, values, model, affine, row_size_kib, policies
+        )
+        if metrics["importance"] < row.target_importance - 1e-12:
+            raise RuntimeError("exact coverage result missed its target")
+        if metrics["two_line_ms"] > row.global_supported_two_line_ms + 1e-10:
+            raise RuntimeError("exact coverage result is worse than supported")
+        if not math.isclose(
+            metrics["two_line_ms"], result["two_line_ms"],
+            rel_tol=1e-10, abs_tol=1e-10,
+        ):
+            raise RuntimeError("exact worker and evaluator costs disagree")
+        for field, value in metric_fields("exact_coverage", metrics).items():
+            paired.at[row_index, field] = value
+        paired.at[row_index, "exact_coverage_importance_overshoot"] = (
+            metrics["importance"] - row.target_importance
+        )
+        for policy in ("two_line", "released", "tail_linear", "block_split"):
+            method_ms = metrics[f"{policy}_ms"]
+            paper_ms = row[f"paper_{policy}_ms"]
+            paired.at[
+                row_index, f"exact_coverage_saving_vs_paper_{policy}_pct"
+            ] = 100.0 * (1.0 - method_ms / paper_ms)
+            paired.at[row_index, f"exact_coverage_win_{policy}"] = float(
+                method_ms < paper_ms - 1e-12
+            )
+            paired.at[
+                row_index,
+                f"exact_saving_vs_two_line_global_{policy}_pct",
+            ] = 100.0 * (
+                1.0 - method_ms / row[f"global_supported_{policy}_ms"]
+            )
+        for field in (
+            "runtime_ms", "peak_labels", "generated_labels",
+            "checkpoint_labels", "dual_multiplier",
+        ):
+            paired.at[row_index, f"exact_{field}"] = result[field]
+        base = {
+            "trial": int(row.trial),
+            "target_cv": float(row.target_cv),
+            "spatial_mode": row.spatial_mode,
+            "budget_fraction": float(row.budget_fraction),
+            "budget_rows": int(row.budget_rows),
+            "target_importance": float(row.target_importance),
+        }
+        validate_and_record_chunks(
+            base, "exact_coverage", metrics, model, exact_chunk_rows
+        )
+
+    exact_chunks = pd.DataFrame(exact_chunk_rows)
+    chunks = pd.concat([chunks, exact_chunks], ignore_index=True)
+    aggregate = paired.groupby(
+        ["trial", "target_cv", "spatial_mode"], sort=True
+    ).agg(
+        exact_total_runtime_ms=("exact_runtime_ms", "sum"),
+        exact_peak_labels=("exact_peak_labels", "max"),
+        exact_generated_labels=("exact_generated_labels", "sum"),
+        exact_checkpoint_labels=("exact_checkpoint_labels", "sum"),
+    ).reset_index()
+    inputs = inputs.merge(
+        aggregate, on=["trial", "target_cv", "spatial_mode"],
+        how="left", validate="one_to_one",
+    )
+    return paired, chunks, inputs
+
+
 def metric_fields(prefix: str, metrics: dict) -> dict:
     fields = (
         "importance", "rows", "chunks", "runs", "run_length_median",
@@ -1007,7 +1591,9 @@ def build_summary(source_summary: dict, input_summary: dict,
                   inputs: pd.DataFrame, args: argparse.Namespace, policies) -> dict:
     latency_policies = ("two_line", "released", "tail_linear", "block_split")
     method_structure = {}
-    for method in ("lookup_supported", "global_supported", "quant", "paper"):
+    for method in (
+        "exact_coverage", "lookup_supported", "global_supported", "quant", "paper"
+    ):
         method_chunks = chunks[chunks.method == method]
         shortfall = []
         for encoded in paired[f"{method}_runs"]:
@@ -1026,7 +1612,9 @@ def build_summary(source_summary: dict, input_summary: dict,
         }
 
     comparisons = {}
-    for method in ("lookup_supported", "global_supported", "quant"):
+    for method in (
+        "exact_coverage", "lookup_supported", "global_supported", "quant"
+    ):
         comparisons[method] = {
             policy: {
                 **summarize(paired[f"{method}_saving_vs_paper_{policy}_pct"]),
@@ -1036,7 +1624,7 @@ def build_summary(source_summary: dict, input_summary: dict,
         }
 
     return {
-        "format": "experiment-16-direct-lookup-supported-v3",
+        "format": "experiment-16-exact-coverage-v4",
         "source_experiment": "13_two_line_lagrangian",
         "source_results": str(args.source_results.resolve()),
         "source_sha256": {
@@ -1062,6 +1650,10 @@ def build_summary(source_summary: dict, input_summary: dict,
             "tail_ms_per_row": policies.released_tail_ms_per_row,
         },
         "method_scope": {
+            "exact_coverage": (
+                "exact Pareto-label binary-chain DP for the constrained two-line "
+                "coverage problem; includes unsupported Pareto points"
+            ),
             "lookup_supported": (
                 "adaptive enumeration of all strongly supported exact scalarized "
                 "released-lookup optima using an O(Nm) capped-run DP; not an exact "
@@ -1082,6 +1674,7 @@ def build_summary(source_summary: dict, input_summary: dict,
             "paired_targets": int(len(paired)),
             "global_supported_chunks": int((chunks.method == "global_supported").sum()),
             "lookup_supported_chunks": int((chunks.method == "lookup_supported").sum()),
+            "exact_coverage_chunks": int((chunks.method == "exact_coverage").sum()),
             "quant_chunks": int((chunks.method == "quant").sum()),
             "paper_chunks": int((chunks.method == "paper").sum()),
         },
@@ -1089,7 +1682,9 @@ def build_summary(source_summary: dict, input_summary: dict,
             "The explicit O(Ns) capped-run recurrence was checked against the exact "
             "O(N) interval solver; the O(Nm) lookup recurrence and both adaptive "
             "supported-frontier enumerators were checked against exhaustive small-N "
-            "masks; the row-plus-shortfall identity was checked for every saved mask."
+            "masks; the constrained Pareto-label DP and recovered masks were also "
+            "checked against exhaustive small-N masks; the row-plus-shortfall "
+            "identity was checked for every saved mask."
         ),
         "saving_vs_paper_pct": comparisons,
         "global_saving_vs_quant_pct": {
@@ -1102,10 +1697,18 @@ def build_summary(source_summary: dict, input_summary: dict,
             )
             for policy in latency_policies
         },
+        "exact_saving_vs_two_line_global_pct": {
+            policy: summarize(
+                paired[f"exact_saving_vs_two_line_global_{policy}_pct"]
+            )
+            for policy in latency_policies
+        },
         "global_quant_same_mask_rate": float(paired.global_quant_same_mask.mean()),
         "importance_overshoot": {
             method: summarize(paired[f"{method}_importance_overshoot"])
-            for method in ("lookup_supported", "global_supported", "quant")
+            for method in (
+                "exact_coverage", "lookup_supported", "global_supported", "quant"
+            )
         },
         "solution_structure": method_structure,
         "global_runtime_ms": summarize(inputs.global_build_runtime_ms),
@@ -1116,26 +1719,39 @@ def build_summary(source_summary: dict, input_summary: dict,
         "lookup_scalarized_solve_calls": summarize(
             inputs.lookup_scalarized_solve_calls
         ),
+        "exact_target_runtime_ms": summarize(paired.exact_runtime_ms),
+        "exact_total_runtime_ms_per_input": summarize(
+            inputs.exact_total_runtime_ms
+        ),
+        "exact_peak_labels": summarize(paired.exact_peak_labels),
+        "exact_generated_labels": summarize(paired.exact_generated_labels),
+        "exact_checkpoint_labels": summarize(paired.exact_checkpoint_labels),
         "by_spatial_mode_released_saving_pct": {
             method: {
                 mode: summarize(group[f"{method}_saving_vs_paper_released_pct"])
                 for mode, group in paired.groupby("spatial_mode", sort=True)
             }
-            for method in ("lookup_supported", "global_supported", "quant")
+            for method in (
+                "exact_coverage", "lookup_supported", "global_supported", "quant"
+            )
         },
         "by_cv_released_saving_pct": {
             method: {
                 str(cv): summarize(group[f"{method}_saving_vs_paper_released_pct"])
                 for cv, group in paired.groupby("target_cv", sort=True)
             }
-            for method in ("lookup_supported", "global_supported", "quant")
+            for method in (
+                "exact_coverage", "lookup_supported", "global_supported", "quant"
+            )
         },
         "by_budget_released_saving_pct": {
             method: {
                 str(budget): summarize(group[f"{method}_saving_vs_paper_released_pct"])
                 for budget, group in paired.groupby("budget_fraction", sort=True)
             }
-            for method in ("lookup_supported", "global_supported", "quant")
+            for method in (
+                "exact_coverage", "lookup_supported", "global_supported", "quant"
+            )
         },
         "input_provenance": {
             "summary": str(args.input_summary.resolve()),
@@ -1156,6 +1772,7 @@ def plot_method_grid(frame: pd.DataFrame, path: Path, x_fields: dict,
         ("quant", "Quant (q=131,072)", QUANT_COLOR, "P", ":", 2.0),
         ("global_supported", "Two-line supported", GLOBAL_COLOR, "X", "-", 2.1),
         ("lookup_supported", "Lookup supported", LOOKUP_COLOR, "D", "-.", 2.2),
+        ("exact_coverage", "Exact coverage", EXACT_COLOR, "*", "-", 2.3),
     )
     for row_index, cv in enumerate(display_cvs):
         for column_index, mode in enumerate(SPATIAL_MODES):
@@ -1178,7 +1795,7 @@ def plot_method_grid(frame: pd.DataFrame, path: Path, x_fields: dict,
             ax.set_title(f"{SPATIAL_LABELS[mode]}, CV={cv:g}")
             BASE.polish_axis(ax)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="outside upper center", ncol=4, frameon=False)
+    fig.legend(handles, labels, loc="outside upper center", ncol=5, frameon=False)
     fig.savefig(path, dpi=190, bbox_inches="tight")
     fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
     plt.close(fig)
@@ -1194,6 +1811,7 @@ def plot_chunk_histogram(chunks: pd.DataFrame, saturation_rows: float,
         ("quant", "Quant (q=131,072)", QUANT_COLOR, ":", 2.0),
         ("global_supported", "Two-line supported", GLOBAL_COLOR, "-", 2.1),
         ("lookup_supported", "Lookup supported", LOOKUP_COLOR, "-.", 2.2),
+        ("exact_coverage", "Exact coverage", EXACT_COLOR, "-", 2.3),
     )
     maximum = int(chunks.chunk_rows.max())
     edges = np.unique(np.r_[
@@ -1231,7 +1849,9 @@ def plot_chunk_histogram(chunks: pd.DataFrame, saturation_rows: float,
 
 def render_plots(paired: pd.DataFrame, chunks: pd.DataFrame,
                  model: dict, lookup_model: dict, output_dir: Path) -> None:
-    methods = ("lookup_supported", "global_supported", "quant", "paper")
+    methods = (
+        "exact_coverage", "lookup_supported", "global_supported", "quant", "paper"
+    )
     plot_method_grid(
         paired, output_dir / "importance_latency.png",
         {method: f"{method}_released_ms" for method in methods},
@@ -1275,6 +1895,7 @@ def main() -> None:
     self_check_capped_dp()
     self_check_supported_oracle()
     self_check_lookup_solver()
+    self_check_exact_coverage_solver()
     model = source_summary["two_line_model"]
     row_size_kib = float(input_summary["row_size_kib"])
     table = BASE.LatencyTable.load(input_summary["profile"])
@@ -1300,6 +1921,10 @@ def main() -> None:
         source, values_by_input, model, released_lookup_model, affine,
         row_size_kib, policies, args.input_limit,
     )
+    paired, chunks, inputs = add_exact_coverage_results(
+        paired, chunks, inputs, values_by_input, model, affine,
+        row_size_kib, policies, args.exact_workers,
+    )
     args.output_dir.mkdir(parents=True, exist_ok=True)
     paired.to_csv(args.output_dir / "paired_trials.csv", index=False)
     chunks.to_csv(args.output_dir / "chunk_lengths.csv", index=False)
@@ -1311,7 +1936,9 @@ def main() -> None:
     render_plots(paired, chunks, model, released_lookup_model, args.output_dir)
     print(json.dumps({
         method: summary["saving_vs_paper_pct"][method]["released"]
-        for method in ("lookup_supported", "global_supported", "quant")
+        for method in (
+            "exact_coverage", "lookup_supported", "global_supported", "quant"
+        )
     }, indent=2))
     print(f"wrote Experiment 16 results to {args.output_dir}")
 
