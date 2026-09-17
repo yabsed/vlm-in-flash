@@ -1,20 +1,23 @@
-# Experiment 16: Global supported frontier versus Quant and Paper
+# Experiment 16: Direct lookup supported optimizer
 
-This experiment compares three selectors at Paper-greedy achieved-importance
+This experiment compares four selectors at Paper-greedy achieved-importance
 targets:
 
-- **Global supported**: adaptive enumeration of every strongly supported
+- **Lookup supported**: an exact `O(Nm)` fixed-lambda DP over released lookup
+  increments, followed by adaptive enumeration of the supported frontier;
+- **Two-line supported**: adaptive enumeration of every strongly supported
   optimum of the scalarized two-line binary-chain objective;
 - **Quant**: the existing fixed `q=131,072` lambda grid; and
 - **Paper greedy**: Neuron Chunking under its fixed-R stopping rule.
 
-The selection surrogate is the continuous two-line model. The primary latency
-evaluator is the same as Experiment 15: released Orin AGX lookup values through
-255 KiB and endpoint-proportional, constant-throughput scaling afterwards.
+The primary latency evaluator is the same as Experiment 15: released Orin AGX
+lookup values through 255 KiB and endpoint-proportional, constant-throughput
+scaling afterwards. Lookup supported also uses this exact function for mask
+selection, eliminating the two-line-selection versus lookup-evaluation mismatch.
 
-Global supported is exact for the supported scalarized frontier. It is not an
-exact constrained-coverage oracle because unsupported Pareto points remain
-outside any weighted-sum method.
+Both adaptive methods are exact for their respective supported scalarized
+frontiers. They are not exact constrained-coverage oracles because unsupported
+Pareto points remain outside any weighted-sum method.
 
 Run:
 
