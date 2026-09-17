@@ -77,5 +77,9 @@ reading, paper notes, and preliminary derivations live separately in
     exact equality with Paper's actual selected-row count, validates against a
     small exhaustive oracle, and benchmarks all 16 shapes on host and CUDA
     round-trip timing tracks.
+25. `25_gpu_tiles`: ports Experiment 18's `Tiles(s/2)`, `Tiles(s)`, and
+    `Tiles(2s)` selectors to a CUDA-resident implementation, benchmarks all 16
+    Table-2 shapes with CUDA-event and synchronized wall clocks, and audits
+    coverage, row budgets, lookup quality, and CPU-algorithm parity.
 
 Future experiments should use the next numbered directory.
