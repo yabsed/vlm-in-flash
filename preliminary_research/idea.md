@@ -983,3 +983,322 @@ The fixed-$R$ and coverage frontiers answer distinct questions:
 For each mask, record $L_{\mathrm{aff}}$, $L_{\mathrm{table}}$, and $L_{\mathrm{measured}}$ separately to distinguish optimization quality from model accuracy. Use the same channel order and reordering across methods, and include activation transfers, mask recovery, and synchronization in selection time.
 
 Finally, activation importance remains a surrogate for model quality. Exact optimality on the importance–latency frontier does not imply exact optimality on the downstream accuracy–latency frontier. Selected operating points must therefore also be evaluated on the original VLM tasks.
+
+---
+
+## Under the constant-throughput two-line surrogate, global mask latency is a row cost plus a short-run deficit cost.
+
+### Total latency and per-row latency are different
+
+The post-saturation branch of the current continuous two-line surrogate is
+
+$$
+T(\ell)=c_2\ell,
+\qquad \ell\ge s.
+$$
+
+Consequently, saturated chunks do not have the same total latency. A chunk of length $200$ still costs twice as much as a chunk of length $100$. What becomes constant is only the average latency per selected row:
+
+$$
+\boxed{
+\frac{T(\ell)}{\ell}=c_2,
+\qquad \ell\ge s.
+}
+$$
+
+This distinction rules out an interpretation in which extending a saturated chunk is free.
+
+### Exact shortfall decomposition
+
+The continuous model is
+
+$$
+T(\ell)=
+\begin{cases}
+a+c_1\ell,&\ell\le s,\\
+c_2\ell,&\ell>s,
+\end{cases}
+$$
+
+with
+
+$$
+a=(c_2-c_1)s.
+$$
+
+Let
+
+$$
+\delta=c_2-c_1>0.
+$$
+
+Then both branches can be written in a single expression:
+
+$$
+\boxed{
+T(\ell)=c_2\ell+\delta(s-\ell)_+,
+}
+$$
+
+where $(x)_+=\max(x,0)$. Summing over the maximal selected runs gives
+
+$$
+\begin{aligned}
+L_{\mathrm{2line}}(M)
+&=\sum_{C\in\mathcal C(M)}T(|C|)\\
+&=c_2\sum_{C\in\mathcal C(M)}|C|
++\delta\sum_{C\in\mathcal C(M)}(s-|C|)_+.
+\end{aligned}
+$$
+
+Because the maximal runs partition the selected rows,
+
+$$
+\sum_{C\in\mathcal C(M)}|C|=R(M).
+$$
+
+Therefore,
+
+$$
+\boxed{
+L_{\mathrm{2line}}(M)
+=c_2R(M)
++\delta\sum_{C\in\mathcal C(M)}(s-|C|)_+.
+}
+$$
+
+The model has exactly two structural costs:
+
+- every selected row incurs the common cost $c_2$; and
+- every run shorter than $s$ incurs an additional penalty proportional to its missing length.
+
+There is no additional chunk-opening penalty for a run that has already reached $s$. Equivalently, the apparent opening cost of a short run is exactly canceled as that run grows to the saturation length.
+
+### Consequences at a fixed row count
+
+If $R(M)=R$ is fixed, the term $c_2R$ is constant. Hence
+
+$$
+\boxed{
+\arg\min_{M:R(M)=R}L_{\mathrm{2line}}(M)
+=
+\arg\min_{M:R(M)=R}
+\sum_{C\in\mathcal C(M)}(s-|C|)_+.
+}
+$$
+
+This gives a complete characterization of the latency minimum.
+
+If $R<s$, every selected run is short. With $K$ runs, the total deficit is $Ks-R$, which is minimized at $K=1$. Thus all $R$ rows must form one contiguous run.
+
+If $R\ge s$, zero deficit is feasible. Every mask whose runs all have length at least $s$ has latency
+
+$$
+L_{\mathrm{2line}}(M)=c_2R
+$$
+
+and is therefore latency-optimal. For example, when $R=400$ and $s=135$, a single run of length $400$, two runs of lengths $200$ and $200$, and two runs of lengths $135$ and $265$ all have the same latency $400c_2$.
+
+If retained importance breaks ties among minimum-latency masks, the fixed-$R$ problem becomes
+
+$$
+\boxed{
+\max_M I(M)
+\quad\text{subject to}\quad
+R(M)=R,
+\quad |C|\ge s\ \text{for every }C\in\mathcal C(M),
+}
+$$
+
+whenever $R\ge s$. This is not solved by sorting independently scored chunks. Candidates overlap, and selecting low-importance gap rows may be beneficial when it joins two regions or allows a short run to reach saturation.
+
+### Importance-coverage formulation
+
+For a required retained importance $Q$, the relevant global problem is
+
+$$
+\boxed{
+M^*
+=
+\arg\min_{I(M)\ge Q}
+\left[
+c_2R(M)
++\delta\sum_{C\in\mathcal C(M)}(s-|C|)_+
+\right].
+}
+$$
+
+The optimizer must jointly decide whether to:
+
+- select only highly important rows and keep $R(M)$ small;
+- include a low-importance gap to merge two runs;
+- extend a short run toward $s$ to remove its deficit penalty; or
+- retain two separate saturated runs.
+
+Saturation therefore does not eliminate the combinatorial problem. It reduces it to a particularly transparent binary-chain problem balancing selected-row count against short-run deficit.
+
+### Capped-run dynamic program
+
+For clarity, first take $s$ to be an integer. At each position, store the current run length in
+
+$$
+h\in\{0,1,2,\ldots,s\},
+$$
+
+where $h=0$ means that the current position is unselected and $h=s$ represents any active run of length at least $s$. For a fixed multiplier $\lambda\ge0$, solve
+
+$$
+\boxed{
+\max_M\left\{\lambda I(M)-L_{\mathrm{2line}}(M)\right\}.
+}
+$$
+
+Appending a selected row has marginal latency
+
+$$
+\Delta T=
+\begin{cases}
+a+c_1,&\text{when a new run starts},\\
+c_1,&\text{when a run shorter than }s\text{ is extended},\\
+c_2,&\text{when a saturated run is extended}.
+\end{cases}
+$$
+
+For importance $v_i$ at position $i$, the corresponding score increment is $\lambda v_i-\Delta T$. Leaving the row unselected returns the active-run state to zero. Since each of the $s+1$ states has only a constant number of transitions, the direct capped-run DP requires
+
+$$
+\boxed{
+O(Ns)\text{ time and }O(s)\text{ rolling memory}
+}
+$$
+
+for one multiplier. When the fitted breakpoint is nonintegral, the boundary transition uses the exact increment $T(h+1)-T(h)$; the same capped-state construction applies. The special two-line algebra also admits the interval-based $O(N)$ implementation used in Experiment 13, but the capped-run form makes the binary-chain structure explicit.
+
+Every fixed-$\lambda$ solution is globally optimal for its scalarized objective. A finite $\lambda$ grid, however, recovers only supported points of the discrete importance--latency frontier. It may miss an unsupported minimum-latency mask satisfying a particular coverage threshold. An exact coverage certificate therefore requires either nondominated $(I,L)$ sets at the chain states or sufficient additional structural state, such as $(R,\text{shortfall})$.
+
+---
+
+## Saturation alone does not force a zero-intercept post-saturation latency model.
+
+### Constant effective throughput is an additional assumption
+
+Define effective throughput for a chunk of $r$ rows as
+
+$$
+B(r)=\frac{r}{T(r)}.
+$$
+
+If one assumes that throughput is exactly constant after $s$,
+
+$$
+B(r)=B_\infty,
+\qquad r\ge s,
+$$
+
+then
+
+$$
+\boxed{
+T(r)=\frac{r}{B_\infty}=c_2r.
+}
+$$
+
+Thus the zero-intercept tail follows from exact constant effective throughput, not from saturation by itself. The current two-line surrogate and the released evaluator's endpoint-proportional extrapolation adopt this structural assumption, although their fitted slopes need not be numerically identical.
+
+In hardware discussions, saturation more commonly means that the marginal transfer rate no longer increases. A natural anchored tail is then
+
+$$
+\boxed{
+T(r)=T(s)+c_\infty(r-s),
+\qquad r>s,
+}
+$$
+
+or equivalently
+
+$$
+T(r)=b_2+c_\infty r,
+\qquad
+b_2=T(s)-c_\infty s.
+$$
+
+Request setup, DMA preparation, software invocation, and other fixed costs generally make $b_2$ nonzero.
+
+### The continuity constraint selects one special tail
+
+The current surrogate
+
+$$
+T(r)=
+\begin{cases}
+a+c_1r,&r\le s,\\
+c_2r,&r>s
+\end{cases}
+$$
+
+imposes continuity through
+
+$$
+a=(c_2-c_1)s.
+$$
+
+This is equivalent to requiring
+
+$$
+T(s)=c_2s.
+$$
+
+It says that extending the post-saturation line back to the origin produces the same average cost observed at the breakpoint. This is a deliberate surrogate choice, not a necessary physical law.
+
+For the general anchored tail,
+
+$$
+\boxed{
+\frac{T(r)}{r}
+=c_\infty+
+\frac{T(s)-c_\infty s}{r}.
+}
+$$
+
+The sign of the intercept term determines the post-saturation behavior of average row cost:
+
+- if $T(s)>c_\infty s$, average row cost continues to decrease after $s$;
+- if $T(s)=c_\infty s$, average row cost is exactly flat after $s$; and
+- if $T(s)<c_\infty s$, average row cost increases after $s$.
+
+The present zero-intercept tail chooses the middle case. Therefore, the statement that every $r\ge s$ has the same value of $T(r)/r$ is correct only inside this surrogate.
+
+### Evidence from the released AGX profile
+
+For the $4864\times896$ matrix used in the realistic experiment, one FP16 row occupies $1.75$ KiB. The continuous two-line fit gives approximately
+
+$$
+c_2=0.00032532\text{ ms/row}.
+$$
+
+By contrast, fitting an anchored linear tail to the later measured entries gives approximately
+
+$$
+c_\infty=0.00029185\text{ ms/row}.
+$$
+
+Since the fitted marginal tail slope is smaller than the two-line average tail slope, the anchored model predicts that average row cost continues to decrease modestly beyond the nominal saturation point. This does not invalidate the constant-throughput evaluator; it shows that the evaluator is an extrapolation convention rather than a uniquely identified hardware law.
+
+### Reporting requirement
+
+The zero-intercept model can be retained as a useful **two-line constant-throughput surrogate**. Its results should nevertheless be accompanied by sensitivity evaluations under
+
+$$
+T(r)=T(s)+c_\infty(r-s)
+$$
+
+and under block-splitting extrapolation. This separates optimization quality under the chosen surrogate from robustness to plausible post-profile latency behavior.
+
+Finally, a model of the form
+
+$$
+T(r)=T(s),
+\qquad r>s,
+$$
+
+would make arbitrarily extending a run free. That is a degenerate total-latency saturation model, is not the model analyzed here, and is not an appropriate representation of flash I/O.
