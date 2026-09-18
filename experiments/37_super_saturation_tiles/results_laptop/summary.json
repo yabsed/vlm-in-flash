@@ -1,0 +1,30 @@
+{
+  "format": "experiment-37-super-saturation-tiles-v1",
+  "candidate_cases": 115668,
+  "cell_counts": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "length_factors": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "all_direct": true,
+  "all_deterministic": true,
+  "fallback_cases": 0,
+  "interpolated_best_length_factor_counts": {
+    "1": 8,
+    "3": 1
+  },
+  "super_s_wins": 1,
+  "quality_ceilings": 9,
+  "e2e_super_s_wins": 5,
+  "e2e_quality_ceilings": 7,
+  "e2e_cases": 2754,
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "flash": "WD_BLACK SN850X 1000GB"
+}

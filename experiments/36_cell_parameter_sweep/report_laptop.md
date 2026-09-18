@@ -73,5 +73,7 @@ Quality ceiling별 최적 Cell-C 횟수는 Cell-2: 4, Cell-1: 3, Cell-4: 2.
 
 ![Cell parameter sensitivity](results_laptop/cell_parameter_sensitivity.png)
 
+![Selector/non-selector breakdown](results_laptop/selector_nonselector_breakdown.png)
+
 ![End-to-end Cell frontiers](results_laptop/end_to_end_cell_frontiers.png)
 

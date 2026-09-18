@@ -621,6 +621,43 @@ def analyze(args: argparse.Namespace) -> None:
     fig.savefig(output / "cell_parameter_sensitivity.pdf")
     plt.close(fig)
 
+    fig, axes = plt.subplots(1, 3, figsize=(14.2, 4.8), sharey=True)
+    method_order = list(METHODS)
+    x = np.arange(len(method_order))
+    for panel, fraction in zip(axes, (0.50, 0.70, 0.90)):
+        group = (
+            fixed[np.isclose(fixed.budget_fraction, fraction)]
+            .set_index("method").loc[method_order]
+        )
+        colors = [METHOD_COLORS[method] for method in method_order]
+        panel.bar(
+            x, group.nonselector_ms, color=colors, alpha=0.48,
+            edgecolor=colors, linewidth=0.8,
+            label="Non-selector" if fraction == 0.50 else None,
+        )
+        panel.bar(
+            x, group.selector_ms, bottom=group.nonselector_ms,
+            color=colors, edgecolor="white", linewidth=0.5, hatch="///",
+            label="Selector" if fraction == 0.50 else None,
+        )
+        for index, total in enumerate(group.actual_total_ms):
+            panel.text(
+                index, total + 0.012, f"{total:.3f}", ha="center",
+                va="bottom", rotation=90, fontsize=6.5,
+            )
+        panel.set_title(f"R={100*fraction:.0f}%")
+        panel.set_xticks(x, [METHOD_LABELS[method] for method in method_order],
+                         rotation=45, ha="right")
+        panel.set_xlabel("Method")
+        panel.grid(axis="y", alpha=0.24)
+    axes[0].set_ylabel("Measured projection-path latency (ms)")
+    axes[0].legend(fontsize=8, loc="upper left")
+    fig.suptitle("Selector and non-selector latency by Cell-C")
+    fig.tight_layout()
+    fig.savefig(output / "selector_nonselector_breakdown.png", dpi=200)
+    fig.savefig(output / "selector_nonselector_breakdown.pdf")
+    plt.close(fig)
+
     e2e_path = output / "end_to_end.csv"
     e2e_summary = pd.DataFrame()
     e2e_comparison = pd.DataFrame()
@@ -856,6 +893,7 @@ def write_report(args, fixed, comparison, interpolated, interpolated_best,
         "- 두 error 그래프 모두 작은 error가 위에 오도록 축을 뒤집었다.", "",
         "![Cell parameter frontiers](results_laptop/cell_parameter_frontiers.png)", "",
         "![Cell parameter sensitivity](results_laptop/cell_parameter_sensitivity.png)", "",
+        "![Selector/non-selector breakdown](results_laptop/selector_nonselector_breakdown.png)", "",
         "![End-to-end Cell frontiers](results_laptop/end_to_end_cell_frontiers.png)", "",
     ])
     path.write_text("\n".join(lines) + "\n")
