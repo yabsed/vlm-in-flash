@@ -67,10 +67,10 @@ reading, paper notes, and preliminary derivations live separately in
     incumbent under the same 2 ms p95 contract.
 21. `21_best_way`: working derivation of predicted-lambda TD-2L(8) followed by
     coverage-preserving endpoint trim.
-22. `22_predicted_lambda_trim`: implements that combined method and compares
-    it with the paper's fixed-row-budget selector at paired retained importance
-    across all 16 Table-2 matrix shapes, with separate host and CUDA-round-trip
-    timing tracks.
+22. `22_predicted_lambda_trim`: runs a real causal LM through the checked-out
+    `vlm-flash` attachment path, captures per-projection activation importance,
+    and replays those traces through the paper selector and predicted-lambda +
+    endpoint-trim variants with separate host and CUDA-round-trip timing tracks.
 23. `23_idea_fixed_r`: derives exact and row-price approximations for fixed-row
     importance-per-latency optimization under the two-line cost.
 24. `24_fixed_r_ratio`: implements the row-price fixed-R approximation, forces

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Experiment 22: Paper versus predicted-lambda TD-2L(8) plus endpoint trim."""
+"""Experiment 22: compare selectors on importance captured from a real LM."""
 
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import heapq
 import importlib.util
 import json
@@ -12,6 +13,7 @@ import math
 import os
 import platform
 from pathlib import Path
+import sys
 import time
 import traceback
 import warnings
@@ -26,6 +28,8 @@ import torch
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[1]
+VLMFLASH_ROOT = PROJECT_ROOT / "preliminary_research" / "vlm-flash"
+VLMFLASH_SRC = VLMFLASH_ROOT / "src"
 EXPERIMENT_20 = (
     PROJECT_ROOT / "experiments" / "20_remaining_sub2ms_candidates"
     / "run_experiment.py"
@@ -44,7 +48,6 @@ def load_experiment_20():
 EXP20 = load_experiment_20()
 EXP18 = EXP20.EXP18
 EXP13 = EXP20.EXP13
-EXP2 = EXP20.EXP2
 BASE = EXP20.BASE
 
 
@@ -88,16 +91,60 @@ METHOD_COLORS = {
     "predict_correct_c8_trim256": "#064E3B",
 }
 
+DEFAULT_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+DEFAULT_PROMPTS = (
+    "Explain why contiguous flash reads can be faster than scattered reads.",
+    "Summarize the trade-off between neural-network sparsity and accuracy.",
+    "Write a short Python function that computes a moving average.",
+)
+TRACE_FORMAT = "experiment-22-vlm-activation-traces-v1"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--shapes", nargs="+", default=[item["shape"] for item in SHAPES],
-        help="subset of Table-2 shapes, written as NxD",
+        "--shapes", nargs="+", default=None,
+        help="optional subset of captured Table-2 shapes, written as NxD",
     )
-    parser.add_argument("--trials", type=int, default=3)
     parser.add_argument("--repetitions", type=int, default=30)
-    parser.add_argument("--cv", type=float, default=3.30)
+    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--prompt", action="append", default=None,
+        help="text prompt to trace; repeat the flag for multiple prompts",
+    )
+    parser.add_argument(
+        "--prompt-file", type=Path,
+        help="UTF-8 text file containing one non-empty prompt per line",
+    )
+    parser.add_argument("--max-input-tokens", type=int, default=256)
+    parser.add_argument(
+        "--device", choices=("auto", "cpu", "cuda"), default="auto",
+        help="device used only for the untimed activation-trace forward",
+    )
+    parser.add_argument(
+        "--dtype", choices=("auto", "float16", "bfloat16", "float32"),
+        default="auto", help="model dtype used for activation tracing",
+    )
+    parser.add_argument(
+        "--local-files-only", action="store_true",
+        help="do not download the model or tokenizer",
+    )
+    parser.add_argument(
+        "--trace-input", type=Path,
+        help="reuse a previously captured activation_traces.npz instead of loading a model",
+    )
+    parser.add_argument(
+        "--trace-output", type=Path,
+        help="where to save newly captured traces (default: OUTPUT_DIR/activation_traces.npz)",
+    )
+    parser.add_argument(
+        "--max-traces-per-shape", type=int, default=32,
+        help="deterministic cap after real activation capture; 0 keeps every trace",
+    )
+    parser.add_argument(
+        "--collect-traces-only", action="store_true",
+        help="capture/save real model traces and stop before selector benchmarking",
+    )
     parser.add_argument(
         "--row-budget-fractions", type=float, nargs="+", default=[0.25, 0.50, 0.75]
     )
@@ -108,38 +155,322 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--saturation-kib", type=float, default=236.0)
     parser.add_argument("--deadline-ms", type=float, default=2.0)
     parser.add_argument("--paper-impl", choices=("auto", "native", "torch"), default="native")
-    parser.add_argument("--seed", type=int, default=20262201)
     parser.add_argument("--output-dir", type=Path, default=HERE / "results")
     parser.add_argument("--skip-self-check", action="store_true")
     parser.add_argument("--analyze-only", action="store_true")
     return parser.parse_args()
 
 
-def validate_args(args: argparse.Namespace) -> tuple[list[dict], list[str]]:
+def validate_args(args: argparse.Namespace) -> list[str]:
     by_name = {item["shape"]: item for item in SHAPES}
-    unknown = sorted(set(args.shapes) - set(by_name))
+    unknown = sorted(set(args.shapes or ()) - set(by_name))
     if unknown:
         raise SystemExit(f"unknown --shapes: {unknown}; available: {sorted(by_name)}")
-    shapes = [dict(by_name[name]) for name in args.shapes]
-    if len(shapes) != len({item["shape"] for item in shapes}):
+    if args.shapes and len(args.shapes) != len(set(args.shapes)):
         raise SystemExit("--shapes must not contain duplicates")
-    if args.trials < 1 or args.repetitions < 1:
-        raise SystemExit("--trials and --repetitions must be positive")
+    if args.repetitions < 1:
+        raise SystemExit("--repetitions must be positive")
+    if args.max_input_tokens < 1:
+        raise SystemExit("--max-input-tokens must be positive")
+    if args.max_traces_per_shape < 0:
+        raise SystemExit("--max-traces-per-shape must be nonnegative")
+    if args.prompt and args.prompt_file:
+        raise SystemExit("use either --prompt or --prompt-file, not both")
+    if args.trace_input and (args.prompt or args.prompt_file):
+        raise SystemExit("--trace-input cannot be combined with prompt options")
+    if args.collect_traces_only and args.analyze_only:
+        raise SystemExit("--collect-traces-only and --analyze-only are mutually exclusive")
     if not args.row_budget_fractions or any(
         not 0.0 < value <= 1.0 for value in args.row_budget_fractions
     ):
         raise SystemExit("--row-budget-fractions must lie in (0, 1]")
-    if args.cv <= 0 or any(args.cv >= math.sqrt(item["n"] - 1) for item in shapes):
-        raise SystemExit("--cv must lie in (0, sqrt(N-1)) for every shape")
     if args.saturation_kib <= 0 or args.deadline_ms <= 0:
         raise SystemExit("saturation and deadline must be positive")
+    if args.device == "cuda" and not torch.cuda.is_available():
+        raise SystemExit("--device cuda was requested but CUDA is unavailable")
     tracks = list(dict.fromkeys(args.tracks))
     if "cuda" in tracks and not torch.cuda.is_available():
         warnings.warn("CUDA is unavailable; omitting the cuda-resident round-trip track")
         tracks.remove("cuda")
     if not tracks:
         raise SystemExit("no runnable timing track remains")
-    return shapes, tracks
+    return tracks
+
+
+def load_vlmflash():
+    """Import the checked-out implementation rather than an unrelated install."""
+    if not (VLMFLASH_SRC / "vlmflash" / "__init__.py").is_file():
+        raise SystemExit(
+            f"vlm-flash submodule is missing at {VLMFLASH_ROOT}; "
+            "run `git submodule update --init --recursive`"
+        )
+    source = str(VLMFLASH_SRC)
+    if source not in sys.path:
+        sys.path.insert(0, source)
+    import vlmflash
+    return vlmflash
+
+
+def read_prompts(args: argparse.Namespace) -> list[str]:
+    if args.prompt_file:
+        prompts = [
+            line.strip() for line in args.prompt_file.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    elif args.prompt:
+        prompts = [prompt.strip() for prompt in args.prompt if prompt.strip()]
+    else:
+        prompts = list(DEFAULT_PROMPTS)
+    if not prompts:
+        raise SystemExit("activation tracing needs at least one non-empty prompt")
+    return prompts
+
+
+def resolve_trace_device(args: argparse.Namespace) -> str:
+    if args.device == "auto":
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    return args.device
+
+
+def load_language_model(args: argparse.Namespace, device: str):
+    """Load one real causal LM without device-map hooks that attach() cannot wrap."""
+    try:
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    except ImportError as exception:
+        raise SystemExit(
+            "transformers is required to capture real activation traces; "
+            "install preliminary_research/vlm-flash first"
+        ) from exception
+
+    dtype = {
+        "auto": "auto",
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+        "float32": torch.float32,
+    }[args.dtype]
+    common = {"local_files_only": bool(args.local_files_only)}
+    tokenizer = AutoTokenizer.from_pretrained(args.model, **common)
+    try:
+        model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype, **common)
+    except TypeError:
+        # Compatibility with transformers releases predating the dtype rename.
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model, torch_dtype=dtype, **common
+        )
+    return model.to(device).eval(), tokenizer
+
+
+class ActivationCapturePolicy:
+    """VLMFlash policy that records real importance and keeps the forward dense."""
+
+    def __init__(self, module: str, n: int, d: int, sink: list[dict],
+                 state: dict, selection_type):
+        self.module = module
+        self.n = int(n)
+        self.d = int(d)
+        self.sink = sink
+        self.state = state
+        self.selection_type = selection_type
+
+    def __call__(self, importance: torch.Tensor, _num_load_rows: int,
+                 _row_size_kib: float):
+        call_index = self.state["call_counts"].get(self.module, 0)
+        self.state["call_counts"][self.module] = call_index + 1
+        values = importance.detach().to("cpu", torch.float32).numpy().copy()
+        self.sink.append({
+            "trace_id": len(self.sink),
+            "input_index": int(self.state["input_index"]),
+            "prompt_sha256": self.state["prompt_sha256"],
+            "num_tokens": int(self.state["num_tokens"]),
+            "module": self.module,
+            "call_index": int(call_index),
+            "shape": f"{self.n}x{self.d}",
+            "n": self.n,
+            "d": self.d,
+            "values": values,
+        })
+        # A full mask makes the attached projection exactly dense. Therefore
+        # every later layer is traced from the unperturbed model, not from one
+        # of the competing selectors.
+        mask = torch.ones_like(importance, dtype=torch.bool)
+        return self.selection_type(mask, float(values.astype(np.float64).sum()), 0.0)
+
+
+def tokenize_prompt(tokenizer, prompt: str, max_input_tokens: int, device: str) -> dict:
+    text = prompt
+    if getattr(tokenizer, "chat_template", None):
+        text = tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+    encoded = tokenizer(
+        text, return_tensors="pt", truncation=True, max_length=max_input_tokens
+    )
+    return {name: tensor.to(device) for name, tensor in encoded.items()}
+
+
+def capture_activation_traces(args: argparse.Namespace) -> tuple[list[dict], dict]:
+    """Run a real LM and capture VLMFlash's per-projection importance vectors."""
+    vlmflash = load_vlmflash()
+    prompts = read_prompts(args)
+    device = resolve_trace_device(args)
+    print(f"loading {args.model} on {device} for real activation tracing", flush=True)
+    model, tokenizer = load_language_model(args, device)
+    traces: list[dict] = []
+    state = {
+        "input_index": -1, "prompt_sha256": "", "num_tokens": 0,
+        "call_counts": {},
+    }
+
+    # attach() initially needs a policy. It is replaced by a named capture
+    # policy on every wrapped module before the first forward.
+    placeholder = ActivationCapturePolicy(
+        "<unbound>", 1, 1, traces, state, vlmflash.Selection
+    )
+    handle = vlmflash.attach(
+        model, policy=placeholder, include=vlmflash.DEFAULT_INCLUDE, sparsity=0.5
+    )
+    for name in handle.names:
+        module = model.get_submodule(name)
+        module.nc_policy = ActivationCapturePolicy(
+            name, module.in_features, module.out_features,
+            traces, state, vlmflash.Selection,
+        )
+
+    try:
+        with torch.inference_mode():
+            for input_index, prompt in enumerate(prompts):
+                inputs = tokenize_prompt(tokenizer, prompt, args.max_input_tokens, device)
+                state.update({
+                    "input_index": input_index,
+                    "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+                    "num_tokens": int(inputs["input_ids"].numel()),
+                    "call_counts": {},
+                })
+                with vlmflash.enabled():
+                    model(**inputs, use_cache=False)
+                if device == "cuda":
+                    torch.cuda.synchronize()
+                print(
+                    f"traced prompt {input_index + 1}/{len(prompts)}: "
+                    f"{state['num_tokens']} tokens, {len(traces)} total projection calls",
+                    flush=True,
+                )
+    finally:
+        handle.detach()
+
+    if not traces:
+        raise RuntimeError("the real model forward produced no VLMFlash projection traces")
+    dtype = str(next(model.parameters()).dtype).removeprefix("torch.")
+    metadata = {
+        "format": TRACE_FORMAT,
+        "model": args.model,
+        "model_revision": getattr(getattr(model, "config", None), "_commit_hash", None),
+        "device": device,
+        "model_dtype": dtype,
+        "prompt_count": len(prompts),
+        "prompt_sha256": [hashlib.sha256(p.encode("utf-8")).hexdigest() for p in prompts],
+        "max_input_tokens": int(args.max_input_tokens),
+        "projection_include": vlmflash.DEFAULT_INCLUDE,
+        "importance": "mean(abs(projection_input), over batch and token axes)",
+        "forward_mode": "dense via an all-true VLMFlash selection mask",
+    }
+    return traces, metadata
+
+
+def save_activation_traces(path: Path, traces: list[dict], metadata: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    entries = []
+    arrays = {}
+    for index, trace in enumerate(traces):
+        key = f"values_{index:06d}"
+        entry = {name: value for name, value in trace.items() if name != "values"}
+        entry["array"] = key
+        entries.append(entry)
+        arrays[key] = np.asarray(trace["values"], dtype=np.float32)
+    manifest = {**metadata, "trace_count": len(entries), "traces": entries}
+    np.savez_compressed(
+        path,
+        manifest_json=np.asarray(json.dumps(manifest, sort_keys=True)),
+        **arrays,
+    )
+
+
+def load_activation_traces(path: Path) -> tuple[list[dict], dict]:
+    if not path.is_file():
+        raise SystemExit(f"activation trace file does not exist: {path}")
+    with np.load(path, allow_pickle=False) as archive:
+        manifest = json.loads(str(archive["manifest_json"].item()))
+        if manifest.get("format") != TRACE_FORMAT:
+            raise SystemExit(
+                f"unsupported trace format in {path}: {manifest.get('format')!r}"
+            )
+        traces = []
+        for entry in manifest["traces"]:
+            trace = {name: value for name, value in entry.items() if name != "array"}
+            trace["values"] = np.asarray(archive[entry["array"]], dtype=np.float32).copy()
+            traces.append(trace)
+    if int(manifest.get("trace_count", -1)) != len(traces):
+        raise SystemExit(f"trace count mismatch in {path}")
+    metadata = {name: value for name, value in manifest.items() if name != "traces"}
+    return traces, metadata
+
+
+def select_activation_traces(traces: list[dict], requested_shapes: list[str] | None,
+                             max_per_shape: int) -> tuple[list[dict], list[str]]:
+    required = {
+        "trace_id", "input_index", "prompt_sha256", "num_tokens", "module",
+        "call_index", "shape", "n", "d", "values",
+    }
+    for index, trace in enumerate(traces):
+        missing = sorted(required - set(trace))
+        if missing:
+            raise SystemExit(f"trace {index} is missing fields: {missing}")
+        if trace["shape"] != f"{int(trace['n'])}x{int(trace['d'])}":
+            raise SystemExit(f"trace {trace['trace_id']} has inconsistent shape metadata")
+    trace_ids = [int(trace["trace_id"]) for trace in traces]
+    if len(trace_ids) != len(set(trace_ids)):
+        raise SystemExit("activation trace ids must be unique")
+
+    table_shapes = {item["shape"] for item in SHAPES}
+    captured_shapes = {trace["shape"] for trace in traces}
+    wanted = set(requested_shapes) if requested_shapes else captured_shapes & table_shapes
+    unavailable = sorted(wanted - captured_shapes)
+    if unavailable:
+        raise SystemExit(
+            f"requested shapes were not produced by the model: {unavailable}; "
+            f"captured: {sorted(captured_shapes)}"
+        )
+    unsupported = sorted(wanted - table_shapes)
+    if unsupported:
+        raise SystemExit(
+            f"shapes lack the paper's Table-2 chunk parameters: {unsupported}"
+        )
+    skipped_unsupported = sorted(captured_shapes - table_shapes)
+
+    selected = []
+    for shape in sorted(wanted):
+        candidates = [trace for trace in traces if trace["shape"] == shape]
+        if max_per_shape and len(candidates) > max_per_shape:
+            indices = np.linspace(0, len(candidates) - 1, max_per_shape, dtype=int)
+            candidates = [candidates[index] for index in indices]
+        selected.extend(candidates)
+    selected.sort(key=lambda trace: int(trace["trace_id"]))
+    if not selected:
+        raise SystemExit(
+            "the model produced no supported Table-2 projection shape; "
+            f"captured: {sorted(captured_shapes)}"
+        )
+    return selected, skipped_unsupported
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def write_csv(path: Path, rows: list[dict]) -> None:
@@ -384,14 +715,16 @@ def self_check(lookup_table, saturation_kib: float) -> None:
             raise RuntimeError("endpoint trim invariant self-check failed")
 
 
-def collect(args: argparse.Namespace, shapes: list[dict], tracks: list[str],
+def collect(args: argparse.Namespace, traces: list[dict], tracks: list[str],
             lookup_table) -> tuple[list[dict], list[dict], list[dict]]:
     rows: list[dict] = []
     timing_rows: list[dict] = []
     model_rows: list[dict] = []
-    rng = np.random.default_rng(args.seed)
-
-    for shape_index, shape in enumerate(shapes):
+    by_name = {item["shape"]: dict(item) for item in SHAPES}
+    shape_names = list(dict.fromkeys(trace["shape"] for trace in traces))
+    shape_context = {}
+    for shape_index, shape_name in enumerate(shape_names):
+        shape = by_name[shape_name]
         n = int(shape["n"])
         row_kib = row_size_kib(shape)
         params = make_params(shape, args.saturation_kib)
@@ -399,107 +732,127 @@ def collect(args: argparse.Namespace, shapes: list[dict], tracks: list[str],
             lookup_table, row_kib, args.saturation_kib
         )
         model_rows.append({
-            **shape, "row_size_kib": row_kib, **model,
+            **shape, "shape_index": shape_index, "row_size_kib": row_kib,
+            "activation_trace_count": sum(t["shape"] == shape_name for t in traces),
+            **model,
         })
-        hotness = np.linspace(1.0, -1.0, n)
-        hotness = (hotness - hotness.mean()) / hotness.std()
+        shape_context[shape_name] = (shape_index, shape, row_kib, params, model)
 
-        for trial in range(args.trials):
-            multiset = EXP2.exact_cv_lognormal(rng, n, args.cv)
-            variants = EXP2.spatial_variants(multiset, rng, hotness, 0.95, 0.75)
-            for spatial_mode, raw_values in variants.items():
-                # Both methods see precisely the same float32-representable scores.
-                values32 = np.asarray(raw_values, dtype=np.float32)
-                values32 /= np.float32(values32.astype(np.float64).sum())
-                values = values32.astype(np.float64)
-                values_cuda = (
-                    torch.from_numpy(values32).to("cuda") if "cuda" in tracks else None
+    for trace_index, trace in enumerate(traces):
+        shape_index, shape, row_kib, params, model = shape_context[trace["shape"]]
+        n = int(shape["n"])
+        raw_values = np.asarray(trace["values"], dtype=np.float32)
+        if raw_values.shape != (n,):
+            raise RuntimeError(
+                f"trace {trace['trace_id']} for {trace['module']} has shape "
+                f"{raw_values.shape}, expected {(n,)}"
+            )
+        total = float(raw_values.astype(np.float64).sum())
+        if not np.isfinite(raw_values).all() or np.any(raw_values < 0.0) or total <= 0.0:
+            raise RuntimeError(f"trace {trace['trace_id']} has invalid importance values")
+        # Both methods see precisely the same float32-representable, normalized
+        # scores captured by VLMFlash during the dense model forward.
+        values32 = raw_values.copy()
+        values32 /= np.float32(total)
+        values = values32.astype(np.float64)
+        activation_cv = float(
+            raw_values.astype(np.float64).std() / raw_values.astype(np.float64).mean()
+        )
+        values_cuda = (
+            torch.from_numpy(values32).to("cuda") if "cuda" in tracks else None
+        )
+
+        for budget_index, budget_fraction in enumerate(args.row_budget_fractions):
+            row_budget = max(1, min(n, int(round(n * budget_fraction))))
+            for track in tracks:
+                uses_cuda_paper = bool(torch.cuda.is_available())
+                pfun = paper_function(
+                    track, values, values_cuda, row_budget, row_kib,
+                    lookup_table, params, args.paper_impl,
                 )
-                for budget_index, budget_fraction in enumerate(args.row_budget_fractions):
-                    row_budget = max(1, min(n, int(round(n * budget_fraction))))
-                    for track in tracks:
-                        uses_cuda_paper = bool(torch.cuda.is_available())
-                        pfun = paper_function(
-                            track, values, values_cuda, row_budget, row_kib,
-                            lookup_table, params, args.paper_impl,
-                        )
-                        # Warm every case; compilation and first-touch effects are excluded.
-                        pfun()
-                        paper_mask, paper_meta, paper_timings = benchmark(
-                            pfun, args.repetitions, uses_cuda_paper
-                        )
-                        paper_metrics = mask_metrics(
-                            paper_mask, values, model, lookup_table, row_kib
-                        )
-                        target = float(paper_metrics["importance"])
-
-                        case_base = {
-                            "shape": shape["shape"], "shape_index": shape_index,
-                            "n": n, "d": int(shape["d"]), "row_size_kib": row_kib,
-                            "paper_start_kib": float(shape["start_kib"]),
-                            "paper_jump_kib": float(shape["jump_kib"]),
-                            "trial": trial, "spatial_mode": spatial_mode,
-                            "budget_index": budget_index,
-                            "row_budget_fraction": float(budget_fraction),
-                            "row_budget": row_budget, "target_importance": target,
-                            "track": track,
-                        }
-
-                        def append_result(method: str, mask: np.ndarray, metadata: dict,
-                                          timings: list[float]) -> None:
-                            metrics = mask_metrics(mask, values, model, lookup_table, row_kib)
-                            coverage_met = metrics["importance"] >= target - 1e-11
-                            runtime_p95 = float(np.quantile(timings, 0.95))
-                            base = {
-                                **case_base, "method": method,
-                                "method_label": METHOD_LABELS[method],
-                            }
-                            rows.append({
-                                **base, **metrics,
-                                "importance_delta_vs_target": metrics["importance"] - target,
-                                "rows_delta_vs_paper": metrics["rows"] - paper_metrics["rows"],
-                                "coverage_met": coverage_met,
-                                "valid": coverage_met and not bool(metadata.get("error", "")),
-                                "runtime_median_ms": float(np.median(timings)),
-                                "runtime_p95_ms": runtime_p95,
-                                "deadline_met": runtime_p95 <= args.deadline_ms,
-                                "valid_and_deadline_met": (
-                                    coverage_met and not bool(metadata.get("error", ""))
-                                    and runtime_p95 <= args.deadline_ms
-                                ),
-                                "deterministic": metadata.get("deterministic", False),
-                                "scalarized_calls": metadata.get("scalarized_calls", 0),
-                                "bracket_converged": metadata.get("bracket_converged", False),
-                                "trim_deletions": metadata.get("trim_deletions", 0),
-                                "trim_two_line_saving_ms": metadata.get(
-                                    "trim_two_line_saving_ms", 0.0
-                                ),
-                                "fallback_used": metadata.get("fallback_used", False),
-                                "fallback_added_rows": metadata.get("fallback_added_rows", 0),
-                                "error": metadata.get("error", ""),
-                            })
-                            for repetition, elapsed in enumerate(timings):
-                                timing_rows.append({
-                                    **base, "repetition": repetition,
-                                    "runtime_ms": elapsed,
-                                })
-
-                        append_result("paper", paper_mask, paper_meta, paper_timings)
-                        for method in METHODS[1:]:
-                            function = proposed_function(
-                                method, track, values, values_cuda, target, model
-                            )
-                            function()
-                            mask, metadata, timings = benchmark(
-                                function, args.repetitions, track == "cuda"
-                            )
-                            append_result(method, mask, metadata, timings)
-
-                print(
-                    f"shape={shape['shape']} ({shape_index + 1}/{len(shapes)}) "
-                    f"trial={trial + 1}/{args.trials} mode={spatial_mode}",
-                    flush=True,
+                # Warm every case; compilation and first-touch effects are excluded.
+                pfun()
+                paper_mask, paper_meta, paper_timings = benchmark(
+                    pfun, args.repetitions, uses_cuda_paper
                 )
+                paper_metrics = mask_metrics(
+                    paper_mask, values, model, lookup_table, row_kib
+                )
+                target = float(paper_metrics["importance"])
+
+                case_base = {
+                    "trace_id": int(trace["trace_id"]),
+                    "input_index": int(trace["input_index"]),
+                    "prompt_sha256": trace["prompt_sha256"],
+                    "num_tokens": int(trace["num_tokens"]),
+                    "module": trace["module"],
+                    "module_call_index": int(trace["call_index"]),
+                    "activation_cv": activation_cv,
+                    "shape": shape["shape"], "shape_index": shape_index,
+                    "n": n, "d": int(shape["d"]), "row_size_kib": row_kib,
+                    "paper_start_kib": float(shape["start_kib"]),
+                    "paper_jump_kib": float(shape["jump_kib"]),
+                    "budget_index": budget_index,
+                    "row_budget_fraction": float(budget_fraction),
+                    "row_budget": row_budget, "target_importance": target,
+                    "track": track,
+                }
+
+                def append_result(method: str, mask: np.ndarray, metadata: dict,
+                                  timings: list[float]) -> None:
+                    metrics = mask_metrics(mask, values, model, lookup_table, row_kib)
+                    coverage_met = metrics["importance"] >= target - 1e-11
+                    runtime_p95 = float(np.quantile(timings, 0.95))
+                    base = {
+                        **case_base, "method": method,
+                        "method_label": METHOD_LABELS[method],
+                    }
+                    rows.append({
+                        **base, **metrics,
+                        "importance_delta_vs_target": metrics["importance"] - target,
+                        "rows_delta_vs_paper": metrics["rows"] - paper_metrics["rows"],
+                        "coverage_met": coverage_met,
+                        "valid": coverage_met and not bool(metadata.get("error", "")),
+                        "runtime_median_ms": float(np.median(timings)),
+                        "runtime_p95_ms": runtime_p95,
+                        "deadline_met": runtime_p95 <= args.deadline_ms,
+                        "valid_and_deadline_met": (
+                            coverage_met and not bool(metadata.get("error", ""))
+                            and runtime_p95 <= args.deadline_ms
+                        ),
+                        "deterministic": metadata.get("deterministic", False),
+                        "scalarized_calls": metadata.get("scalarized_calls", 0),
+                        "bracket_converged": metadata.get("bracket_converged", False),
+                        "trim_deletions": metadata.get("trim_deletions", 0),
+                        "trim_two_line_saving_ms": metadata.get(
+                            "trim_two_line_saving_ms", 0.0
+                        ),
+                        "fallback_used": metadata.get("fallback_used", False),
+                        "fallback_added_rows": metadata.get("fallback_added_rows", 0),
+                        "error": metadata.get("error", ""),
+                    })
+                    for repetition, elapsed in enumerate(timings):
+                        timing_rows.append({
+                            **base, "repetition": repetition,
+                            "runtime_ms": elapsed,
+                        })
+
+                append_result("paper", paper_mask, paper_meta, paper_timings)
+                for method in METHODS[1:]:
+                    function = proposed_function(
+                        method, track, values, values_cuda, target, model
+                    )
+                    function()
+                    mask, metadata, timings = benchmark(
+                        function, args.repetitions, track == "cuda"
+                    )
+                    append_result(method, mask, metadata, timings)
+
+        print(
+            f"trace={trace_index + 1}/{len(traces)} shape={shape['shape']} "
+            f"module={trace['module']} prompt={int(trace['input_index']) + 1}",
+            flush=True,
+        )
     return rows, timing_rows, model_rows
 
 
@@ -512,7 +865,7 @@ def add_paired_metrics(frame: pd.DataFrame) -> pd.DataFrame:
     ]
     frame = frame.drop(columns=[column for column in derived if column in frame])
     keys = [
-        "shape", "trial", "spatial_mode", "budget_index", "track",
+        "trace_id", "budget_index", "track",
     ]
     paper = frame[frame.method == "paper"][keys + ["lookup_ms", "two_line_ms"]].rename(
         columns={"lookup_ms": "paper_lookup_ms", "two_line_ms": "paper_two_line_ms"}
@@ -645,7 +998,7 @@ def summarize(frame: pd.DataFrame, args: argparse.Namespace) -> tuple[pd.DataFra
         })
 
     summary = {
-        "format": "experiment-22-predicted-lambda-trim-v1",
+        "format": "experiment-22-predicted-lambda-trim-v2-real-activations",
         "comparison": (
             "Paper fixed-R mask versus proposed mask at paired target "
             "Q = importance(Paper mask)"
@@ -660,7 +1013,10 @@ def summarize(frame: pd.DataFrame, args: argparse.Namespace) -> tuple[pd.DataFra
                 "warm CUDA-resident float32 importance to CUDA bool mask; CPU proposal "
                 "includes D2H, float64 conversion, selection, trim, H2D, and synchronization"
             ),
-            "excluded": "importance production, actual storage I/O, and model compute",
+            "excluded": (
+                "the real LM forward used to produce activation importance, "
+                "actual storage I/O, and model compute"
+            ),
         },
         "environment": {
             "platform": platform.platform(), "python": platform.python_version(),
@@ -672,8 +1028,12 @@ def summarize(frame: pd.DataFrame, args: argparse.Namespace) -> tuple[pd.DataFra
         "configuration": {
             "shape_count": int(frame["shape"].nunique()),
             "shapes": list(dict.fromkeys(frame["shape"])),
-            "trials": int(args.trials), "repetitions": int(args.repetitions),
-            "cv": float(args.cv),
+            "activation_trace_count": int(frame["trace_id"].nunique()),
+            "input_count": int(frame["input_index"].nunique()),
+            "model": args.model,
+            "trace_input": str(args.trace_input) if args.trace_input else None,
+            "max_traces_per_shape": int(args.max_traces_per_shape),
+            "repetitions": int(args.repetitions),
             "row_budget_fractions": list(args.row_budget_fractions),
             "tracks": list(dict.fromkeys(frame["track"])),
             "profile": args.profile, "saturation_kib": float(args.saturation_kib),
@@ -778,6 +1138,12 @@ def fmt_pct(value: float, digits: int = 2) -> str:
 
 def write_report(summary: pd.DataFrame, shape_summary: pd.DataFrame,
                  args: argparse.Namespace) -> None:
+    metadata_path = args.output_dir / "metadata.json"
+    run_metadata = json.loads(metadata_path.read_text()) if metadata_path.is_file() else {}
+    trace_metadata = run_metadata.get("activation_trace", {})
+    traced_model = trace_metadata.get("model", args.model)
+    trace_count = int(run_metadata.get("selected_trace_count", 0))
+    input_count = int(trace_metadata.get("prompt_count", 0))
     lines = [
         "# Experiment 22 보고서: Paper vs Predicted-lambda TD-2L(8) + Endpoint Trim",
         "",
@@ -785,9 +1151,12 @@ def write_report(summary: pd.DataFrame, shape_summary: pd.DataFrame,
         "Paper가 달성한 importance를 `Q = I(M_paper)`로 두고 proposed method가 최소한 같은 "
         "importance를 유지하도록 했다. 따라서 아래 lookup 비교는 importance-matched 비교다.",
         "",
-        "논문 Table 2에는 총 16개 matrix shape가 있으며 모두 포함했다. importance는 실제 "
-        f"activation trace가 아니라 CV `{args.cv:g}`인 synthetic lognormal이고, lookup latency는 "
-        f"노트북 NVMe 실측값이 아니라 `{args.profile}` 공개 profile의 예측값이다.",
+        f"importance 입력은 `{traced_model}`의 dense forward에서 VLMFlash와 같은 정의인 "
+        "`mean(abs(projection input))`로 직접 수집했다. "
+        f"{input_count}개 실제 prompt에서 수집한 projection call 중 {trace_count}개 trace, "
+        f"{shape_summary['shape'].nunique()}개 Table-2 shape를 평가했다. 모델 forward는 경쟁 "
+        "selector가 뒤 레이어 activation을 오염시키지 않도록 all-true mask로 실행했다. "
+        f"lookup latency는 실제 NVMe 측정이 아니라 `{args.profile}` profile의 예측값이다.",
         "",
         "## 전체 결과",
         "",
@@ -889,22 +1258,35 @@ def write_report(summary: pd.DataFrame, shape_summary: pd.DataFrame,
             )
         lines.append("")
 
+    default_output = (HERE / "results").resolve()
+    report_path = (
+        HERE / "report.md" if args.output_dir.resolve() == default_output
+        else args.output_dir / "report.md"
+    )
+    plot_prefix = "results/" if report_path.parent == HERE else ""
     lines.extend([
         "## 측정 범위와 한계", "",
         "- `host`: host float32 importance에서 CPU bool mask까지 측정했다. CUDA가 있으면 Paper native 구현의 GPU sort도 포함된다.",
         "- `cuda`: 미리 만들어 둔 CUDA float32 importance에서 시작해 CPU proposal의 D2H, float64 변환, 8회 이하 DP, mask 복원, trim, H2D 및 synchronization을 모두 포함했다.",
-        "- 최초 JIT/native compilation, importance 생성, 실제 NVMe I/O, model compute는 제외했다.",
+        "- importance는 실제 모델 activation이지만, trace를 만드는 dense LM forward는 selector timing에서 제외했다. 따라서 이 수치는 end-to-end token latency가 아니라 online selector latency다.",
+        "- 현재 결과는 Qwen2.5-0.5B와 짧은 text prompt 3개에 한정된다. 여러 모델, 실제 VLM frame-append workload, 대표 데이터셋으로의 일반화는 아직 검증하지 않았다.",
+        "- 실제 NVMe I/O와 sparse model accuracy/perplexity는 이 실험의 측정 범위가 아니다.",
         "- lookup latency는 Orin AGX profile 기반이므로 RTX 3050 노트북 selector 시간과 서로 다른 축이다. Jetson의 2 ms 충족 여부는 Jetson에서 다시 측정해야 한다.",
         "- endpoint trim은 two-line 목적을 단조 감소시키지만 측정 잡음이 있는 lookup table의 각 개별 점까지 단조 감소한다고 보장하지는 않는다.",
         "",
-        "![Overall runtime-quality](results/runtime_quality.png)", "",
-        "![Shape comparison](results/shape_comparison.png)", "",
+        f"![Overall runtime-quality]({plot_prefix}runtime_quality.png)", "",
+        f"![Shape comparison]({plot_prefix}shape_comparison.png)", "",
     ])
-    (HERE / "report.md").write_text("\n".join(lines) + "\n")
+    report_path.write_text("\n".join(lines) + "\n")
 
 
 def analyze(args: argparse.Namespace) -> None:
     frame = pd.read_csv(args.output_dir / "trials.csv")
+    if "trace_id" not in frame:
+        raise SystemExit(
+            "these are Experiment 22's retired synthetic results; rerun the experiment "
+            "to create real-model activation results before using --analyze-only"
+        )
     frame = add_paired_metrics(frame)
     frame.to_csv(args.output_dir / "trials.csv", index=False)
     summary_frame, shape_frame, summary = summarize(frame, args)
@@ -919,23 +1301,71 @@ def analyze(args: argparse.Namespace) -> None:
 
 def main() -> None:
     args = parse_args()
-    shapes, tracks = validate_args(args)
+    tracks = validate_args(args)
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.analyze_only:
+        analyze(args)
+        return
+
+    if args.trace_input:
+        traces, trace_metadata = load_activation_traces(args.trace_input)
+        trace_path = args.trace_input
+        args.model = trace_metadata.get("model", args.model)
+        print(
+            f"loaded {len(traces)} real activation traces from {trace_path}",
+            flush=True,
+        )
+    else:
+        traces, trace_metadata = capture_activation_traces(args)
+        trace_path = args.trace_output or (args.output_dir / "activation_traces.npz")
+        save_activation_traces(trace_path, traces, trace_metadata)
+        print(f"wrote {len(traces)} real activation traces to {trace_path}", flush=True)
+
+    trace_metadata = {**trace_metadata, "trace_count": len(traces)}
+
+    selected_traces, skipped_shapes = select_activation_traces(
+        traces, args.shapes, args.max_traces_per_shape
+    )
+    selected_shape_names = list(dict.fromkeys(t["shape"] for t in selected_traces))
+    shape_specs = [
+        dict(next(item for item in SHAPES if item["shape"] == shape_name))
+        for shape_name in selected_shape_names
+    ]
+    try:
+        recorded_trace_path = str(trace_path.resolve().relative_to(PROJECT_ROOT.resolve()))
+    except ValueError:
+        recorded_trace_path = str(trace_path.resolve())
+    metadata = {
+        "activation_trace": trace_metadata,
+        "trace_file": recorded_trace_path,
+        "trace_sha256": sha256_file(trace_path),
+        "captured_trace_count": len(traces),
+        "selected_trace_count": len(selected_traces),
+        "selected_trace_ids": [int(trace["trace_id"]) for trace in selected_traces],
+        "max_traces_per_shape": int(args.max_traces_per_shape),
+        "skipped_non_table2_shapes": skipped_shapes,
+        "shape_specs": shape_specs,
+        "method_labels": METHOD_LABELS,
+        "requested_tracks": args.tracks,
+        "executed_tracks": tracks,
+    }
+    (args.output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    if args.collect_traces_only:
+        print(
+            f"selected {len(selected_traces)} traces across "
+            f"{len(selected_shape_names)} Table-2 shapes; stopping as requested"
+        )
+        return
+
     lookup_table = BASE.LatencyTable.load(args.profile)
-    if not args.analyze_only:
-        if not args.skip_self_check:
-            self_check(lookup_table, args.saturation_kib)
-        rows, timing_rows, model_rows = collect(args, shapes, tracks, lookup_table)
-        write_csv(args.output_dir / "trials.csv", rows)
-        write_csv(args.output_dir / "timing_samples.csv", timing_rows)
-        write_csv(args.output_dir / "models.csv", model_rows)
-        metadata = {
-            "shape_specs": shapes,
-            "method_labels": METHOD_LABELS,
-            "requested_tracks": args.tracks,
-            "executed_tracks": tracks,
-        }
-        (args.output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    if not args.skip_self_check:
+        self_check(lookup_table, args.saturation_kib)
+    rows, timing_rows, model_rows = collect(
+        args, selected_traces, tracks, lookup_table
+    )
+    write_csv(args.output_dir / "trials.csv", rows)
+    write_csv(args.output_dir / "timing_samples.csv", timing_rows)
+    write_csv(args.output_dir / "models.csv", model_rows)
     analyze(args)
 
 
