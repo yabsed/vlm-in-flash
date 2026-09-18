@@ -1,0 +1,30 @@
+{
+  "format": "experiment-36-cell-parameter-sweep-v1",
+  "candidate_cases": 47628,
+  "cell_counts": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32
+  ],
+  "all_direct": true,
+  "all_deterministic": true,
+  "fallback_cases": 0,
+  "quality_ceiling_winner_counts": {
+    "Cell-2": 4,
+    "Cell-1": 3,
+    "Cell-4": 2
+  },
+  "interpolated_winner_counts": {
+    "Cell-4": 6,
+    "Cell-1": 2,
+    "Cell-8": 1
+  },
+  "most_frequent_best_cell": "Cell-2",
+  "most_frequent_interpolated_best_cell": "Cell-4",
+  "e2e_cases": 1134,
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "flash": "WD_BLACK SN850X 1000GB"
+}
