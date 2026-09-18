@@ -1,0 +1,178 @@
+{
+ "profile": {
+  "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "flash": "WD_BLACK SN850X 1000GB",
+  "source": "profile_flash.py",
+  "metadata": {
+   "producer": "scripts/profile_flash.py",
+   "timestamp_utc": "2026-09-18T08:07:19.098607+00:00",
+   "arguments": {
+    "blob": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat",
+    "blob_policy": "random, preallocated, fsync before measurement",
+    "max_kb": 512,
+    "step_kb": 1,
+    "iters": 10,
+    "warmup": 3,
+    "chunk_schedule": [
+     1,
+     2,
+     4,
+     8,
+     16,
+     28,
+     32,
+     48,
+     64,
+     96,
+     128,
+     192,
+     256,
+     384,
+     512
+    ],
+    "gap_rows": 32,
+    "reader_threads": 6,
+    "trim_at_saturation": true
+   },
+   "throughput": {
+    "derived_from": "latency_ms",
+    "formula": "1000 * logical_request_kb / latency_ms / 1024",
+    "unit": "MiB/s",
+    "bytes": "logical requested bytes, before O_DIRECT alignment padding"
+   }
+  }
+ },
+ "row_kb": 1,
+ "threads": 6,
+ "direct_io": true,
+ "pearson_r": 0.999170611902152,
+ "r_squared": 0.9983419116889207,
+ "points": [
+  {
+   "mask": "random d=0.02",
+   "rows": 2706,
+   "est_ms": 28.0299,
+   "real_ms": 25.4614
+  },
+  {
+   "mask": "random d=0.05",
+   "rows": 6710,
+   "est_ms": 66.9847,
+   "real_ms": 60.2118
+  },
+  {
+   "mask": "random d=0.1",
+   "rows": 13011,
+   "est_ms": 123.4518,
+   "real_ms": 115.8008
+  },
+  {
+   "mask": "random d=0.2",
+   "rows": 26238,
+   "est_ms": 218.3608,
+   "real_ms": 222.9736
+  },
+  {
+   "mask": "random d=0.3",
+   "rows": 39242,
+   "est_ms": 286.5473,
+   "real_ms": 305.3733
+  },
+  {
+   "mask": "random d=0.5",
+   "rows": 65519,
+   "est_ms": 343.7951,
+   "real_ms": 346.9361
+  },
+  {
+   "mask": "chunks 4KB gap 32KB",
+   "rows": 14564,
+   "est_ms": 33.3156,
+   "real_ms": 32.6426
+  },
+  {
+   "mask": "chunks 4KB gap 128KB",
+   "rows": 3972,
+   "est_ms": 9.0861,
+   "real_ms": 9.5442
+  },
+  {
+   "mask": "chunks 4KB gap 512KB",
+   "rows": 1020,
+   "est_ms": 2.3333,
+   "real_ms": 2.7813
+  },
+  {
+   "mask": "chunks 16KB gap 32KB",
+   "rows": 43696,
+   "est_ms": 37.2638,
+   "real_ms": 35.7019
+  },
+  {
+   "mask": "chunks 16KB gap 128KB",
+   "rows": 14576,
+   "est_ms": 12.4304,
+   "real_ms": 11.9624
+  },
+  {
+   "mask": "chunks 16KB gap 512KB",
+   "rows": 3984,
+   "est_ms": 3.3975,
+   "real_ms": 3.4079
+  },
+  {
+   "mask": "chunks 48KB gap 32KB",
+   "rows": 78624,
+   "est_ms": 31.2561,
+   "real_ms": 28.5564
+  },
+  {
+   "mask": "chunks 48KB gap 128KB",
+   "rows": 35760,
+   "est_ms": 14.216,
+   "real_ms": 13.2354
+  },
+  {
+   "mask": "chunks 48KB gap 512KB",
+   "rows": 11232,
+   "est_ms": 4.4652,
+   "real_ms": 4.2104
+  },
+  {
+   "mask": "chunks 96KB gap 32KB",
+   "rows": 98304,
+   "est_ms": 28.3438,
+   "real_ms": 26.7949
+  },
+  {
+   "mask": "chunks 96KB gap 128KB",
+   "rows": 56160,
+   "est_ms": 16.1925,
+   "real_ms": 14.1218
+  },
+  {
+   "mask": "chunks 96KB gap 512KB",
+   "rows": 20736,
+   "est_ms": 5.9788,
+   "real_ms": 5.1007
+  },
+  {
+   "mask": "chunks 192KB gap 32KB",
+   "rows": 112320,
+   "est_ms": 20.6545,
+   "real_ms": 19.9172
+  },
+  {
+   "mask": "chunks 192KB gap 128KB",
+   "rows": 78528,
+   "est_ms": 14.4405,
+   "real_ms": 14.2289
+  },
+  {
+   "mask": "chunks 192KB gap 512KB",
+   "rows": 35712,
+   "est_ms": 6.5671,
+   "real_ms": 6.503
+  }
+ ]
+}

@@ -49,3 +49,30 @@ python experiments/26_frontier_adaptive_trim/run_experiment.py \
 
 See [`algorithm.md`](algorithm.md) for the selection and timing contract.
 
+## Laptop-native rerun
+
+`results_laptop` profiles and validates the actual drive holding this checkout
+(`WD_BLACK SN850X 1000GB`) and reruns the CUDA track on the laptop's
+`NVIDIA GeForce RTX 3050 6GB Laptop GPU`. The measured profile saturates at
+240 KiB with 5864 MiB/s peak logical throughput. Its 21-pattern O_DIRECT
+validation has Pearson `r=0.9992` (`R²=0.9983`).
+
+Unlike the original Orin-profile result, this rerun also replays every selected
+mask through the native O_DIRECT reader 30 times and uploads the returned rows
+to CUDA. It reports actual SSD I/O, upload, read-call wall time, and the paired
+`selector + read` total. See [`report_laptop.md`](report_laptop.md).
+
+The device profile and validation can be reproduced with:
+
+```bash
+python preliminary_research/vlm-flash/scripts/profile_flash.py \
+  --blob experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat \
+  --output experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_profile.json \
+  --threads 6 --blob-mb 128 --step-kb 1 --iters 10 --max-kb 512
+
+python preliminary_research/vlm-flash/scripts/validate_latency_model.py \
+  --blob experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat \
+  --profile experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_profile.json \
+  --threads 6 --iters 30 \
+  --output experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_validation.json
+```

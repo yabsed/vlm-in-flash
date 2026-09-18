@@ -10,6 +10,7 @@ import math
 import os
 import platform
 from pathlib import Path
+import time
 import traceback
 
 os.environ.setdefault("TORCH_EXTENSIONS_DIR", "/tmp/vlmflash_torch_extensions")
@@ -112,6 +113,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--oracle-cv", type=float, default=3.30)
     parser.add_argument("--seed", type=int, default=20262601)
     parser.add_argument("--output-dir", type=Path, default=HERE / "results")
+    parser.add_argument("--report-output", type=Path)
+    parser.add_argument(
+        "--measure-io", action="store_true",
+        help="replay every CUDA-track mask through the native O_DIRECT reader",
+    )
+    parser.add_argument("--io-blob", type=Path)
+    parser.add_argument("--io-repetitions", type=int, default=30)
+    parser.add_argument("--io-warmup", type=int, default=3)
+    parser.add_argument("--io-threads", type=int, default=6)
+    parser.add_argument("--io-max-read-kib", type=int, default=768)
+    parser.add_argument("--io-device", choices=("cpu", "cuda"), default="cuda")
     parser.add_argument("--skip-self-check", action="store_true")
     parser.add_argument("--skip-oracle", action="store_true")
     parser.add_argument("--analyze-only", action="store_true")
@@ -119,7 +131,22 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace) -> tuple[list[dict], list[str]]:
-    return EXP24.validate_args(args)
+    shapes, tracks = EXP24.validate_args(args)
+    if args.io_repetitions < 1 or args.io_warmup < 0 or args.io_threads < 1:
+        raise SystemExit("I/O repetition, warmup, and thread arguments are invalid")
+    if args.io_max_read_kib < 4:
+        raise SystemExit("--io-max-read-kib must be at least 4")
+    if args.measure_io:
+        if args.io_blob is None or not args.io_blob.is_file():
+            raise SystemExit("--measure-io requires an existing --io-blob")
+        if "cuda" not in tracks:
+            raise SystemExit("--measure-io requires the cuda timing track")
+        if (
+            not args.analyze_only and args.io_device == "cuda"
+            and not torch.cuda.is_available()
+        ):
+            raise SystemExit("--io-device cuda was requested but CUDA is unavailable")
+    return shapes, tracks
 
 
 @njit(cache=False, inline="always")
@@ -499,8 +526,60 @@ def collect_oracle(args: argparse.Namespace, lookup_table) -> list[dict]:
     return rows
 
 
-def collect(args: argparse.Namespace, traces: list[dict], tracks: list[str], lookup_table):
-    rows, timing_rows, model_rows = [], [], []
+def measure_actual_io(native_reader, args: argparse.Namespace, mask: np.ndarray,
+                      row_kib: float) -> tuple[dict, list[dict]]:
+    """Measure one selected mask from the target flash, including CUDA upload."""
+    mask_tensor = torch.from_numpy(np.ascontiguousarray(mask, dtype=np.bool_).copy())
+    if args.io_device == "cuda":
+        mask_tensor = mask_tensor.to("cuda")
+    row_bytes = int(round(row_kib * 1024.0))
+    io_samples, upload_samples, wall_samples, direct_samples = [], [], [], []
+    for repetition in range(args.io_warmup + args.io_repetitions):
+        if args.io_device == "cuda":
+            torch.cuda.synchronize()
+        started = time.perf_counter_ns()
+        output, io_us, upload_us, direct = native_reader.read_rows(
+            str(args.io_blob), mask_tensor, row_bytes, args.io_device,
+            args.io_threads, args.io_max_read_kib * 1024, True,
+        )
+        if args.io_device == "cuda":
+            torch.cuda.synchronize()
+        wall_ms = (time.perf_counter_ns() - started) / 1e6
+        del output
+        if repetition >= args.io_warmup:
+            io_samples.append(float(io_us) / 1000.0)
+            upload_samples.append(float(upload_us) / 1000.0)
+            wall_samples.append(float(wall_ms))
+            direct_samples.append(bool(direct))
+    if not all(direct_samples):
+        raise RuntimeError("O_DIRECT was unavailable during actual mask replay")
+    summary = {
+        "actual_io_median_ms": float(np.median(io_samples)),
+        "actual_io_p95_ms": float(np.quantile(io_samples, 0.95)),
+        "actual_upload_median_ms": float(np.median(upload_samples)),
+        "actual_upload_p95_ms": float(np.quantile(upload_samples, 0.95)),
+        "actual_read_wall_median_ms": float(np.median(wall_samples)),
+        "actual_read_wall_p95_ms": float(np.quantile(wall_samples, 0.95)),
+        "actual_direct_rate": float(np.mean(direct_samples)),
+    }
+    samples = [
+        {
+            "repetition": repetition,
+            "actual_io_ms": io_ms,
+            "actual_upload_ms": upload_ms,
+            "actual_read_wall_ms": wall_ms,
+            "actual_direct": direct,
+        }
+        for repetition, (io_ms, upload_ms, wall_ms, direct) in enumerate(
+            zip(io_samples, upload_samples, wall_samples, direct_samples)
+        )
+    ]
+    return summary, samples
+
+
+def collect(args: argparse.Namespace, traces: list[dict], tracks: list[str],
+            lookup_table, native_reader=None):
+    rows, timing_rows, model_rows, io_timing_rows = [], [], [], []
     by_name = {item["shape"]: dict(item) for item in SHAPES}
     shape_names = list(dict.fromkeys(trace["shape"] for trace in traces))
     contexts = {}
@@ -574,8 +653,23 @@ def collect(args: argparse.Namespace, traces: list[dict], tracks: list[str], loo
                     error = metadata.get("error", "")
                     runtime_p95 = float(np.quantile(timings, 0.95))
                     base = {**case, "method": method, "method_label": METHOD_LABELS[method]}
+                    actual = {
+                        "actual_io_median_ms": math.nan,
+                        "actual_io_p95_ms": math.nan,
+                        "actual_upload_median_ms": math.nan,
+                        "actual_upload_p95_ms": math.nan,
+                        "actual_read_wall_median_ms": math.nan,
+                        "actual_read_wall_p95_ms": math.nan,
+                        "actual_direct_rate": math.nan,
+                    }
+                    if native_reader is not None and track == "cuda":
+                        actual, actual_samples = measure_actual_io(
+                            native_reader, args, mask, row_kib
+                        )
+                        for sample in actual_samples:
+                            io_timing_rows.append({**base, **sample})
                     rows.append({
-                        **base, **metrics,
+                        **base, **metrics, **actual,
                         "lookup_efficiency": metrics["importance"] / metrics["lookup_ms"],
                         "two_line_efficiency": metrics["importance"] / metrics["two_line_ms"],
                         "row_match": row_match,
@@ -619,18 +713,116 @@ def collect(args: argparse.Namespace, traces: list[dict], tracks: list[str], loo
             f"trace={trace_index + 1}/{len(traces)} id={trace['trace_id']} "
             f"shape={shape['shape']} module={trace['module']}", flush=True,
         )
-    return rows, timing_rows, model_rows
+    return rows, timing_rows, model_rows, io_timing_rows
+
+
+def add_actual_io_metrics(frame: pd.DataFrame) -> pd.DataFrame:
+    """Add paired real-read and selector+read metrics relative to Paper."""
+    derived = [
+        "paper_actual_read_wall_median_ms", "paper_actual_selector_median_ms",
+        "paper_actual_total_median_ms",
+        "actual_io_efficiency", "paper_actual_io_efficiency",
+        "actual_io_efficiency_gain_pct", "actual_read_saving_ms",
+        "actual_read_saving_pct", "actual_total_median_ms",
+        "actual_total_saving_ms", "actual_total_win",
+    ]
+    frame = frame.drop(columns=[column for column in derived if column in frame])
+    if "actual_read_wall_median_ms" not in frame:
+        return frame
+    frame["actual_io_efficiency"] = (
+        frame.importance / frame.actual_read_wall_median_ms
+    )
+    keys = ["trace_id", "budget_index", "track"]
+    paper = frame[frame.method == "paper"][keys + [
+        "actual_read_wall_median_ms", "runtime_median_ms", "actual_io_efficiency",
+    ]].rename(columns={
+        "actual_read_wall_median_ms": "paper_actual_read_wall_median_ms",
+        "runtime_median_ms": "paper_actual_selector_median_ms",
+        "actual_io_efficiency": "paper_actual_io_efficiency",
+    })
+    output = frame.merge(paper, on=keys, how="left")
+    output["actual_total_median_ms"] = (
+        output.runtime_median_ms + output.actual_read_wall_median_ms
+    )
+    output["paper_actual_total_median_ms"] = (
+        output.paper_actual_selector_median_ms
+        + output.paper_actual_read_wall_median_ms
+    )
+    output["actual_io_efficiency_gain_pct"] = 100.0 * (
+        output.actual_io_efficiency / output.paper_actual_io_efficiency - 1.0
+    )
+    output["actual_read_saving_ms"] = (
+        output.paper_actual_read_wall_median_ms - output.actual_read_wall_median_ms
+    )
+    output["actual_read_saving_pct"] = 100.0 * (
+        1.0
+        - output.actual_read_wall_median_ms
+        / output.paper_actual_read_wall_median_ms
+    )
+    output["actual_total_saving_ms"] = (
+        output.paper_actual_total_median_ms - output.actual_total_median_ms
+    )
+    output["actual_total_win"] = output.actual_total_saving_ms > 0.0
+    return output
 
 
 def aggregate_group(group: pd.DataFrame) -> dict:
     base = EXP24.aggregate_group(group)
-    return {
+    output = {
         **base,
         "frontier_candidates_mean": float(group.frontier_candidates.mean()),
         "eligible_candidates_mean": float(group.eligible_candidates.mean()),
         "trim_work_deletions_mean": float(group.trim_work_deletions.mean()),
         "minimum_overfill_median": float(group.minimum_overfill.median()),
     }
+    if "actual_read_wall_median_ms" in group:
+        actual = group[group.actual_read_wall_median_ms.notna()]
+        output.update({
+            "actual_cases": int(len(actual)),
+            "actual_direct_rate": (
+                float(actual.actual_direct_rate.mean()) if len(actual) else math.nan
+            ),
+            "actual_io_median_ms": (
+                float(actual.actual_io_median_ms.median()) if len(actual) else math.nan
+            ),
+            "actual_upload_median_ms": (
+                float(actual.actual_upload_median_ms.median()) if len(actual) else math.nan
+            ),
+            "actual_read_wall_ms_mean": (
+                float(actual.actual_read_wall_median_ms.mean()) if len(actual) else math.nan
+            ),
+            "actual_read_wall_ms_median": (
+                float(actual.actual_read_wall_median_ms.median()) if len(actual) else math.nan
+            ),
+            "actual_read_wall_case_p95_ms": (
+                float(actual.actual_read_wall_p95_ms.quantile(0.95))
+                if len(actual) else math.nan
+            ),
+            "actual_io_efficiency_gain_pct_mean": (
+                float(actual.actual_io_efficiency_gain_pct.mean())
+                if len(actual) else math.nan
+            ),
+            "actual_read_saving_pct_mean": (
+                float(actual.actual_read_saving_pct.mean()) if len(actual) else math.nan
+            ),
+            "actual_total_ms_mean": (
+                float(actual.actual_total_median_ms.mean()) if len(actual) else math.nan
+            ),
+            "actual_total_ms_median": (
+                float(actual.actual_total_median_ms.median()) if len(actual) else math.nan
+            ),
+            "actual_total_ms_p95": (
+                float(actual.actual_total_median_ms.quantile(0.95))
+                if len(actual) else math.nan
+            ),
+            "actual_total_saving_ms_mean": (
+                float(actual.actual_total_saving_ms.mean()) if len(actual) else math.nan
+            ),
+            "actual_total_win_rate": (
+                float(actual.actual_total_win.mean()) if len(actual) else math.nan
+            ),
+        })
+    return output
 
 
 def summarize(frame: pd.DataFrame, oracle: pd.DataFrame | None,
@@ -673,7 +865,11 @@ def summarize(frame: pd.DataFrame, oracle: pd.DataFrame | None,
         "timing_scope": {
             "host": "warm host importance to CPU bool mask",
             "cuda": "warm CUDA importance through D2H CPU solve and H2D bool mask",
-            "excluded": "real LM trace forward, storage I/O, and model compute",
+            "actual_io": (
+                "native O_DIRECT mask replay including read-call overhead and GPU upload"
+                if args.measure_io else "not measured"
+            ),
+            "excluded": "real LM trace forward and model compute",
         },
         "environment": {
             "platform": platform.platform(), "python": platform.python_version(),
@@ -694,6 +890,15 @@ def summarize(frame: pd.DataFrame, oracle: pd.DataFrame | None,
             "tracks": list(dict.fromkeys(frame.track)),
             "profile": args.profile, "saturation_kib": float(args.saturation_kib),
             "frontier_settings": FRONTIER_SETTINGS,
+            "actual_io": {
+                "enabled": bool(args.measure_io),
+                "blob": str(args.io_blob) if args.io_blob else None,
+                "repetitions": int(args.io_repetitions),
+                "warmup": int(args.io_warmup),
+                "threads": int(args.io_threads),
+                "max_read_kib": int(args.io_max_read_kib),
+                "device": args.io_device,
+            },
         },
         "tracks": nested,
         "small_n_oracle": oracle_summary,
@@ -783,8 +988,38 @@ def plot_oracle(oracle: pd.DataFrame, path: Path) -> None:
     plt.close(fig)
 
 
+def plot_actual_total(summary: pd.DataFrame, path: Path) -> None:
+    plt = configure_plot()
+    primary = "cuda" if "cuda" in set(summary.track) else "host"
+    selected = summary[
+        (summary.track == primary) & summary.actual_total_ms_mean.notna()
+    ].set_index("method").reindex(METHODS)
+    labels = [METHOD_LABELS[method] for method in selected.index]
+    y = np.arange(len(selected))
+    selector = selected.actual_total_ms_mean - selected.actual_read_wall_ms_mean
+    fig, ax = plt.subplots(figsize=(11.5, 6.3), constrained_layout=True)
+    ax.barh(y, selector, color="#7C3AED", label="Selector")
+    ax.barh(
+        y, selected.actual_read_wall_ms_mean, left=selector,
+        color="#0F766E", label="O_DIRECT read + GPU upload",
+    )
+    ax.set_yticks(y, labels)
+    ax.invert_yaxis()
+    ax.set_xlabel("Mean measured time per case (ms)")
+    ax.set_title("Laptop-native selector + flash-read total")
+    ax.legend(frameon=False)
+    BASE.polish_axis(ax)
+    fig.savefig(path, dpi=200, bbox_inches="tight")
+    fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
+    plt.close(fig)
+
+
 def write_report(summary: pd.DataFrame, shape_summary: pd.DataFrame,
-                 oracle: pd.DataFrame | None, args: argparse.Namespace) -> None:
+                 oracle: pd.DataFrame | None, args: argparse.Namespace,
+                 trials: pd.DataFrame | None = None) -> None:
+    report_path = args.report_output or (HERE / "report.md")
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    image_prefix = Path(os.path.relpath(args.output_dir, report_path.parent)).as_posix()
     primary_track = "cuda" if "cuda" in set(summary.track) else "host"
     indexed = summary[summary.track == primary_track].set_index("method").reindex(METHODS)
     winner_method = indexed.loc[list(FRONTIER_METHODS)].sort_values(
@@ -824,6 +1059,65 @@ def write_report(summary: pd.DataFrame, shape_summary: pd.DataFrame,
                 f"| {100 * row.returned_top_r_rate:.1f}% |"
             )
         lines.append("")
+
+    if "actual_total_ms_mean" in indexed and indexed.actual_total_ms_mean.notna().any():
+        actual = indexed[indexed.actual_total_ms_mean.notna()]
+        fastest_method = actual.actual_total_ms_mean.idxmin()
+        lines.extend([
+            "## 노트북 실제 O_DIRECT 총시간", "",
+            "각 CUDA-track mask를 target SSD에서 직접 읽고 GPU로 upload했다. 아래 총시간은 "
+            "case별 `selector median + native read wall median`의 평균이며 LM compute는 제외한다.",
+            "", "| 방법 | 실제 read wall | selector+read | Paper 대비 절감 | Paper보다 빠른 case |",
+            "|---|---:|---:|---:|---:|",
+        ])
+        for method, row in actual.reindex(METHODS).iterrows():
+            win = "-" if method == "paper" else f"{100 * row.actual_total_win_rate:.1f}%"
+            lines.append(
+                f"| {METHOD_LABELS[method]} | {row.actual_read_wall_ms_mean:.3f} ms "
+                f"| {row.actual_total_ms_mean:.3f} ms "
+                f"| {row.actual_total_saving_ms_mean:+.3f} ms "
+                f"| {win} |"
+            )
+        lines.extend([
+            "",
+            f"직접 측정한 총시간이 가장 낮은 방법은 `{METHOD_LABELS[fastest_method]}`로 "
+            f"평균 `{actual.loc[fastest_method, 'actual_total_ms_mean']:.3f} ms`다.",
+            "",
+        ])
+        if trials is not None:
+            measured = trials[trials.actual_io_median_ms.notna()]
+            io_ratio = measured.actual_io_median_ms / measured.lookup_ms
+            wall_ratio = measured.actual_read_wall_median_ms / measured.lookup_ms
+            lines.extend([
+                f"Profile 예측과 native I/O-only 실측의 Pearson 상관은 "
+                f"`r={measured.actual_io_median_ms.corr(measured.lookup_ms):.4f}`지만, "
+                f"실측/예측 비율 중앙값은 `{io_ratio.median():.3f}x`다. GPU upload와 "
+                f"reader 호출 전체를 포함한 wall-clock은 `r="
+                f"{measured.actual_read_wall_median_ms.corr(measured.lookup_ms):.4f}`, "
+                f"중앙값 `{wall_ratio.median():.3f}x`다. 따라서 table은 mask 순위에는 "
+                "유용하지만 노트북의 절대 총시간을 대신하지 못한다.", "",
+                "### Shape별 실제 총시간", "",
+                "| Shape | Paper | Exp24 rho2/mu4 | 가장 빠른 frontier | 해당 방법 |",
+                "|---|---:|---:|---:|---|",
+            ])
+            actual_shapes = shape_summary[
+                (shape_summary.track == primary_track)
+                & shape_summary.actual_total_ms_mean.notna()
+            ]
+            for shape in actual_shapes[actual_shapes.method == "paper"]["shape"]:
+                indexed_shape = actual_shapes[
+                    actual_shapes["shape"] == shape
+                ].set_index("method")
+                frontier_method = indexed_shape.loc[list(FRONTIER_METHODS)][
+                    "actual_total_ms_mean"
+                ].idxmin()
+                lines.append(
+                    f"| {shape} | {indexed_shape.loc['paper', 'actual_total_ms_mean']:.3f} ms "
+                    f"| {indexed_shape.loc['legacy_rho2_mu4', 'actual_total_ms_mean']:.3f} ms "
+                    f"| {indexed_shape.loc[frontier_method, 'actual_total_ms_mean']:.3f} ms "
+                    f"| {METHOD_LABELS[frontier_method]} |"
+                )
+            lines.append("")
 
     lines.extend(["## Small-N exact oracle", ""])
     if oracle is None or not len(oracle):
@@ -883,15 +1177,22 @@ def write_report(summary: pd.DataFrame, shape_summary: pd.DataFrame,
         "", "## 측정 한계", "",
         f"- 실제 activation은 `{args.model}`의 세 짧은 text prompt와 한 모델에서 얻었다.",
         "- small-N oracle만 synthetic이며 실제 trace 결과와 분리했다.",
-        "- lookup latency는 Orin AGX profile 예측값이며 실제 NVMe I/O가 아니다.",
+        f"- mask 선택의 lookup 목적은 `{args.profile}` table을 사용했다.",
+        (
+            "- 별도 실제 read 결과는 native O_DIRECT와 GPU upload를 직접 측정했다."
+            if args.measure_io else
+            "- 실제 NVMe I/O는 실행하지 않았고 lookup latency는 table 예측값이다."
+        ),
         "- adaptive endpoint trim은 interior deletion이나 cardinality-preserving swap을 탐색하지 않는다.",
         "- μ scalarization이 unsupported exact-R 해를 건너뛸 수 있어 전역 최적 보장은 없다.",
-        "", "![Runtime-quality](results/runtime_quality.png)", "",
-        "![Shape comparison](results/shape_comparison.png)", "",
+        "", f"![Runtime-quality]({image_prefix}/runtime_quality.png)", "",
     ])
+    if args.measure_io:
+        lines.extend([f"![Measured total]({image_prefix}/actual_total.png)", ""])
+    lines.extend([f"![Shape comparison]({image_prefix}/shape_comparison.png)", ""])
     if oracle is not None and len(oracle):
-        lines.extend(["![Small-N oracle](results/oracle_optimality.png)", ""])
-    (HERE / "report.md").write_text("\n".join(lines) + "\n")
+        lines.extend([f"![Small-N oracle]({image_prefix}/oracle_optimality.png)", ""])
+    report_path.write_text("\n".join(lines) + "\n")
 
 
 def analyze(args: argparse.Namespace) -> None:
@@ -899,18 +1200,39 @@ def analyze(args: argparse.Namespace) -> None:
     if "trace_id" not in frame:
         raise SystemExit("Experiment 26 requires real-model activation results")
     frame = EXP24.add_paired_metrics(frame)
+    frame = add_actual_io_metrics(frame)
     frame.to_csv(args.output_dir / "trials.csv", index=False)
     oracle_path = args.output_dir / "oracle_trials.csv"
     oracle = pd.read_csv(oracle_path) if oracle_path.exists() else None
     summary_frame, shape_frame, summary = summarize(frame, oracle, args)
+    measured = frame[frame.actual_io_median_ms.notna()]
+    if len(measured):
+        summary["actual_io_replay"] = {
+            "cases": int(len(measured)),
+            "all_direct": bool((measured.actual_direct_rate == 1.0).all()),
+            "profile_vs_io_pearson_r": float(
+                measured.lookup_ms.corr(measured.actual_io_median_ms)
+            ),
+            "io_over_profile_ratio_median": float(
+                (measured.actual_io_median_ms / measured.lookup_ms).median()
+            ),
+            "profile_vs_read_wall_pearson_r": float(
+                measured.lookup_ms.corr(measured.actual_read_wall_median_ms)
+            ),
+            "read_wall_over_profile_ratio_median": float(
+                (measured.actual_read_wall_median_ms / measured.lookup_ms).median()
+            ),
+        }
     summary_frame.to_csv(args.output_dir / "summary.csv", index=False)
     shape_frame.to_csv(args.output_dir / "shape_summary.csv", index=False)
     (args.output_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     plot_overall(summary_frame, args.output_dir / "runtime_quality.png", args.deadline_ms)
     plot_by_shape(shape_frame, args.output_dir / "shape_comparison.png")
+    if "actual_total_ms_mean" in summary_frame and summary_frame.actual_total_ms_mean.notna().any():
+        plot_actual_total(summary_frame, args.output_dir / "actual_total.png")
     if oracle is not None and len(oracle):
         plot_oracle(oracle, args.output_dir / "oracle_optimality.png")
-    write_report(summary_frame, shape_frame, oracle, args)
+    write_report(summary_frame, shape_frame, oracle, args, frame)
     print(summary_frame.to_string(index=False))
 
 
@@ -931,6 +1253,16 @@ def main() -> None:
         recorded_trace_path = str(trace_path.resolve().relative_to(PROJECT_ROOT.resolve()))
     except ValueError:
         recorded_trace_path = str(trace_path.resolve())
+    lookup_table = BASE.LatencyTable.load(args.profile)
+    profile_path = Path(args.profile)
+    profile_record = {
+        "requested": str(args.profile),
+        "max_kib": int(lookup_table.max_kb),
+        "metadata": lookup_table.meta,
+        "sha256": (
+            EXP22.sha256_file(profile_path) if profile_path.is_file() else None
+        ),
+    }
     metadata = {
         "activation_trace": trace_metadata,
         "trace_file": recorded_trace_path,
@@ -942,6 +1274,19 @@ def main() -> None:
         "shape_specs": shape_specs,
         "method_labels": METHOD_LABELS,
         "frontier_settings": FRONTIER_SETTINGS,
+        "latency_profile": profile_record,
+        "actual_io": {
+            "enabled": bool(args.measure_io),
+            "blob": str(args.io_blob) if args.io_blob else None,
+            "blob_sha256": (
+                EXP22.sha256_file(args.io_blob) if args.measure_io else None
+            ),
+            "repetitions": int(args.io_repetitions),
+            "warmup": int(args.io_warmup),
+            "threads": int(args.io_threads),
+            "max_read_kib": int(args.io_max_read_kib),
+            "device": args.io_device,
+        },
         "requested_tracks": args.tracks, "executed_tracks": tracks,
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
         "torch": torch.__version__, "torch_cuda_build": torch.version.cuda,
@@ -951,15 +1296,36 @@ def main() -> None:
         print(f"selected {len(traces)} traces; stopping as requested")
         return
 
-    lookup_table = BASE.LatencyTable.load(args.profile)
+    native_reader = None
+    if args.measure_io:
+        required_bytes = max(
+            int(shape["n"]) * int(round(EXP22.row_size_kib(shape) * 1024.0))
+            for shape in shape_specs
+        )
+        if args.io_blob.stat().st_size < required_bytes:
+            raise SystemExit(
+                f"--io-blob has {args.io_blob.stat().st_size} bytes; "
+                f"at least {required_bytes} are required"
+            )
+        EXP22.load_vlmflash()
+        from vlmflash._native import native, unavailable_reason
+        native_reader = native()
+        if native_reader is None:
+            raise SystemExit(
+                f"actual I/O replay needs the native reader: {unavailable_reason()}"
+            )
     if not args.skip_self_check:
         self_check(lookup_table, args.saturation_kib)
     if not args.skip_oracle:
         EXP24.write_csv(args.output_dir / "oracle_trials.csv", collect_oracle(args, lookup_table))
-    rows, timings, models = collect(args, traces, tracks, lookup_table)
+    rows, timings, models, io_timings = collect(
+        args, traces, tracks, lookup_table, native_reader
+    )
     EXP24.write_csv(args.output_dir / "trials.csv", rows)
     EXP24.write_csv(args.output_dir / "timing_samples.csv", timings)
     EXP24.write_csv(args.output_dir / "models.csv", models)
+    if io_timings:
+        EXP24.write_csv(args.output_dir / "io_timing_samples.csv", io_timings)
     analyze(args)
 
 
