@@ -1,0 +1,303 @@
+{
+  "format": "experiment-32-multimodel-measured-error-v1",
+  "models": [
+    {
+      "model": "qwen05",
+      "label": "Qwen2.5-0.5B-Instruct",
+      "repo": "Qwen/Qwen2.5-0.5B-Instruct",
+      "snapshot": "7ae557604adf67be50417f59c2c2f167def9a775",
+      "model_type": "qwen2",
+      "layers": 24,
+      "sampled_layers": [
+        0,
+        12,
+        23
+      ],
+      "sampled_projection_count": 21,
+      "shapes": [
+        "4864x896",
+        "896x128",
+        "896x4864",
+        "896x896"
+      ],
+      "parameters": 494032768,
+      "dtype": "torch.float16"
+    },
+    {
+      "model": "smol360",
+      "label": "SmolLM2-360M-Instruct",
+      "repo": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "snapshot": "a10cc1512eabd3dde888204e902eca88bddb4951",
+      "model_type": "llama",
+      "layers": 32,
+      "sampled_layers": [
+        0,
+        16,
+        31
+      ],
+      "sampled_projection_count": 21,
+      "shapes": [
+        "2560x960",
+        "960x2560",
+        "960x320",
+        "960x960"
+      ],
+      "parameters": 361821120,
+      "dtype": "torch.float16"
+    },
+    {
+      "model": "tiny11",
+      "label": "TinyLlama-1.1B-Chat-v1.0",
+      "repo": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+      "snapshot": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+      "model_type": "llama",
+      "layers": 22,
+      "sampled_layers": [
+        0,
+        10,
+        21
+      ],
+      "sampled_projection_count": 21,
+      "shapes": [
+        "2048x2048",
+        "2048x256",
+        "2048x5632",
+        "5632x2048"
+      ],
+      "parameters": 1100048384,
+      "dtype": "torch.float16"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "cal_short_factual",
+      "split": "calibration",
+      "situation": "short",
+      "sha256": "c65d7bf7209084df2dbac206862689d3a8feb5db61b4c0332274c1d21d07e8af"
+    },
+    {
+      "name": "cal_medium_reasoning",
+      "split": "calibration",
+      "situation": "medium",
+      "sha256": "819082d5875bb70109b4aab75e3b621813fc8756f1936ab09c3b2cc4cc76714b"
+    },
+    {
+      "name": "cal_long_context",
+      "split": "calibration",
+      "situation": "long",
+      "sha256": "f111579cee876849bde44f398503809f028d6563e7d6bab2de4debd846319d12"
+    },
+    {
+      "name": "test_short_korean",
+      "split": "holdout",
+      "situation": "short",
+      "sha256": "173053da5affbd187a329775019b571425ad52e816c5e7b77e86ba196e0750c8"
+    },
+    {
+      "name": "test_medium_code",
+      "split": "holdout",
+      "situation": "medium",
+      "sha256": "30e4144aad9c589fc9fb36cb5d06f8bad400b8636ba8dd706f4c18556f6c72e8"
+    },
+    {
+      "name": "test_long_structured",
+      "split": "holdout",
+      "situation": "long",
+      "sha256": "4af2cea7491850f5adf111b824e0bf4159135304dbd2a249ab7fc7bd5c018206"
+    }
+  ],
+  "budgets": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "selector_repetitions": 3,
+  "io_repetitions": 3,
+  "io_warmup": 1,
+  "io_threads": 6,
+  "io_max_read_kib": 768,
+  "error_guard_slack": 0.01,
+  "profile": "experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_profile.json",
+  "profile_metadata": {
+    "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+    "flash": "WD_BLACK SN850X 1000GB",
+    "source": "profile_flash.py",
+    "metadata": {
+      "producer": "scripts/profile_flash.py",
+      "timestamp_utc": "2026-09-18T08:07:19.098607+00:00",
+      "arguments": {
+        "blob": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat",
+        "blob_policy": "random, preallocated, fsync before measurement",
+        "max_kb": 512,
+        "step_kb": 1,
+        "iters": 10,
+        "warmup": 3,
+        "chunk_schedule": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          28,
+          32,
+          48,
+          64,
+          96,
+          128,
+          192,
+          256,
+          384,
+          512
+        ],
+        "gap_rows": 32,
+        "reader_threads": 6,
+        "trim_at_saturation": true
+      },
+      "throughput": {
+        "derived_from": "latency_ms",
+        "formula": "1000 * logical_request_kb / latency_ms / 1024",
+        "unit": "MiB/s",
+        "bytes": "logical requested bytes, before O_DIRECT alignment padding"
+      }
+    }
+  },
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "flash": "WD_BLACK SN850X 1000GB",
+  "torch": "2.11.0+cu130",
+  "cuda_build": "13.0",
+  "platform": "Linux-7.1.13-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "dispatch_maps": {
+    "qwen05": {
+      "wave_dispatch": {
+        "qwen05|4864x896|0": "wave_k6",
+        "qwen05|4864x896|1": "wave_k6",
+        "qwen05|4864x896|2": "wave_k24",
+        "qwen05|896x128|0": "wave_k1",
+        "qwen05|896x128|1": "wave_k1",
+        "qwen05|896x128|2": "wave_k1",
+        "qwen05|896x4864|0": "wave_k6",
+        "qwen05|896x4864|1": "wave_k6",
+        "qwen05|896x4864|2": "wave_k24",
+        "qwen05|896x896|0": "wave_k6",
+        "qwen05|896x896|1": "wave_k6",
+        "qwen05|896x896|2": "wave_k6"
+      },
+      "min_total_dispatch": {
+        "qwen05|4864x896|0": "tile8_ceil",
+        "qwen05|4864x896|1": "tile8_ceil",
+        "qwen05|4864x896|2": "wave_k24",
+        "qwen05|896x128|0": "tile8_ceil",
+        "qwen05|896x128|1": "tile8_ceil",
+        "qwen05|896x128|2": "tile8_ceil",
+        "qwen05|896x4864|0": "tile8_ceil",
+        "qwen05|896x4864|1": "tile8_ceil",
+        "qwen05|896x4864|2": "wave_k24",
+        "qwen05|896x896|0": "tile8_ceil",
+        "qwen05|896x896|1": "tile8_ceil",
+        "qwen05|896x896|2": "tile8_ceil"
+      },
+      "error_guard_dispatch": {
+        "qwen05|4864x896|0": "paper",
+        "qwen05|4864x896|1": "paper",
+        "qwen05|4864x896|2": "wave_k24",
+        "qwen05|896x128|0": "tile8_ceil",
+        "qwen05|896x128|1": "wave_k1",
+        "qwen05|896x128|2": "wave_k1",
+        "qwen05|896x4864|0": "wave_k12",
+        "qwen05|896x4864|1": "paper",
+        "qwen05|896x4864|2": "wave_k24",
+        "qwen05|896x896|0": "wave_k6",
+        "qwen05|896x896|1": "wave_k6",
+        "qwen05|896x896|2": "tile8_ceil"
+      }
+    },
+    "smol360": {
+      "wave_dispatch": {
+        "smol360|2560x960|0": "wave_k6",
+        "smol360|2560x960|1": "wave_k6",
+        "smol360|2560x960|2": "wave_k12",
+        "smol360|960x2560|0": "wave_k6",
+        "smol360|960x2560|1": "wave_k6",
+        "smol360|960x2560|2": "wave_k12",
+        "smol360|960x320|0": "wave_k1",
+        "smol360|960x320|1": "wave_k6",
+        "smol360|960x320|2": "wave_k6",
+        "smol360|960x960|0": "wave_k6",
+        "smol360|960x960|1": "wave_k6",
+        "smol360|960x960|2": "wave_k6"
+      },
+      "min_total_dispatch": {
+        "smol360|2560x960|0": "tile8_ceil",
+        "smol360|2560x960|1": "tile8_ceil",
+        "smol360|2560x960|2": "tile8_ceil",
+        "smol360|960x2560|0": "tile8_ceil",
+        "smol360|960x2560|1": "tile8_ceil",
+        "smol360|960x2560|2": "tile8_ceil",
+        "smol360|960x320|0": "tile8_ceil",
+        "smol360|960x320|1": "tile8_ceil",
+        "smol360|960x320|2": "tile8_ceil",
+        "smol360|960x960|0": "tile8_ceil",
+        "smol360|960x960|1": "tile8_ceil",
+        "smol360|960x960|2": "tile8_ceil"
+      },
+      "error_guard_dispatch": {
+        "smol360|2560x960|0": "paper",
+        "smol360|2560x960|1": "paper",
+        "smol360|2560x960|2": "tile8_ceil",
+        "smol360|960x2560|0": "tile8_ceil",
+        "smol360|960x2560|1": "tile8_ceil",
+        "smol360|960x2560|2": "wave_k12",
+        "smol360|960x320|0": "wave_k6",
+        "smol360|960x320|1": "wave_k6",
+        "smol360|960x320|2": "wave_k6",
+        "smol360|960x960|0": "wave_k6",
+        "smol360|960x960|1": "wave_k6",
+        "smol360|960x960|2": "wave_k6"
+      }
+    },
+    "tiny11": {
+      "wave_dispatch": {
+        "tiny11|2048x2048|0": "wave_k6",
+        "tiny11|2048x2048|1": "wave_k6",
+        "tiny11|2048x2048|2": "wave_k24",
+        "tiny11|2048x256|0": "wave_k1",
+        "tiny11|2048x256|1": "wave_k6",
+        "tiny11|2048x256|2": "wave_k6",
+        "tiny11|2048x5632|0": "wave_k6",
+        "tiny11|2048x5632|1": "wave_k1",
+        "tiny11|2048x5632|2": "wave_k24",
+        "tiny11|5632x2048|0": "wave_k1",
+        "tiny11|5632x2048|1": "wave_k1",
+        "tiny11|5632x2048|2": "wave_k1"
+      },
+      "min_total_dispatch": {
+        "tiny11|2048x2048|0": "wave_k1",
+        "tiny11|2048x2048|1": "wave_k1",
+        "tiny11|2048x2048|2": "wave_k24",
+        "tiny11|2048x256|0": "tile8_ceil",
+        "tiny11|2048x256|1": "tile8_ceil",
+        "tiny11|2048x256|2": "tile8_ceil",
+        "tiny11|2048x5632|0": "tile8_ceil",
+        "tiny11|2048x5632|1": "tile8_ceil",
+        "tiny11|2048x5632|2": "wave_k24",
+        "tiny11|5632x2048|0": "tile8_ceil",
+        "tiny11|5632x2048|1": "wave_k1",
+        "tiny11|5632x2048|2": "wave_k1"
+      },
+      "error_guard_dispatch": {
+        "tiny11|2048x2048|0": "paper",
+        "tiny11|2048x2048|1": "paper",
+        "tiny11|2048x2048|2": "paper",
+        "tiny11|2048x256|0": "paper",
+        "tiny11|2048x256|1": "paper",
+        "tiny11|2048x256|2": "wave_k6",
+        "tiny11|2048x5632|0": "paper",
+        "tiny11|2048x5632|1": "tile8_ceil",
+        "tiny11|2048x5632|2": "tile8_ceil",
+        "tiny11|5632x2048|0": "paper",
+        "tiny11|5632x2048|1": "paper",
+        "tiny11|5632x2048|2": "tile8_ceil"
+      }
+    }
+  }
+}
