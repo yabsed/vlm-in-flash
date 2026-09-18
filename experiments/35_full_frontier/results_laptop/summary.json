@@ -1,0 +1,17 @@
+{
+  "format": "experiment-35-full-frontier-v1",
+  "candidate_cases": 13608,
+  "adaptive_decisions": 4158,
+  "all_direct": true,
+  "all_deterministic": true,
+  "fallback_cases": 0,
+  "paper_row_match_rate": 0.6613756613756614,
+  "cell_row_match_rate": 1.0,
+  "adaptive_frontier_wins": 1,
+  "adaptive_interpolated_wins": 0,
+  "adaptive_frontier_points": 11,
+  "adaptive_e2e_frontier_wins": 0,
+  "e2e_cases": 432,
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "flash": "WD_BLACK SN850X 1000GB"
+}
