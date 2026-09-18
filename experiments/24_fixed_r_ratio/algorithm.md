@@ -2,6 +2,14 @@
 
 ## Same-row comparison
 
+The production input is a real LM activation-importance vector captured by
+`vlm-flash` during a dense Qwen forward. For every wrapped linear projection,
+the capture policy records `mean(abs(input))` over batch and token dimensions,
+leaves every row enabled, and therefore does not perturb downstream dense
+activations. Both selectors receive the same normalized float32 vector. The
+default archive and deterministic per-shape subsampling are shared with
+Experiment 22.
+
 The paper's selector can underfill its nominal row cap because it selects whole
 windows. For every paired case, define
 
@@ -71,10 +79,12 @@ and endpoint-only removal cannot represent every exact-cardinality optimum.
 
 ## Exact oracle and timing
 
-For `N=18`, all `2^N` masks are enumerated to obtain the exact fixed-R
-two-line ratio optimum at three row budgets. This validates feasibility and
-quantifies approximation error without claiming an oracle at production N.
+For `N=18`, all `2^N` masks are enumerated on separate synthetic lognormal
+vectors to obtain the exact fixed-R two-line ratio optimum at three row
+budgets. This validates feasibility and quantifies approximation error without
+claiming an oracle at production N or treating synthetic vectors as model data.
 
 Compilation is warmed out. The CUDA track includes GPU-to-CPU importance
 transfer, the CPU selector and repair, CPU-to-GPU mask transfer, and
-synchronization. Actual storage I/O and model compute are excluded.
+synchronization. The untimed real-model trace forward, actual storage I/O, and
+model compute are excluded from selector latency.

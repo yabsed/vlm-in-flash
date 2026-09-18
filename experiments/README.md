@@ -75,11 +75,11 @@ reading, paper notes, and preliminary derivations live separately in
     importance-per-latency optimization under the two-line cost.
 24. `24_fixed_r_ratio`: implements the row-price fixed-R approximation, forces
     exact equality with Paper's actual selected-row count, validates against a
-    small exhaustive oracle, and benchmarks all 16 shapes on host and CUDA
-    round-trip timing tracks.
+    separate small exhaustive oracle, and benchmarks the same real Qwen
+    activation traces as Experiment 22 on host and CUDA round-trip tracks.
 25. `25_gpu_tiles`: ports Experiment 18's `Tiles(s/2)`, `Tiles(s)`, and
-    `Tiles(2s)` selectors to a CUDA-resident implementation, benchmarks all 16
-    Table-2 shapes with CUDA-event and synchronized wall clocks, and audits
-    coverage, row budgets, lookup quality, and CPU-algorithm parity.
+    `Tiles(2s)` selectors to a CUDA-resident implementation, benchmarks the
+    shared real Qwen activation traces with CUDA-event and synchronized wall
+    clocks, and audits coverage, row budgets, lookup quality, and CPU parity.
 
 Future experiments should use the next numbered directory.

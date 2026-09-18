@@ -2,9 +2,11 @@
 
 ## Contract
 
-The input is a CUDA-resident nonnegative `float32` importance vector `v` and a
-coverage target `Q`. The output is a CUDA-resident boolean mask. The three tile
-lengths are
+The input is a CUDA-resident nonnegative `float32` importance vector `v` from a
+real LM projection and a coverage target `Q`. The trace is captured by a
+`vlm-flash` all-true policy during a dense Qwen forward as
+`mean(abs(projection_input))` over batch and token axes, then normalized in
+float32. The output is a CUDA-resident boolean mask. The three tile lengths are
 
 \[
 L\in\{\operatorname{round}(s/2),\operatorname{round}(s),
@@ -43,8 +45,9 @@ copy or CPU decision in the timed selector.
 
 ## Evaluation
 
-The default cases are all 16 Table-2 shapes, three synthetic trials with exact
-CV 3.30, three spatial orderings, and the paired scenarios
+The default cases are the supported Table-2 shapes present in Experiment 22's
+real Qwen archive, deterministically capped at 32 projection calls per shape,
+and the paired scenarios
 
 \[
 (Q,R/N)\in\{(0.50,0.25),(0.70,0.50),(0.90,0.75)\}.
@@ -63,5 +66,6 @@ Each case is warmed up and measured 30 times. Two clocks are recorded:
   synchronization.
 
 The 2 ms pass condition is the within-case synchronized wall p95. Static layout
-construction, importance generation, Paper/reference computation, initial
-CUDA context setup, storage I/O, and model compute are excluded.
+construction, the untimed real-model trace forward, Paper/reference
+computation, initial CUDA context setup, storage I/O, and model compute are
+excluded.

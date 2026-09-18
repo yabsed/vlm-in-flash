@@ -22,9 +22,19 @@ Compared methods:
 - one ratio iteration with 8 row-price solves;
 - two ratio iterations with 4 row-price solves each.
 
-The default run covers all 16 Table-2 shapes, three inputs, three spatial
-orders, three row-budget fractions, 30 warm repetitions, and host/CUDA timing
-tracks. A separate exhaustive `N=18` oracle measures approximation quality.
+The production benchmark no longer generates a synthetic 1-D distribution.
+By default it reuses Experiment 22's archived Qwen2.5-0.5B-Instruct traces,
+captured by attaching the checked-out `preliminary_research/vlm-flash` code to
+a real dense model forward. Each trace is
+`mean(abs(projection_input), batch/token axes)` for one wrapped projection call.
+The deterministic default cap keeps 32 calls per supported Table-2 shape (128
+traces over four Qwen shapes), with three row-budget fractions, 30 repetitions,
+and host/CUDA timing tracks. This shared archive makes Experiments 22 and 24
+differ in selector logic rather than sampled importance.
+
+A separate exhaustive `N=18` oracle still uses synthetic lognormal vectors.
+It is an algorithmic approximation check only and is never mixed into the
+production-N real-activation summaries.
 
 Run:
 
@@ -33,11 +43,17 @@ TORCH_EXTENSIONS_DIR=/tmp/vlmflash_torch_extensions \
 python experiments/24_fixed_r_ratio/run_experiment.py
 ```
 
+To run a fresh real model forward instead of reusing Experiment 22's archive:
+
+```bash
+python experiments/24_fixed_r_ratio/run_experiment.py --capture-traces
+```
+
 Smoke test:
 
 ```bash
 python experiments/24_fixed_r_ratio/run_experiment.py \
-  --shapes 4864x896 --trials 1 --repetitions 2 \
+  --shapes 4864x896 --max-traces-per-shape 1 --repetitions 2 \
   --row-budget-fractions 0.5 --oracle-n 12 --oracle-trials 1
 ```
 
