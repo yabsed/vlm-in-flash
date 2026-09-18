@@ -1,0 +1,17 @@
+{
+  "format": "experiment-34-quality-constrained-variable-r-v1",
+  "candidate_cases": 20790,
+  "threshold_decisions": 13608,
+  "holdout_policy_cases": 945,
+  "all_direct": true,
+  "all_deterministic": true,
+  "fallback_cases": 0,
+  "oracle": {
+    "paper_total_ms": 0.9007836956777235,
+    "oracle_total_ms": 0.6805276985084772,
+    "saving_vs_paper_pct": 24.45159678467894,
+    "strict_win_rate": 0.9682539682539683,
+    "feasible_rate": 1.0
+  },
+  "e2e_cases": 72
+}
