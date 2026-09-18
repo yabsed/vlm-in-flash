@@ -1,0 +1,171 @@
+{
+  "format": "experiment-41-laptop-twoline-cell1-v1",
+  "controlled_change": "Cell-1 run-cost oracle only: empirical laptop lookup versus continuous two-line fit; actual latency is measured for both",
+  "two_line_kib": {
+    "a_ms": 0.01283283432435459,
+    "c1_ms_per_row": 0.00012062942390915592,
+    "c2_ms_per_row": 0.00017409956692730004,
+    "d_ms_per_excess_row": 5.347014301814412e-05,
+    "saturation_kib": 240.0,
+    "saturation_rows": 240.0,
+    "short_max_rows": 240,
+    "r_squared": 0.9854058527187697,
+    "mape_pct": 3.287194837101125
+  },
+  "models": [
+    {
+      "model": "smol360",
+      "label": "SmolLM2-360M-Instruct",
+      "repo": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "snapshot": "a10cc1512eabd3dde888204e902eca88bddb4951",
+      "model_type": "llama",
+      "layers": 32,
+      "sampled_layers": [
+        0,
+        16,
+        31
+      ],
+      "sampled_projection_count": 21,
+      "shapes": [
+        "2560x960",
+        "960x2560",
+        "960x320",
+        "960x960"
+      ],
+      "parameters": 361821120,
+      "dtype": "torch.float16",
+      "weight_norm_vectors": 224,
+      "weight_norm_metadata_bytes": 1064960,
+      "weight_norm_precompute_ms": 120.555941
+    }
+  ],
+  "prompts": [
+    {
+      "name": "cal_short_factual",
+      "split": "calibration",
+      "situation": "short",
+      "sha256": "c65d7bf7209084df2dbac206862689d3a8feb5db61b4c0332274c1d21d07e8af"
+    },
+    {
+      "name": "cal_medium_reasoning",
+      "split": "calibration",
+      "situation": "medium",
+      "sha256": "819082d5875bb70109b4aab75e3b621813fc8756f1936ab09c3b2cc4cc76714b"
+    },
+    {
+      "name": "cal_long_context",
+      "split": "calibration",
+      "situation": "long",
+      "sha256": "f111579cee876849bde44f398503809f028d6563e7d6bab2de4debd846319d12"
+    },
+    {
+      "name": "test_short_korean",
+      "split": "holdout",
+      "situation": "short",
+      "sha256": "173053da5affbd187a329775019b571425ad52e816c5e7b77e86ba196e0750c8"
+    },
+    {
+      "name": "test_medium_code",
+      "split": "holdout",
+      "situation": "medium",
+      "sha256": "30e4144aad9c589fc9fb36cb5d06f8bad400b8636ba8dd706f4c18556f6c72e8"
+    },
+    {
+      "name": "test_long_structured",
+      "split": "holdout",
+      "situation": "long",
+      "sha256": "4af2cea7491850f5adf111b824e0bf4159135304dbd2a249ab7fc7bd5c018206"
+    }
+  ],
+  "methods": [
+    "paper",
+    "cell1_abs_lookup",
+    "cell1_abs_twoline",
+    "cell1_x2_lookup",
+    "cell1_x2_twoline"
+  ],
+  "budgets": [
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4,
+    0.45,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.9,
+    0.95
+  ],
+  "saturation_kib": 240.0,
+  "score_repetitions": 3,
+  "score_warmup": 1,
+  "selector_repetitions": 2,
+  "io_repetitions": 2,
+  "io_warmup": 1,
+  "gemm_repetitions": 3,
+  "gemm_warmup": 1,
+  "io_threads": 2,
+  "io_max_read_kib": 768,
+  "cuda_memory_fraction": 0.55,
+  "cpu_threads": 2,
+  "process_nice": 10,
+  "norm_chunk_rows": 128,
+  "projection_throttle_ms": 25.0,
+  "profile": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_profile.json",
+  "profile_metadata": {
+    "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+    "flash": "WD_BLACK SN850X 1000GB",
+    "source": "profile_flash.py",
+    "metadata": {
+      "producer": "scripts/profile_flash.py",
+      "timestamp_utc": "2026-09-18T08:07:19.098607+00:00",
+      "arguments": {
+        "blob": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat",
+        "blob_policy": "random, preallocated, fsync before measurement",
+        "max_kb": 512,
+        "step_kb": 1,
+        "iters": 10,
+        "warmup": 3,
+        "chunk_schedule": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          28,
+          32,
+          48,
+          64,
+          96,
+          128,
+          192,
+          256,
+          384,
+          512
+        ],
+        "gap_rows": 32,
+        "reader_threads": 6,
+        "trim_at_saturation": true
+      },
+      "throughput": {
+        "derived_from": "latency_ms",
+        "formula": "1000 * logical_request_kb / latency_ms / 1024",
+        "unit": "MiB/s",
+        "bytes": "logical requested bytes, before O_DIRECT alignment padding"
+      }
+    }
+  },
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "flash": "WD_BLACK SN850X 1000GB",
+  "torch": "2.11.0+cu130",
+  "cuda_build": "13.0",
+  "platform": "Linux-7.1.13-200.fc44.x86_64-x86_64-with-glibc2.43"
+}
