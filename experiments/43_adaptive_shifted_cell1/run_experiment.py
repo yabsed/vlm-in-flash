@@ -594,6 +594,10 @@ def _lagrangian_allocate(group: pd.DataFrame, loss_column: str,
             "loss": case[loss_column].to_numpy(dtype=float),
             "error": case.relative_l2_error.to_numpy(dtype=float),
             "fraction": case.selected_fraction.to_numpy(dtype=float),
+            **{
+                component: case[component].to_numpy(dtype=float)
+                for component in COMPONENTS
+            },
         })
     if not cases:
         return None
@@ -603,42 +607,53 @@ def _lagrangian_allocate(group: pd.DataFrame, loss_column: str,
     loss_values = np.concatenate([case["loss"] for case in cases])
     loss_span = max(float(np.nanmax(loss_values) - np.nanmin(loss_values)), 1e-8)
     center = max(time_scale / loss_span, 1e-8)
-    lambdas = np.concatenate((
+    finite_lambdas = np.concatenate((
         np.array([0.0]), center * np.logspace(-5, 6, 1200),
-        np.array([np.inf]),
     ))
-    best = None
-    for multiplier in lambdas:
-        total_actual = total_decision = 0.0
-        total_loss = total_error = total_fraction = 0.0
-        for case in cases:
-            if np.isinf(multiplier):
-                index = int(np.argmin(case["loss"]))
-            else:
-                index = int(np.argmin(
-                    case["decision_time"] + multiplier * case["loss"]
-                ))
-            total_actual += case["actual_time"][index]
-            total_decision += case["decision_time"][index]
-            total_loss += case["loss"][index]
-            total_error += case["error"][index]
-            total_fraction += case["fraction"][index]
-        if total_loss <= target_loss + 1e-12 and (
-            best is None or total_decision < best["total_decision_time_ms"]
-        ):
-            count = len(cases)
-            best = {
-                "cases": count,
-                "total_time_ms": total_actual,
-                "mean_time_ms": total_actual / count,
-                "total_decision_time_ms": total_decision,
-                "mean_decision_time_ms": total_decision / count,
-                "total_loss": total_loss,
-                "mean_loss": total_loss / count,
-                "mean_error": total_error / count,
-                "mean_selected_fraction": total_fraction / count,
-            }
-    return best
+    count_candidates = len(finite_lambdas) + 1
+    total_actual = np.zeros(count_candidates, dtype=np.float64)
+    total_decision = np.zeros(count_candidates, dtype=np.float64)
+    total_loss = np.zeros(count_candidates, dtype=np.float64)
+    total_error = np.zeros(count_candidates, dtype=np.float64)
+    total_fraction = np.zeros(count_candidates, dtype=np.float64)
+    component_totals = {
+        component: np.zeros(count_candidates, dtype=np.float64)
+        for component in COMPONENTS
+    }
+    for case in cases:
+        objectives = (
+            case["decision_time"][None, :]
+            + finite_lambdas[:, None] * case["loss"][None, :]
+        )
+        indices = np.empty(count_candidates, dtype=np.int64)
+        indices[:-1] = np.argmin(objectives, axis=1)
+        indices[-1] = int(np.argmin(case["loss"]))
+        total_actual += case["actual_time"][indices]
+        total_decision += case["decision_time"][indices]
+        total_loss += case["loss"][indices]
+        total_error += case["error"][indices]
+        total_fraction += case["fraction"][indices]
+        for component in COMPONENTS:
+            component_totals[component] += case[component][indices]
+    feasible = np.flatnonzero(total_loss <= target_loss + 1e-12)
+    if not len(feasible):
+        return None
+    best_index = int(feasible[np.argmin(total_decision[feasible])])
+    count = len(cases)
+    result = {
+        "cases": count,
+        "total_time_ms": total_actual[best_index],
+        "mean_time_ms": total_actual[best_index] / count,
+        "total_decision_time_ms": total_decision[best_index],
+        "mean_decision_time_ms": total_decision[best_index] / count,
+        "total_loss": total_loss[best_index],
+        "mean_loss": total_loss[best_index] / count,
+        "mean_error": total_error[best_index] / count,
+        "mean_selected_fraction": total_fraction[best_index] / count,
+    }
+    for component in COMPONENTS:
+        result[component] = component_totals[component][best_index] / count
+    return result
 
 
 def _global_allocations(candidates: pd.DataFrame) -> pd.DataFrame:
@@ -764,8 +779,20 @@ def analyze(args: argparse.Namespace) -> None:
         mean_error=("mean_error", "mean"),
         mean_loss=("mean_loss", "mean"),
         mean_selected_fraction=("mean_selected_fraction", "mean"),
+        score_median_ms=("score_median_ms", "mean"),
+        selector_median_ms=("selector_median_ms", "mean"),
+        read_wall_median_ms=("read_wall_median_ms", "mean"),
+        gather_median_ms=("gather_median_ms", "mean"),
+        gemm_median_ms=("gemm_median_ms", "mean"),
         target_mean_error=("target_mean_error", "mean"),
         target_mean_importance_loss=("target_mean_importance_loss", "mean"),
+    )
+    total_workloads = int(
+        holdout[["model", "prompt"]].drop_duplicates().shape[0]
+    )
+    allocation_summary["total_workloads"] = total_workloads
+    allocation_summary["coverage_rate"] = (
+        allocation_summary.workloads / total_workloads
     )
     allocation_summary["fixed_same_error_ms"] = [
         _interpolate(
@@ -854,6 +881,8 @@ def analyze(args: argparse.Namespace) -> None:
 
 def _plot(output: Path, fixed: pd.DataFrame, interpolated: pd.DataFrame,
           allocations: pd.DataFrame) -> None:
+    if "coverage_rate" in allocations:
+        allocations = allocations[np.isclose(allocations.coverage_rate, 1.0)]
     fig, ax = plt.subplots(figsize=(8.8, 6.0))
     for method in METHODS:
         group = fixed[fixed.method == method].sort_values("budget_fraction")
@@ -1010,9 +1039,12 @@ def _write_report(args, candidates: pd.DataFrame, comparison: pd.DataFrame,
         "사용하는 비배포형 상한이다.", "",
                   "| objective | paper target R | method | resulting R | error | latency |",
                   "|---|---:|---|---:|---:|---:|"])
-    shown = allocations[
-        allocations.method.isin(("cell1_x2", "adaptive8_x2"))
-        & allocations.paper_budget_fraction.isin((0.30, 0.50, 0.70, 0.90))
+    full_allocations = allocations[
+        np.isclose(allocations.coverage_rate, 1.0)
+    ] if "coverage_rate" in allocations else allocations
+    shown = full_allocations[
+        full_allocations.method.isin(("cell1_x2", "adaptive8_x2"))
+        & full_allocations.paper_budget_fraction.isin((0.30, 0.50, 0.70, 0.90))
     ]
     for row in shown.itertuples(index=False):
         lines.append(
@@ -1059,8 +1091,8 @@ def _write_report(args, candidates: pd.DataFrame, comparison: pd.DataFrame,
         )
     else:
         lines.append("모든 방법이 겹치는 error 구간이 없어 gain을 계산하지 못했다.")
-    allocation_gains = allocations[
-        allocations.method == "cell1_x2"
+    allocation_gains = full_allocations[
+        full_allocations.method == "cell1_x2"
     ].groupby("objective").gain_vs_fixed_same_error_pct.mean()
     if "importance_bound" in allocation_gains:
         lines.append(
@@ -1074,6 +1106,8 @@ def _write_report(args, candidates: pd.DataFrame, comparison: pd.DataFrame,
         "결론은 selector 자체의 mask 개선이 추가 selector 시간보다 큰지, 그리고 ",
         "고정 R을 없앤 전역 quality allocation이 그보다 더 큰지로 나누어 해석해야 ",
         "한다. error oracle은 달성 가능한 상한이지 배포 가능한 알고리즘이 아니다.",
+        "평균 gain과 그래프에는 모든 9개 workload에서 feasible한 target만 "
+        "포함했다.",
         "", "## 측정 범위", "",
         f"- 모델 `{candidates.model.nunique()}`개, projection 후보 "
         f"`{len(candidates)}`개; fallback `{fallback_count}`건.",

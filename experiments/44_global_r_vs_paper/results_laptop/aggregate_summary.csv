@@ -1,0 +1,3 @@
+objective,objective_label,comparable_points,mean_gain_vs_paper_pct,min_gain_vs_paper_pct,max_gain_vs_paper_pct,mean_gain_vs_fixed_cell1_pct,mean_resulting_r
+error_oracle,Cell-1 global error-oracle,17,42.60419610402867,28.036796912713616,50.10227873322644,26.022064012278687,0.5118405705583668
+importance_bound,Cell-1 global importance-bound,16,39.97409764797749,24.470574430247325,48.37090461701918,22.83760322144067,0.5708151483413153

@@ -82,10 +82,11 @@ same-R error improvement는 양수가 좋고, 나머지 delta는 음수가 좋�
 ## 판정
 
 동일-error에서 Shifted-8의 Cell-1 대비 평균 gain은 `-7.65%`, Adaptive-8은 `-7.99%`다.
-반대로 기존 Cell-1의 grid를 그대로 두고 projection별 R만 전역 재배분하면, 동일한 실제 error에서 fixed-R Cell-1보다 평균 `22.30%` 빠르다. 실제 error oracle 상한은 평균 `26.02%`다.
+반대로 기존 Cell-1의 grid를 그대로 두고 projection별 R만 전역 재배분하면, 동일한 실제 error에서 fixed-R Cell-1보다 평균 `21.76%` 빠르다. 실제 error oracle 상한은 평균 `26.02%`다.
 결론은 selector 자체의 mask 개선이 추가 selector 시간보다 큰지, 그리고 
 고정 R을 없앤 전역 quality allocation이 그보다 더 큰지로 나누어 해석해야 
 한다. error oracle은 달성 가능한 상한이지 배포 가능한 알고리즘이 아니다.
+평균 gain과 그래프에는 모든 9개 workload에서 feasible한 target만 포함했다.
 
 ## 측정 범위
 
