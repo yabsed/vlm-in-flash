@@ -81,5 +81,12 @@ reading, paper notes, and preliminary derivations live separately in
     `Tiles(2s)` selectors to a CUDA-resident implementation, benchmarks the
     shared real Qwen activation traces with CUDA-event and synchronized wall
     clocks, and audits coverage, row budgets, lookup quality, and CPU parity.
+26. `26_frontier_adaptive_trim`: makes Experiment 24's fixed-R ratio search
+    retain every eligible row-price frontier solution, adaptively recomputes
+    exact I/L during bounded endpoint trim, and compares three search/trim
+    budgets on the shared real Qwen traces and a separate exhaustive oracle.
+27. `27_fixed_r_scale`: leaves Experiment 24's fixed-R selector unchanged and
+    scales only its rho-iteration and mu-bisection budgets across seven
+    settings on the shared real Qwen traces and exhaustive small-N oracle.
 
 Future experiments should use the next numbered directory.
