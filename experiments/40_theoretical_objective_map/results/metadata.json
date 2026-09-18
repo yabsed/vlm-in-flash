@@ -1,0 +1,46 @@
+{
+  "format": "experiment-40-theoretical-objective-map-v1",
+  "n": 4864,
+  "r_step_pct": 1.0,
+  "gpu_used": false,
+  "selector_runtime_included": false,
+  "primary_objective": "min two-line L(M) subject to I(M) >= Q",
+  "cell1_geometry": "one ceil(s)-row placement cell/tile with exact-R endpoint repair; repair utility uses the two-line run-cost model",
+  "source": {
+    "paired_trials": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/16_saturation_global_chain/results/paired_trials.csv",
+    "paired_trials_sha256": "e2d0c5b43803323aeb4a40f66ceb6fc04674b09f0c9b912d499d9ca137deef1f",
+    "experiment_16_summary": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/16_saturation_global_chain/results/summary.json",
+    "experiment_16_summary_sha256": "df3be62ab71c2384db1c0306123bbbad21a2e79f5f402a0f28165d1f8d73d5b8",
+    "input_summary": "/home/yabsed/Documents/fall26/work/vlm-in-flash/experiments/10_exact_lookup_recheck/results/summary.json",
+    "input_summary_sha256": "2792613b0c27ccace6f5d21eb44f7cbc968b51421469454671752b5d1a5b7166"
+  },
+  "optimization_surrogate": {
+    "a_ms": 0.011080616884153835,
+    "c1_ms_per_row": 0.00024315393210444196,
+    "c2_ms_per_row": 0.00032531952340643014,
+    "d_ms_per_excess_row": 8.216559130198818e-05,
+    "saturation_kib": 236.0,
+    "saturation_rows": 134.85714285714286,
+    "short_max_rows": 134,
+    "r_squared": 0.9876264166468851,
+    "mape_pct": 4.107508659415217
+  },
+  "released_evaluator": {
+    "name": "released Orin AGX lookup with endpoint-proportional tail",
+    "measured_max_kib": 255.0,
+    "measured_max_rows": 145.71428571428572,
+    "tail_ms_per_row": 0.00033231816658287245,
+    "same_rule_as_experiment_15": true
+  },
+  "representative": {
+    "trial": 1,
+    "target_cv": 1.07,
+    "spatial_mode": "local"
+  },
+  "outputs": {
+    "dense_cell1_points": 5616,
+    "objective_points": 1512,
+    "earlier_solver_points": 1890,
+    "paired_targets": 378
+  }
+}
