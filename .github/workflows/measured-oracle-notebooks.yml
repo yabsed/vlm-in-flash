@@ -5,7 +5,6 @@ on:
       - 'conclusion/python/results/01/**'
       - 'conclusion/python/results/02/**'
       - 'conclusion/upstream/vlm-flash'
-      - 'experiments/22_predicted_lambda_trim/results/activation_traces.npz'
       - '.github/workflows/measured-oracle-notebooks.yml'
 permissions:
   contents: read
@@ -24,7 +23,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
-      - name: Execute linked reports and tiny identities only
+      - name: Execute portable reports and tiny identities only
         run: |
           python - <<'PY'
           import json, os, shutil, tempfile, hashlib
@@ -35,26 +34,25 @@ jobs:
           from nbclient import NotebookClient
           from nbconvert import HTMLExporter
           from traitlets.config import Config
-          repo = Path.cwd()
+          repo = Path.cwd() / 'conclusion'
           out = Path(os.environ['RUNNER_TEMP']) / 'measured-oracle'
           out.mkdir(parents=True, exist_ok=True)
-          inputs = [repo / 'conclusion/python/results/01/block_estimates.csv',
-                    repo / 'experiments/22_predicted_lambda_trim/results/activation_traces.npz']
-          before = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
+          csv_source = repo / 'python/results/01/block_estimates.csv'
+          before = csv_source.read_bytes()
           export_config = Config({'TagRemovePreprocessor': {'remove_input_tags': ['hide-input']},
                                   'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
           with tempfile.TemporaryDirectory() as tmp:
-              work = Path(tmp)
-              for rel in ['.gitmodules', 'conclusion/python/results/01/01_chunk_latency.ipynb',
-                          'conclusion/python/results/01/block_estimates.csv',
-                          'conclusion/python/results/02/02_global_oracle.ipynb',
-                          'experiments/22_predicted_lambda_trim/results/activation_traces.npz']:
+              # Only conclusion files exist here: no repository root or old experiment data.
+              work = Path(tmp) / 'portable-report'
+              for rel in ['python/results/01/01_chunk_latency.ipynb',
+                          'python/results/01/block_estimates.csv',
+                          'python/results/02/02_global_oracle.ipynb']:
                   dest = work / rel
                   dest.parent.mkdir(parents=True, exist_ok=True)
                   shutil.copy2(repo / rel, dest)
-              def execute(path, flags):
+              def execute(path, flags, allow_stream=False):
                   nb = nbf.read(path, as_version=4)
-                  guard = nbf.v4.new_code_cell('import sys\nsys.modules.update({n: None for n in ("torch", "profile_flash", "vlmflash")})')
+                  guard = nbf.v4.new_code_cell('import sys\nsys.modules.update({n: None for n in ("torch", "transformers", "profile_flash", "vlmflash")})')
                   nb.cells.insert(0, guard)
                   setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
                   flag_guard = nbf.v4.new_code_cell('\n'.join(f'assert {flag} is False' for flag in flags))
@@ -64,29 +62,41 @@ jobs:
                       resources={'metadata': {'path': str(path.parent)}}).execute()
                   nb.cells = [c for c in nb.cells if c.id not in (guard.id, flag_guard.id)]
                   outputs = [o for c in nb.cells if c.cell_type=='code' for o in c.outputs]
-                  assert not any(o.output_type in ('error','stream') for o in outputs)
-                  for i,c in enumerate((c for c in nb.cells if c.cell_type=='code'),1):
-                      c.execution_count = i
-                      c.metadata.pop('execution',None)
-                      for o in c.outputs:
-                          if 'execution_count' in o:
-                              o.execution_count = i
+                  assert not any(o.output_type == 'error' for o in outputs)
+                  assert allow_stream or not any(o.output_type == 'stream' for o in outputs)
+                  for c in nb.cells:
+                      c.metadata.pop('execution', None)
                   return nb
-              p1 = work/'conclusion/python/results/01/01_chunk_latency.ipynb'
-              p2 = work/'conclusion/python/results/02/02_global_oracle.ipynb'
+              p1 = work/'python/results/01/01_chunk_latency.ipynb'
+              p2 = work/'python/results/02/02_global_oracle.ipynb'
               n1 = execute(p1, ['RERUN_MEASUREMENTS'])
               model_path = p1.with_name('latency_model.json')
               model = json.loads(model_path.read_text())
               assert model['csv_sha256'] == hashlib.sha256(p1.with_name('block_estimates.csv').read_bytes()).hexdigest()
               assert {'numerical-models','parameter-table','export-model'} <= {c.id for c in n1.cells}
               assert sum('image/png' in o.get('data',{}) for c in n1.cells if c.cell_type=='code' for o in c.outputs) == 4
-              n2 = execute(p2, ['RUN_ORACLE'])
+              n2 = execute(p2, ['RUN_ORACLE','RUN_SCALING'])
+              assert not p2.with_name('activation_traces.npz').exists()
               for nb,path in ((n1,p1),(n2,p2)):
                   nbf.write(nb, out/path.name)
                   html,_ = HTMLExporter(config=export_config).from_notebook_node(nb)
                   (out/path.with_suffix('.html').name).write_text(html,encoding='utf-8')
               shutil.copy2(model_path,out/'latency_model.json')
-              # A changed CSV must change the displayed/exported coefficients.
+              # Exercise the four methods and plots on an explicitly synthetic, local archive.
+              entries, arrays = [], {}
+              for j,d in enumerate((64,512,2048,16384)):
+                  arrays[f'v{j}'] = np.random.default_rng(j).uniform(.1,4,9)
+                  entries.append(dict(trace_id=j,n=9,d=d,shape=f'9x{d}',array=f'v{j}'))
+              manifest = dict(model='SYNTHETIC CI FIXTURE, NOT QWEN',model_dtype='float32',traces=entries)
+              np.savez_compressed(p2.with_name('activation_traces.npz'),
+                  manifest_json=np.array(json.dumps(manifest)),**arrays)
+              fixture = nbf.read(p2, as_version=4)
+              next(c for c in fixture.cells if c.id=='setup').source = next(c for c in fixture.cells if c.id=='setup').source.replace('RUN_ORACLE = False','RUN_ORACLE = True')
+              fixture.cells.append(nbf.v4.new_code_cell('assert len(frame)==144\nassert len(examples)==4\nassert frame.groupby(["trace_id","fraction"]).R.nunique().eq(1).all()'))
+              nbf.write(fixture,p2)
+              checked = execute(p2, [], allow_stream=True)
+              assert sum('image/png' in o.get('data',{}) for c in checked.cells if c.cell_type=='code' for o in c.outputs)==6
+              # Do not publish the synthetic fixture as a real experimental report.
               csv = p1.with_name('block_estimates.csv')
               changed = pd.read_csv(csv)
               changed.latency_ms *= 1.5
@@ -94,14 +104,15 @@ jobs:
               changed.to_csv(csv,index=False)
               execute(p1,['RERUN_MEASUREMENTS'])
               scaled = json.loads(model_path.read_text())
-              assert scaled['csv_sha256'] != model['csv_sha256']
               np.testing.assert_allclose([scaled['c1_ms_per_kib'],scaled['delta_ms_per_kib']],
                   1.5*np.array([model['c1_ms_per_kib'],model['delta_ms_per_kib']]),rtol=1e-8)
-          assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest()==h for p,h in before.items())
+          assert csv_source.read_bytes() == before
           source = '\n'.join(c.source for c in n2.cells if c.cell_type == 'code')
-          assert 'sha256(' not in source and 'fingerprint' not in source and 'atomic_json' not in source
-          assert sum(len(c.source.splitlines()) for c in n2.cells if c.cell_type == 'code') < 300
-          print('Two linked notebooks passed; 02 stays under 300 visible code lines; no full experiment.')
+          assert not any(s in source for s in ('sha256(', 'fingerprint', 'atomic_json', 'experiments/', 'preliminary_research/'))
+          # Preserve the analysis budget; capture is the newly requested, visible operation.
+          assert sum(len(c.source.splitlines()) for c in n2.cells if c.cell_type=='code' and c.id!='capture-traces') < 300
+          assert len(next(c for c in n2.cells if c.id=='capture-traces').source.splitlines()) <= 60
+          print('Portable reports, Paper-seeded oracle identities, and six fixture plots passed; no Qwen/SSD experiment.')
           PY
       - uses: actions/upload-artifact@v4
         with:
