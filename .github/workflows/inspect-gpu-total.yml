@@ -1,0 +1,30 @@
+name: Inspect GPU total inputs
+on:
+  push:
+    branches: ['feat/gpu-sort-composed-total']
+    paths: ['.github/workflows/inspect-gpu-total.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git submodule update --init conclusion/upstream/vlm-flash
+      - name: Bundle current inputs and applicable repository instructions
+        run: |
+          mkdir -p /tmp/gpu-total-source/conclusion/python /tmp/gpu-total-source/.github
+          cp -a conclusion/python/results /tmp/gpu-total-source/conclusion/python/
+          cp -a conclusion/upstream /tmp/gpu-total-source/conclusion/
+          cp -a .github/workflows /tmp/gpu-total-source/.github/
+          cp .gitmodules /tmp/gpu-total-source/
+          git ls-files '*AGENTS.md' > /tmp/gpu-total-source/AGENT_PATHS.txt
+          while IFS= read -r p; do cp --parents "$p" /tmp/gpu-total-source/; done < /tmp/gpu-total-source/AGENT_PATHS.txt
+          git rev-parse HEAD > /tmp/gpu-total-source/SOURCE_COMMIT
+          find /tmp/gpu-total-source -name .git -type f -delete
+          tar -czf /tmp/gpu-total-source.tar.gz -C /tmp/gpu-total-source .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpu-total-source
+          path: /tmp/gpu-total-source.tar.gz
+          retention-days: 2
