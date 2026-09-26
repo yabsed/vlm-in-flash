@@ -34,7 +34,7 @@ def main():
                     assert np.isclose(objective(fast), objective(slow))
                     checks += 1
     root = Path(__file__).resolve().parents[2]
-    sys.path.insert(0, str(root / "preliminary_research/vlm-flash/src"))
+    sys.path.insert(0, str(root / "upstream/vlm-flash/src"))
     from vlmflash.policy import ChunkParams, select_chunks
     from vlmflash.latency import LatencyTable
     for n in [9, 32, 128]:

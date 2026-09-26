@@ -262,7 +262,7 @@ $$
 
 ### 7.1 행 예산의 반올림 — 수정할 사실
 
-문서의 두 $R=\lfloor(1-\rho)N\rfloor$ 표현 중 특히 “implementation treats”라는 서술은 현재 서브모듈과 다르다. [linear.py](../vlm-flash/src/vlmflash/linear.py)의 `_select`는 다음 계산을 한다.
+문서의 두 $R=\lfloor(1-\rho)N\rfloor$ 표현 중 특히 “implementation treats”라는 서술은 현재 서브모듈과 다르다. [linear.py](../../conclusion/upstream/vlm-flash/src/vlmflash/linear.py)의 `_select`는 다음 계산을 한다.
 
 ```python
 num_skip = int(self.in_features * self.nc_sparsity)
@@ -275,7 +275,7 @@ budget = self.in_features - num_skip
 
 ### 7.2 후보 청크 비용과 최대 run 비용 — 실험 시 구분
 
-[policy.py](../vlm-flash/src/vlmflash/policy.py)의 `Selection.est_cost_ms`는 수락한 후보별 비용의 합이다. [latency.py](../vlm-flash/src/vlmflash/latency.py)의 `mask_elat_ms`는 최종 마스크의 인접 행을 합친 최대 run별 비용의 합이다.
+[policy.py](../../conclusion/upstream/vlm-flash/src/vlmflash/policy.py)의 `Selection.est_cost_ms`는 수락한 후보별 비용의 합이다. [latency.py](../../conclusion/upstream/vlm-flash/src/vlmflash/latency.py)의 `mask_elat_ms`는 최종 마스크의 인접 행을 합친 최대 run별 비용의 합이다.
 
 AGX 프로파일에서 1 KiB짜리 행 네 개를 각각 후보로 수락하면:
 
@@ -299,7 +299,7 @@ $$
 
 ## 8. 프로파일 수치와 외부 근거
 
-재계산에는 [AGX JSON](../vlm-flash/src/vlmflash/profiles/orin-agx.json), [Nano JSON](../vlm-flash/src/vlmflash/profiles/orin-nano.json)의 전체 항목을 사용했다. OLS는 intercept를 포함한다. $R^2=1-\mathrm{SSE}/\mathrm{SST}$, 상대오차 분모는 관측 latency다. 정확한 수치는 [results.json](results.json)에 저장한다.
+재계산에는 [AGX JSON](../../conclusion/upstream/vlm-flash/src/vlmflash/profiles/orin-agx.json), [Nano JSON](../../conclusion/upstream/vlm-flash/src/vlmflash/profiles/orin-nano.json)의 전체 항목을 사용했다. OLS는 intercept를 포함한다. $R^2=1-\mathrm{SSE}/\mathrm{SST}$, 상대오차 분모는 관측 latency다. 정확한 수치는 [results.json](results.json)에 저장한다.
 
 | 지표 | AGX | Nano |
 |---|---:|---:|

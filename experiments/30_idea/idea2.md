@@ -16,7 +16,7 @@ Experiment 29가 드러낸 핵심은 이것입니다.
 4. 최대 6개 thread에 `task t, t+6, t+12...` 방식으로 배정
 5. 모든 thread가 끝난 후 GPU upload
 
-실제 구현은 [native.cc](/home/yabsed/Documents/fall26/work/vlm-in-flash/preliminary_research/vlm-flash/src/vlmflash/csrc/native.cc:305)에 그대로 보입니다.
+실제 구현은 [native.cc](/home/yabsed/Documents/fall26/work/vlm-in-flash/conclusion/upstream/vlm-flash/src/vlmflash/csrc/native.cc:305)에 그대로 보입니다.
 
 따라서 실제 read 비용은
 
@@ -53,7 +53,7 @@ L_{\mathrm{wall}}(M)
 
 tile은 chunk와 wave 수를 줄였지만, 작업을 6개 lane에 더 불균형하게 배치했습니다. 그 결과 가장 바쁜 lane이 약 79.5 KiB 더 읽었고 실제 I/O가 0.0253 ms 느려졌습니다. Pooled case에서 실제 I/O와 최대 lane load의 상관계수는 0.958이었습니다.
 
-또한 현재 profile은 여러 chunk를 읽어 얻은 포화 throughput을 단일 \(T(\ell)\)로 축약합니다. [profile_flash.py](/home/yabsed/Documents/fall26/work/vlm-in-flash/preliminary_research/vlm-flash/scripts/profile_flash.py:110)에서 chunk 개수 차원이 사라집니다. 이건 latency model 자체가 틀렸다기보다, **유한 batch와 6-way scheduling 정보가 소실된 것**입니다.
+또한 현재 profile은 여러 chunk를 읽어 얻은 포화 throughput을 단일 \(T(\ell)\)로 축약합니다. [profile_flash.py](/home/yabsed/Documents/fall26/work/vlm-in-flash/conclusion/upstream/vlm-flash/scripts/profile_flash.py:110)에서 chunk 개수 차원이 사라집니다. 이건 latency model 자체가 틀렸다기보다, **유한 batch와 6-way scheduling 정보가 소실된 것**입니다.
 
 ## 제안: Wave-balanced exact-\(R\) DP
 
@@ -206,7 +206,7 @@ I_K^*(v)\ge(1-\epsilon)I_{\mathrm{TopR}}(v).
 3. bool mask를 CPU→GPU로 복사
 4. reader 진입 후 같은 mask를 다시 GPU→CPU로 복사
 
-특히 4번은 [native.cc](/home/yabsed/Documents/fall26/work/vlm-in-flash/preliminary_research/vlm-flash/src/vlmflash/csrc/native.cc:307)에 있습니다.
+특히 4번은 [native.cc](/home/yabsed/Documents/fall26/work/vlm-in-flash/conclusion/upstream/vlm-flash/src/vlmflash/csrc/native.cc:307)에 있습니다.
 
 새 DP는 dense mask 대신 `(start, length)` interval \(K\)개를 반환해야 합니다.
 
@@ -215,7 +215,7 @@ I_K^*(v)\ge(1-\epsilon)I_{\mathrm{TopR}}(v).
 - GPU에서 interval gather kernel로 `x_sel` 생성
 - dense bool mask 두 번의 왕복과 O(N) run scan 제거
 
-추가로 reader의 fd와 6개 worker thread를 projection마다 새로 만들지 말고 유지해야 합니다. 현재는 매 호출마다 `open`하고 thread를 다시 생성합니다. 이것도 [native.cc](/home/yabsed/Documents/fall26/work/vlm-in-flash/preliminary_research/vlm-flash/src/vlmflash/csrc/native.cc:367)에서 확인됩니다.
+추가로 reader의 fd와 6개 worker thread를 projection마다 새로 만들지 말고 유지해야 합니다. 현재는 매 호출마다 `open`하고 thread를 다시 생성합니다. 이것도 [native.cc](/home/yabsed/Documents/fall26/work/vlm-in-flash/conclusion/upstream/vlm-flash/src/vlmflash/csrc/native.cc:367)에서 확인됩니다.
 
 ## 현실적인 다음 목표
 

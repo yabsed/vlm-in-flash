@@ -1,9 +1,10 @@
-name: Native latency report
+name: Notebook latency report
 on:
   pull_request:
     paths:
       - 'conclusion/python/results/01/**'
-      - 'preliminary_research/vlm-flash'
+      - 'conclusion/upstream/vlm-flash'
+      - '.gitmodules'
       - '.github/workflows/chunk-latency-cache.yml'
 permissions:
   contents: read
@@ -18,14 +19,47 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pytest
-      - name: Check native delegation and render saved data only
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
+      - name: Execute the notebook against saved data only
         env:
-          NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/native-latency-report
+          REPORT_DIR: ${{ runner.temp }}/latency-report
+          MPLBACKEND: module://matplotlib_inline.backend_inline
         run: |
-          python -m pytest -q conclusion/python/results/01/test_chunk_latency.py
-          git diff --exit-code -- conclusion/python/results/01/*.csv preliminary_research/vlm-flash
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          import nbformat as nbf
+          from nbclient import NotebookClient
+          from nbconvert import HTMLExporter
+          from traitlets.config import Config
+          root = Path('conclusion/python/results/01')
+          out = Path(os.environ['REPORT_DIR'])
+          out.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(root / 'block_estimates.csv', out)
+          csv = out / 'block_estimates.csv'
+          before = csv.read_bytes()
+          nb = nbf.read(root / '01_chunk_latency.ipynb', as_version=4)
+          # This CI-only cell refuses acquisition before it can reach the reader.
+          guard = nbf.v4.new_code_cell('assert RERUN_MEASUREMENTS is False\nimport sys\nsys.modules.update({name: None for name in ("torch", "profile_flash", "vlmflash")})')
+          setup = next(i for i, c in enumerate(nb.cells) if c.id == 'setup')
+          nb.cells.insert(setup + 1, guard)
+          nbf.validate(nb)
+          NotebookClient(nb, timeout=90, kernel_name='python3',
+              resources={'metadata': {'path': str(out)}}).execute()
+          nb.cells = [c for c in nb.cells if c.id != guard.id]
+          outputs = [o for c in nb.cells if c.cell_type == 'code' for o in c.outputs]
+          assert sum('image/png' in o.get('data', {}) for o in outputs) == 4
+          assert not any(o.output_type in {'stream', 'error'} for o in outputs)
+          assert csv.read_bytes() == before and not list(out.glob('*.dat'))
+          nbf.write(nb, out / '01_chunk_latency.ipynb')
+          config = Config({'TagRemovePreprocessor': {'remove_input_tags': ['hide-input']},
+              'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
+          html, _ = HTMLExporter(config=config).from_notebook_node(nb)
+          (out / '01_chunk_latency.html').write_text(html, encoding='utf-8')
+          print('Notebook identities and four figures passed; CSV unchanged; native imports blocked.')
+          PY
+          git diff --exit-code -- conclusion/python/results/01/*.csv
       - uses: actions/upload-artifact@v4
         with:
-          name: native-latency-report
-          path: ${{ runner.temp }}/native-latency-report
+          name: latency-report
+          path: ${{ runner.temp }}/latency-report

@@ -28,7 +28,7 @@ import torch
 
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[1]
-VLMFLASH_ROOT = PROJECT_ROOT / "preliminary_research" / "vlm-flash"
+VLMFLASH_ROOT = PROJECT_ROOT / "conclusion/upstream/vlm-flash"
 VLMFLASH_SRC = VLMFLASH_ROOT / "src"
 EXPERIMENT_20 = (
     PROJECT_ROOT / "experiments" / "20_remaining_sub2ms_candidates"
@@ -239,7 +239,7 @@ def load_language_model(args: argparse.Namespace, device: str):
     except ImportError as exception:
         raise SystemExit(
             "transformers is required to capture real activation traces; "
-            "install preliminary_research/vlm-flash first"
+            "install conclusion/upstream/vlm-flash first"
         ) from exception
 
     dtype = {

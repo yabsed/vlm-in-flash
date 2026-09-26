@@ -15,7 +15,7 @@ row-to-tile mappings depend only on the matrix shape and are precomputed.
 The benchmark no longer generates synthetic lognormal vectors. By default it
 reuses Experiment 22's Qwen2.5-0.5B-Instruct activation archive, captured from
 a real dense forward through the checked-out
-`preliminary_research/vlm-flash` attachment path. The deterministic cap keeps
+`conclusion/upstream/vlm-flash` attachment path. The deterministic cap keeps
 32 projection calls per supported Table-2 shape (128 traces over four Qwen
 shapes). Each trace is evaluated on Experiment 18's three paired
 coverage/row-budget scenarios, with 30 timed repetitions after warm-up. This

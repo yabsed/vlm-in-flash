@@ -65,12 +65,12 @@ to CUDA. It reports actual SSD I/O, upload, read-call wall time, and the paired
 The device profile and validation can be reproduced with:
 
 ```bash
-python preliminary_research/vlm-flash/scripts/profile_flash.py \
+python conclusion/upstream/vlm-flash/scripts/profile_flash.py \
   --blob experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat \
   --output experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_profile.json \
   --threads 6 --blob-mb 128 --step-kb 1 --iters 10 --max-kb 512
 
-python preliminary_research/vlm-flash/scripts/validate_latency_model.py \
+python conclusion/upstream/vlm-flash/scripts/validate_latency_model.py \
   --blob experiments/26_frontier_adaptive_trim/results_laptop/profile_blob.dat \
   --profile experiments/26_frontier_adaptive_trim/results_laptop/laptop_sn850x_profile.json \
   --threads 6 --iters 30 \
