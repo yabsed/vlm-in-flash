@@ -1,0 +1,118 @@
+name: Measured oracle notebooks
+on:
+  pull_request:
+    paths:
+      - 'conclusion/python/results/01/**'
+      - 'conclusion/python/results/02/**'
+      - 'conclusion/upstream/vlm-flash'
+      - 'experiments/22_predicted_lambda_trim/results/activation_traces.npz'
+      - '.github/workflows/measured-oracle-notebooks.yml'
+permissions:
+  contents: read
+jobs:
+  notebooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: module://matplotlib_inline.backend_inline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
+      - name: Execute linked reports and tiny identities only
+        run: |
+          python - <<'PY'
+          import json, os, shutil, tempfile, hashlib
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+          import nbformat as nbf
+          from nbclient import NotebookClient
+          from nbconvert import HTMLExporter
+          from traitlets.config import Config
+          repo = Path.cwd()
+          out = Path(os.environ['RUNNER_TEMP']) / 'measured-oracle'
+          out.mkdir(parents=True, exist_ok=True)
+          inputs = [repo / 'conclusion/python/results/01/block_estimates.csv',
+                    repo / 'experiments/22_predicted_lambda_trim/results/activation_traces.npz']
+          before = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
+          export_config = Config({'TagRemovePreprocessor': {'remove_input_tags': ['hide-input']},
+                                  'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
+          with tempfile.TemporaryDirectory() as tmp:
+              work = Path(tmp)
+              for rel in ['.gitmodules', 'conclusion/python/results/01/01_chunk_latency.ipynb',
+                          'conclusion/python/results/01/block_estimates.csv',
+                          'conclusion/python/results/02/02_global_oracle.ipynb',
+                          'experiments/22_predicted_lambda_trim/results/activation_traces.npz']:
+                  dest = work / rel
+                  dest.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copy2(repo / rel, dest)
+              def execute(path, flags):
+                  nb = nbf.read(path, as_version=4)
+                  guard = nbf.v4.new_code_cell('import sys\nsys.modules.update({n: None for n in ("torch", "profile_flash", "vlmflash")})')
+                  nb.cells.insert(0, guard)
+                  setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
+                  flag_guard = nbf.v4.new_code_cell('\n'.join(f'assert {flag} is False' for flag in flags))
+                  nb.cells.insert(setup+1, flag_guard)
+                  nbf.validate(nb)
+                  NotebookClient(nb, timeout=120, kernel_name='python3',
+                      resources={'metadata': {'path': str(path.parent)}}).execute()
+                  nb.cells = [c for c in nb.cells if c.id not in (guard.id, flag_guard.id)]
+                  outputs = [o for c in nb.cells if c.cell_type=='code' for o in c.outputs]
+                  assert not any(o.output_type in ('error','stream') for o in outputs)
+                  for i,c in enumerate((c for c in nb.cells if c.cell_type=='code'),1):
+                      c.execution_count = i
+                      c.metadata.pop('execution',None)
+                      for o in c.outputs:
+                          if 'execution_count' in o:
+                              o.execution_count = i
+                  return nb
+              p1 = work/'conclusion/python/results/01/01_chunk_latency.ipynb'
+              p2 = work/'conclusion/python/results/02/02_global_oracle.ipynb'
+              n1 = execute(p1, ['RERUN_MEASUREMENTS'])
+              model_path = p1.with_name('latency_model.json')
+              model = json.loads(model_path.read_text())
+              assert model['csv_sha256'] == hashlib.sha256(p1.with_name('block_estimates.csv').read_bytes()).hexdigest()
+              assert {'numerical-models','parameter-table','export-model'} <= {c.id for c in n1.cells}
+              assert sum('image/png' in o.get('data',{}) for c in n1.cells if c.cell_type=='code' for o in c.outputs) == 4
+              n2 = execute(p2, ['RUN_ORACLE','RUN_SCALING'])
+              assert not (p2.parent/'oracle_runs').exists()
+              assert not (p2.parent/'scaling_runs').exists()
+              for nb,path in ((n1,p1),(n2,p2)):
+                  nbf.write(nb, out/path.name)
+                  html,_ = HTMLExporter(config=export_config).from_notebook_node(nb)
+                  (out/path.with_suffix('.html').name).write_text(html,encoding='utf-8')
+              shutil.copy2(model_path,out/'latency_model.json')
+              # A changed CSV must change the displayed/exported coefficients.
+              csv = p1.with_name('block_estimates.csv')
+              changed = pd.read_csv(csv)
+              changed.latency_ms *= 1.5
+              changed.throughput_mib_s /= 1.5
+              changed.to_csv(csv,index=False)
+              execute(p1,['RERUN_MEASUREMENTS'])
+              scaled = json.loads(model_path.read_text())
+              assert scaled['csv_sha256'] != model['csv_sha256']
+              np.testing.assert_allclose([scaled['c1_ms_per_kib'],scaled['delta_ms_per_kib']],
+                  1.5*np.array([model['c1_ms_per_kib'],model['delta_ms_per_kib']]),rtol=1e-8)
+              # The old model cannot silently be paired with that changed CSV.
+              model_path.write_text(json.dumps(model))
+              cell = next(c for c in n2.cells if c.id=='model-input')
+              ns = dict(MODEL=model_path, PROFILE=csv, json=json, hashlib=hashlib, Path=Path)
+              try:
+                  exec(cell.source,ns)
+              except ValueError as e:
+                  assert 'Stale latency_model' in str(e)
+              else:
+                  raise AssertionError('A stale coefficient export was accepted')
+          assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest()==h for p,h in before.items())
+          print('Two linked notebooks passed; 2700 tiny additive checks; dynamic coefficients; stale-model rejection; no full experiment.')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: measured-oracle-reports
+          path: ${{ runner.temp }}/measured-oracle
