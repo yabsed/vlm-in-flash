@@ -80,7 +80,9 @@ jobs:
               assert model['csv_sha256'] == hashlib.sha256(p1.with_name('block_estimates.csv').read_bytes()).hexdigest()
               assert {'numerical-models','parameter-table','export-model'} <= {c.id for c in n1.cells}
               assert sum('image/png' in o.get('data',{}) for c in n1.cells if c.cell_type=='code' for o in c.outputs) == 4
-              n2 = execute(p2, ['RUN_ORACLE'])
+              # CI uses the existing archive only as a local replay fixture.
+              shutil.copy2(inputs[1], p2.with_name('activation_traces.npz'))
+              n2 = execute(p2, ['CAPTURE_TRACES','RUN_ORACLE','RUN_SCALING'])
               for nb,path in ((n1,p1),(n2,p2)):
                   nbf.write(nb, out/path.name)
                   html,_ = HTMLExporter(config=export_config).from_notebook_node(nb)
@@ -100,8 +102,8 @@ jobs:
           assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest()==h for p,h in before.items())
           source = '\n'.join(c.source for c in n2.cells if c.cell_type == 'code')
           assert 'sha256(' not in source and 'fingerprint' not in source and 'atomic_json' not in source
-          assert sum(len(c.source.splitlines()) for c in n2.cells if c.cell_type == 'code') < 300
-          print('Two linked notebooks passed; 02 stays under 300 visible code lines; no full experiment.')
+          assert sum(len(c.source.splitlines()) for c in n2.cells if c.cell_type == 'code') < 350
+          print('Two linked notebooks passed; 02 stays under 350 visible code lines including capture; no full experiment.')
           PY
       - uses: actions/upload-artifact@v4
         with:
