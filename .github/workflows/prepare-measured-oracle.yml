@@ -1,0 +1,66 @@
+name: Prepare measured oracle reports
+on:
+  push:
+    branches: ['feat/measured-global-oracle']
+    paths: ['.github/workflows/prepare-measured-oracle.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: module://matplotlib_inline.backend_inline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/measured-global-oracle
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pyyaml lxml
+      - name: Assemble source without native measurement
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          instructions = subprocess.check_output(['git','ls-files','*AGENTS.md'],text=True).strip()
+          if instructions:
+              raise RuntimeError('Review repository instructions before assembly: '+instructions)
+          p = Path('.github/prepare_measured_oracle.py')
+          s = p.read_text()
+          a = s.index("code('numerical-models', r'''")
+          b = s.index("if False else '''",a)+len('if False else ')
+          s = s[:a]+"code('numerical-models', "+s[b:]
+          compile(s,str(p),'exec')
+          p.write_text(s)
+          exec(compile(s,str(p),'exec'),{'__name__':'__main__'})
+          PY
+      - name: Run the permanent notebook-only checks
+        run: |
+          python - <<'PY'
+          import subprocess, yaml
+          from pathlib import Path
+          workflow = yaml.safe_load(Path('.github/workflows/measured-oracle-notebooks.yml').read_text())
+          step = next(s for s in workflow['jobs']['notebooks']['steps']
+                      if s.get('name') == 'Execute linked reports and tiny identities only')
+          subprocess.run(['bash','-e','-c',step['run']],check=True)
+          PY
+      - name: Embed results and remove one-time assembly files
+        run: |
+          cp "$RUNNER_TEMP/measured-oracle/01_chunk_latency.ipynb" conclusion/python/results/01/
+          cp "$RUNNER_TEMP/measured-oracle/latency_model.json" conclusion/python/results/01/
+          cp "$RUNNER_TEMP/measured-oracle/02_global_oracle.ipynb" conclusion/python/results/02/
+          git diff --exit-code -- ':(glob)**/*.csv' ':(glob)**/*.npz' conclusion/upstream/vlm-flash
+          git add conclusion/python/results/01/01_chunk_latency.ipynb conclusion/python/results/01/latency_model.json conclusion/python/results/02/02_global_oracle.ipynb conclusion/python/results/02/.gitignore
+          git rm .github/prepare_measured_oracle.py .github/workflows/prepare-measured-oracle.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Embed fitted equations and a validated, unrun real-trace oracle protocol'
+          git push origin HEAD:feat/measured-global-oracle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: measured-oracle-reports
+          path: ${{ runner.temp }}/measured-oracle
