@@ -1,0 +1,244 @@
+name: Restore notebook 02
+on:
+  push:
+    branches: ['fix/restore-saturation-tradeoff']
+    paths: ['.github/workflows/restore-02-once.yml']
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: module://matplotlib_inline.backend_inline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/restore-saturation-tradeoff
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient ipykernel
+      - name: Restore the two missing parts from the declared reference
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import copy, subprocess
+          import nbformat as nbf
+          path = Path('conclusion/python/results/02/02_global_oracle.ipynb')
+          base = 'f3620ce022a7b7bcb69a4bbb7be043343d90910f'
+          instructions = subprocess.check_output(['git', 'ls-files', '*AGENTS.md'], text=True).strip()
+          if instructions:
+              raise RuntimeError('Read repository instructions before editing: ' + instructions)
+          subprocess.run(['git','fetch','--depth=1','origin',base],check=True)
+          old = nbf.reads(subprocess.check_output(['git','show',f'{base}:{path}'],text=True),as_version=4)
+          nb = nbf.read(path,as_version=4)
+          cells = {c.id:c for c in nb.cells}
+          def replace(id, before, after):
+              assert before in cells[id].source, (id,before)
+              cells[id].source = cells[id].source.replace(before,after)
+          replace('setup','RUN_ORACLE = True','RUN_ORACLE = False')
+          replace('setup','Path("oracle_results.csv")','Path("oracle_results_tiles.csv")')
+          replace('title','The notebook contains only that experiment and the dynamic program needed to define its oracle.',
+              'The four methods are Global DP, upstream greedy, saturation tiles, and Top-$R$. The tile rule is restored from [the reference notebook](https://github.com/yabsed/vlm-in-flash/blob/f3620ce022a7b7bcb69a4bbb7be043343d90910f/conclusion/python/results/02/02_global_oracle.ipynb).')
+          definition = nbf.v4.new_markdown_cell(r'''## Saturation tiles use the same boundary as the cost model.
+
+          In the reference notebook, the cost boundary and the tile width both used $s$.
+          Here the fitted boundary comes from Notebook 01, so an integer tile contains
+
+          $$B=\left\lceil\frac{s_{\rm KiB}}{q}\right\rceil\quad\text{rows}.$$
+
+          The table below displays both $B$ and $qB$. No 240 KiB constant is inserted.
+          This is the **fitted** constant-cost-per-byte boundary, not a second estimate of
+          physical saturation. The separate $s_{99}$ still limits upstream candidates.
+
+          For each offset $0$ and $\lfloor B/2\rfloor$, select the $\lfloor R/B\rfloor$
+          most important full tiles, then the best disjoint interval of length $R\bmod B$.
+          Keep the mask with the better merged-run ratio. If $R<B$, choose the best
+          length-$R$ interval. This also covers a tile wider than the entire projection.
+          The function below is unchanged from the reference; its argument `s` is the integer $B$.''',id='tiles-definition')
+          tile = copy.deepcopy(next(c for c in old.cells if c.id=='global-dp-19'))
+          tile.id = 'tiles'
+          tile.execution_count = None
+          tile.outputs = []
+          index = next(i for i,c in enumerate(nb.cells) if c.id=='verification-definition')
+          nb.cells[index:index] = [definition,tile]
+          replace('verification','            checks += 1',
+              '            mask = tiles(v, R, T, int(np.ceil(s)))\n            assert mask.sum() == R\n            checks += 1')
+          replace('verification','**{checks}** exhaustive checks passed.',
+              '**{checks}** exhaustive Bellman checks and tile-cardinality checks passed.')
+          replace('trace-input','display(summary.round(3))',
+              'summary["tile rows"] = np.ceil(summary["boundary (rows)"]).astype(int)\nsummary["tile KiB"] = summary["tile rows"] * summary["KiB/row"]\ndisplay(summary.round(3))')
+          replace('baseline-definition','solve Global DP and Top-\\(R\\)',
+              'run Global DP, saturation tiles, and Top-\\(R\\)')
+          cells['experiment-definition'].source = r'''## Four masks answer the comparison.
+
+          Global DP, upstream greedy, saturation tiles, and Top-$R$ use the same realized
+          cardinality and merged-run fitted cost. The normalized float32 importance
+          supplied to upstream is also used by the oracle. Empty greedy masks and
+          zero-importance cases are omitted.
+
+          Set `RUN_ORACLE = True` to compute this comparison into `oracle_results_tiles.csv`.
+          Ordinary evaluation reads that file if present. The earlier three-method
+          `oracle_results.csv` is left intact; it is not a four-method result.
+          A new run recomputes the sweep. There is no automatic resume or cache matching.'''
+          replace('experiment','    v = v / v.mean() if v.sum() else v',
+              '    v = v / v.mean() if v.sum() else v\n    v = v.astype(np.float32).astype(float)')
+          replace('experiment','        "Top-R": top_r(v, R),',
+              '        "Saturation tiles": tiles(v, R, T, int(np.ceil(s))),\n        "Top-R": top_r(v, R),')
+          replace('experiment','        I, L = metrics(v, mask, T)',
+              '        assert mask.sum() == R\n        I, L = metrics(v, mask, T)')
+          replace('run','len(frame) // 3','len(frame) // 4')
+          cells['results-definition'].source = r'''## The main figure follows the four methods across row budgets.
+
+          For each shape, use the lowest available trace ID, not the trace with the most
+          favorable result. Each point is an actual mask on that one trace, with
+          $x=L(M)$ and $y=100I(M)/I_{\rm tot}$. Connect points in increasing nominal
+          retained fraction, $0.1,\ldots,0.9$. Labels on the oracle curve give the realized
+          $R$ shared by all four methods at that budget.
+
+          The logarithmic latency axis follows the reference figure. These are fixed-$R$
+          trade-off trajectories, **not a complete Pareto frontier**. A ratio optimum
+          need not dominate each competitor separately in importance and latency.
+          Shape-level gap summaries below use all available traces; the main figure
+          does not combine coordinate-wise medians into a fictitious mask.'''
+          cells['tradeoff-results'].source = '''if not frame.empty:
+              for shape, group in frame.groupby("shape", sort=False):
+                  trace_id = group.trace_id.min()
+                  example = group[group.trace_id == trace_id]
+                  plt.figure(figsize=(8, 4))
+                  for name, points in example.groupby("method", sort=False):
+                      points = points.sort_values("fraction")
+                      plt.plot(points.fitted_ms, points.retained_pct, "o-", label=name, ms=4)
+                      if name == "Global DP":
+                          for row in points.itertuples():
+                              plt.annotate(str(row.R), (row.fitted_ms, row.retained_pct),
+                                           xytext=(3, 5), textcoords="offset points", fontsize=7)
+                  plt.xscale("log")
+                  plt.xlabel("Fitted additive latency (ms; log scale)")
+                  plt.ylabel("Retained importance (%)")
+                  plt.title(f"{shape}: trace {trace_id}; labels are realized R")
+                  plt.legend(fontsize=8)
+                  plt.tight_layout()
+                  plt.show()'''
+          # Put the restored trajectory before the existing gap summaries.
+          graph = cells['tradeoff-results']
+          nb.cells.remove(graph)
+          nb.cells.insert(nb.cells.index(cells['results-definition'])+1,graph)
+          cells['scope'].source = r'''## Scope
+
+          Global DP solves the fitted two-line additive fixed-cardinality objective to
+          numerical tolerance $10^{-6}$. The displayed gap is relative to its recovered
+          ratio, not an arbitrary-lookup optimum. The fitted curve is extrapolated for
+          runs outside Notebook 01's measured range; native task splitting and scheduling
+          are not modeled here. This is neither end-to-end quality nor measured
+          complete-mask SSD wall time.
+
+          The real inputs remain the archived dense Qwen activation summaries and the
+          measured coefficients from Notebook 01. Traces from three prompts do not
+          constitute thousands of independent prompts. Hashes, resume infrastructure,
+          and a separate scaling experiment are not needed for this comparison.'''
+          for c in nb.cells:
+              if c.cell_type=='code':
+                  c.outputs=[]
+                  c.execution_count=None
+                  c.metadata.pop('execution',None)
+          count = sum(len(c.source.splitlines()) for c in nb.cells if c.cell_type=='code')
+          assert count < 300, count
+          assert tile.source == next(c for c in old.cells if c.id=='global-dp-19').source
+          nbf.validate(nb)
+          nbf.write(nb,path)
+          print(f'Notebook 02: {count} visible Python lines; tiles copied unchanged from {base}.')
+          PY
+      - name: Check only tiny masks and plotting fixtures
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import numpy as np
+          import pandas as pd
+          import matplotlib.pyplot as plt
+          import nbformat as nbf
+          from scipy.ndimage import maximum_filter1d
+          path=Path('conclusion/python/results/02/02_global_oracle.ipynb')
+          nb=nbf.read(path,as_version=4)
+          cells={c.id:c for c in nb.cells}
+          ns=dict(np=np,pd=pd,plt=plt,maximum_filter1d=maximum_filter1d,RTOL=1e-6)
+          for id in ('costs','bellman','recover','solve','tiles','experiment'):
+              exec(cells[id].source,ns)
+          # Use only tiny synthetic masks: no archived trace sweep or native call.
+          from itertools import product
+          checks=0
+          for n in (1,5,8):
+              masks=np.array(list(product([False,True],repeat=n)))
+              for values in (np.zeros(n),np.ones(n),np.random.default_rng(n).uniform(0,4,n)):
+                  for s in (.5,1.,2.5,n+2.):
+                      T=ns['costs'](n,s,.25,1.)
+                      for R in range(1,n+1):
+                          feasible=masks[masks.sum(axis=1)==R]
+                          exact=max(ns['metrics'](values,m,T)[0]/ns['metrics'](values,m,T)[1] for m in feasible)
+                          oracle,eta=ns['solve'](values,R,s,.25,1.)
+                          tile=ns['tiles'](values,R,T,int(np.ceil(s)))
+                          assert oracle.sum()==tile.sum()==R
+                          np.testing.assert_allclose(eta,exact,rtol=1.01e-6,atol=1e-9)
+                          checks+=1
+          seen=[]
+          def fake_paper(trace,v,R,backend):
+              assert np.array_equal(v,v.astype(np.float32).astype(float))
+              seen.append(R)
+              return ns['top_r'](v,max(1,R-1))
+          ns.update(s_kib=2.5,c1=.25,delta=.75,weight_bytes=2,paper_mask=fake_paper)
+          trace=dict(trace_id=0,shape='fixture',input_index=0,d=512,values=np.arange(1.,8.))
+          rows=ns['one_case'](trace,.5,None)
+          assert len(rows)==4 and len({r['method'] for r in rows})==4
+          assert {r['R'] for r in rows}=={2} and seen==[3]
+          # Exercise the real plotting code using a clearly synthetic table.
+          names=['Global DP','Upstream greedy','Saturation tiles','Top-R']
+          data=[]
+          for shape in ('fixture-A','fixture-B'):
+              for trace_id in (0,1):
+                  for fraction in np.arange(1,10)/10:
+                      for j,name in enumerate(names):
+                          data.append(dict(shape=shape,trace_id=trace_id,fraction=fraction,
+                              method=name,R=int(100*fraction),fitted_ms=(j+1)*fraction,
+                              retained_pct=100*fraction,gap_pct=j))
+          ns['frame']=pd.DataFrame(data)
+          shown=[]
+          plt.show=lambda:shown.append(plt.gcf())
+          for id in ('tradeoff-results','gap-results','budget-results'):
+              exec(cells[id].source,ns)
+          assert len(shown)==4
+          for fig in shown[:2]:
+              ax=fig.axes[0]
+              assert ax.get_xscale()=='log'
+              assert len(ax.lines)==4 and all(len(line.get_xdata())==9 for line in ax.lines)
+              assert {line.get_label() for line in ax.lines}==set(names)
+              assert [text.get_text() for text in ax.texts]==[str(r) for r in range(10,100,10)]
+          print(f'{checks} tiny oracle/tile cases and four-method plotting fixtures passed; no real experiment.')
+          PY
+      - name: Execute the report without the experiment
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import nbformat as nbf
+          from nbclient import NotebookClient
+          p=Path('conclusion/python/results/02/02_global_oracle.ipynb')
+          nb=nbf.read(p,as_version=4)
+          guard=nbf.v4.new_code_cell('import sys\nsys.modules.update({n: None for n in ("torch","profile_flash","vlmflash")})')
+          nb.cells.insert(0,guard)
+          NotebookClient(nb,timeout=120,kernel_name='python3',resources={'metadata':{'path':str(p.parent.resolve())}}).execute()
+          assert not p.with_name('oracle_results_tiles.csv').exists()
+          outputs=[o for c in nb.cells if c.cell_type=='code' for o in c.outputs]
+          assert not any(o.output_type in ('error','stream') for o in outputs)
+          print('Default report execution passed without loading native code or writing experiment data.')
+          PY
+      - name: Commit only notebook 02 and remove this editing workflow
+        run: |
+          git diff --exit-code -- conclusion/python/results/01 conclusion/upstream ':(glob)**/*.csv' ':(glob)**/*.npz'
+          git add conclusion/python/results/02/02_global_oracle.ipynb
+          git rm .github/workflows/restore-02-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Restore reference saturation tiles and fixed-budget latency–importance trajectories'
+          git push origin HEAD:fix/restore-saturation-tradeoff
