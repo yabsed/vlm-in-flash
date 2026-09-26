@@ -1,0 +1,5 @@
+quantity,s_kib,selection_data_and_objective
+99% smoothed throughput crossing,256.0,first 4 blocks; threshold rule
+Raw efficiency argmin,240.0,"all 7 blocks; descriptive, not independent holdout"
+Free hinge breakpoint,230.0,first 4 blocks; free-hinge training MSE
+Constrained Ts breakpoint,211.0,first 4 blocks; constrained-Ts training MSE
