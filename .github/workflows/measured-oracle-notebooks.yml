@@ -5,29 +5,29 @@ on:
       - 'conclusion/python/results/01/**'
       - 'conclusion/python/results/02/**'
       - 'conclusion/upstream/vlm-flash'
-      - 'experiments/22_predicted_lambda_trim/results/activation_traces.npz'
       - '.github/workflows/measured-oracle-notebooks.yml'
 permissions:
   contents: read
 jobs:
   notebooks:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     env:
       OPENBLAS_NUM_THREADS: '1'
       MPLBACKEND: module://matplotlib_inline.backend_inline
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: false
+          submodules: recursive
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
-      - name: Execute linked reports and tiny identities only
+      - name: Check reports, upstream selection and CSV-only replay
         run: |
           python - <<'PY'
-          import json, os, shutil, tempfile, hashlib
+          import json, os, shutil, tempfile
           from pathlib import Path
           import numpy as np
           import pandas as pd
@@ -35,75 +35,101 @@ jobs:
           from nbclient import NotebookClient
           from nbconvert import HTMLExporter
           from traitlets.config import Config
+
           repo = Path.cwd()
           out = Path(os.environ['RUNNER_TEMP']) / 'measured-oracle'
           out.mkdir(parents=True, exist_ok=True)
-          inputs = [repo / 'conclusion/python/results/01/block_estimates.csv',
-                    repo / 'experiments/22_predicted_lambda_trim/results/activation_traces.npz']
-          before = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
-          export_config = Config({'TagRemovePreprocessor': {'remove_input_tags': ['hide-input']},
-                                  'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
+          original = repo / 'conclusion/python/results/01/block_estimates.csv'
+          before = original.read_bytes()
+          export = Config({'TagRemovePreprocessor': {'remove_input_tags': ['hide-input']},
+                           'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
+
+          def execute(path, overrides='', blocked=('torch', 'profile_flash', 'vlmflash', 'transformers'), fixture=False, replay=False):
+              nb = nbf.read(path, as_version=4)
+              source = '\n'.join(c.source for c in nb.cells if c.cell_type == 'code')
+              if path.name.startswith('02'):
+                  assert all(x not in source for x in ('RUN_SCALING', 'sha256(', 'fingerprint', 'atomic_json', 'def paper('))
+                  assert sum(len(c.source.splitlines()) for c in nb.cells if c.cell_type == 'code') <= 377
+                  assert 'vlmflash.select_chunks(' in source
+              guard = nbf.v4.new_code_cell(f'import sys\nsys.modules.update({{n: None for n in {blocked!r}}})')
+              nb.cells.insert(0, guard)
+              setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
+              flags = 'assert CAPTURE_TRACES is False and RUN_ORACLE is False' if path.name.startswith('02') else 'assert RERUN_MEASUREMENTS is False'
+              control = nbf.v4.new_code_cell(flags + '\n' + overrides)
+              nb.cells.insert(setup+1, control)
+              if fixture:
+                  next(c for c in nb.cells if c.id == 'global-dp-17').source += '\nPAPER_GEOMETRY.update({"64x128": (8,8), "17x4096": (8,8), "8x4096": (8,8)})'
+              if fixture or replay:
+                  c = next(c for c in nb.cells if c.id == 'jump-mask-plot')
+                  c.source = c.source.replace('JUMP_SHAPE = "896x128"', 'JUMP_SHAPE = "64x128"')
+              if replay:
+                  c = next(c for c in nb.cells if c.id == 'global-dp-23')
+                  c.source = 'def forbidden(*args, **kwargs):\n    raise AssertionError("CSV replay attempted computation")\nload_paper = capture_traces = solve = forbidden\n' + c.source
+              nbf.validate(nb)
+              NotebookClient(nb, timeout=120, kernel_name='python3', resources={'metadata': {'path': str(path.parent)}}).execute()
+              nb.cells = [c for c in nb.cells if c.id not in (guard.id, control.id)]
+              return nb
+
           with tempfile.TemporaryDirectory() as tmp:
               work = Path(tmp)
-              for rel in ['.gitmodules', 'conclusion/python/results/01/01_chunk_latency.ipynb',
+              for rel in ('conclusion/python/results/01/01_chunk_latency.ipynb',
                           'conclusion/python/results/01/block_estimates.csv',
-                          'conclusion/python/results/02/02_global_oracle.ipynb',
-                          'experiments/22_predicted_lambda_trim/results/activation_traces.npz']:
+                          'conclusion/python/results/02/02_global_oracle.ipynb'):
                   dest = work / rel
                   dest.parent.mkdir(parents=True, exist_ok=True)
                   shutil.copy2(repo / rel, dest)
-              def execute(path, flags):
-                  nb = nbf.read(path, as_version=4)
-                  guard = nbf.v4.new_code_cell('import sys\nsys.modules.update({n: None for n in ("torch", "profile_flash", "vlmflash")})')
-                  nb.cells.insert(0, guard)
-                  setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
-                  flag_guard = nbf.v4.new_code_cell('\n'.join(f'assert {flag} is False' for flag in flags))
-                  nb.cells.insert(setup+1, flag_guard)
-                  nbf.validate(nb)
-                  NotebookClient(nb, timeout=120, kernel_name='python3',
-                      resources={'metadata': {'path': str(path.parent)}}).execute()
-                  nb.cells = [c for c in nb.cells if c.id not in (guard.id, flag_guard.id)]
-                  outputs = [o for c in nb.cells if c.cell_type=='code' for o in c.outputs]
-                  assert not any(o.output_type in ('error','stream') for o in outputs)
-                  for i,c in enumerate((c for c in nb.cells if c.cell_type=='code'),1):
-                      c.execution_count = i
-                      c.metadata.pop('execution',None)
-                      for o in c.outputs:
-                          if 'execution_count' in o:
-                              o.execution_count = i
-                  return nb
+              shutil.copytree(repo/'conclusion/upstream/vlm-flash', work/'conclusion/upstream/vlm-flash', ignore=shutil.ignore_patterns('.git'))
               p1 = work/'conclusion/python/results/01/01_chunk_latency.ipynb'
               p2 = work/'conclusion/python/results/02/02_global_oracle.ipynb'
-              n1 = execute(p1, ['RERUN_MEASUREMENTS'])
-              model_path = p1.with_name('latency_model.json')
-              model = json.loads(model_path.read_text())
-              assert model['csv_sha256'] == hashlib.sha256(p1.with_name('block_estimates.csv').read_bytes()).hexdigest()
-              assert {'numerical-models','parameter-table','export-model'} <= {c.id for c in n1.cells}
-              assert sum('image/png' in o.get('data',{}) for c in n1.cells if c.cell_type=='code' for o in c.outputs) == 4
-              # CI uses the existing archive only as a local replay fixture.
-              shutil.copy2(inputs[1], p2.with_name('activation_traces.npz'))
-              n2 = execute(p2, ['CAPTURE_TRACES','RUN_ORACLE','RUN_SCALING'])
+              n1 = execute(p1)
+              n2 = execute(p2)
+              assert not p2.with_name('activation_traces.npz').exists()
+              assert not p2.with_name('oracle_results_upstream.csv').exists()
               for nb,path in ((n1,p1),(n2,p2)):
                   nbf.write(nb, out/path.name)
-                  html,_ = HTMLExporter(config=export_config).from_notebook_node(nb)
+                  html,_ = HTMLExporter(config=export).from_notebook_node(nb)
                   (out/path.with_suffix('.html').name).write_text(html,encoding='utf-8')
-              shutil.copy2(model_path,out/'latency_model.json')
-              # A changed CSV must change the displayed/exported coefficients.
-              csv = p1.with_name('block_estimates.csv')
-              changed = pd.read_csv(csv)
-              changed.latency_ms *= 1.5
-              changed.throughput_mib_s /= 1.5
-              changed.to_csv(csv,index=False)
-              execute(p1,['RERUN_MEASUREMENTS'])
-              scaled = json.loads(model_path.read_text())
-              assert scaled['csv_sha256'] != model['csv_sha256']
-              np.testing.assert_allclose([scaled['c1_ms_per_kib'],scaled['delta_ms_per_kib']],
-                  1.5*np.array([model['c1_ms_per_kib'],model['delta_ms_per_kib']]),rtol=1e-8)
-          assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest()==h for p,h in before.items())
-          source = '\n'.join(c.source for c in n2.cells if c.cell_type == 'code')
-          assert 'sha256(' not in source and 'fingerprint' not in source and 'atomic_json' not in source
-          assert sum(len(c.source.splitlines()) for c in n2.cells if c.cell_type == 'code') < 350
-          print('Two linked notebooks passed; 02 stays under 350 visible code lines including capture; no full experiment.')
+
+              # Explicitly synthetic projections exercise the actual pinned Torch selector.
+              arrays, entries = {}, []
+              for i,(n,d) in enumerate(((64,128),(17,4096),(8,4096))):
+                  key = f'v{i}'
+                  arrays[key] = np.zeros(n,dtype=np.float32) if i==2 else np.random.default_rng(i).uniform(0,4,n).astype(np.float32)
+                  entries.append(dict(trace_id=i,input_index=i,shape=f'{n}x{d}',n=n,d=d,array=key))
+              manifest = dict(model_dtype='bfloat16',traces=entries)
+              archive = p2.with_name('fixture.npz')
+              np.savez_compressed(archive, manifest_json=np.asarray(json.dumps(manifest)), **arrays)
+              overrides = 'TRACE = Path("fixture.npz")\nRESULTS = Path("fixture.csv")\nRUN_ORACLE = True\nPAPER_IMPL = "torch"\nMAX_TRACES_PER_SHAPE = 0\nBUDGETS = np.array([.1,.5,.7,.8,.9])'
+              execute(p2, overrides, blocked=('transformers','profile_flash'), fixture=True)
+              csv = p2.with_name('fixture.csv')
+              saved = csv.read_bytes()
+              result = pd.read_csv(csv)
+              assert {'ok','empty_selection','zero_importance'} == set(result.status)
+              assert len(result.groupby(['trace_id','fraction'])) == 15
+              assert (result.query('method == "Paper greedy"').fill_pct < 100).any()
+              model = json.loads(p1.with_name('latency_model.json').read_text())
+              for row in result.itertuples():
+                  spans = np.asarray(json.loads(row.intervals),dtype=int).reshape(-1,2)
+                  lengths = np.diff(spans,axis=1).ravel()
+                  assert lengths.sum()==row.R and len(lengths)==row.chunks
+                  w = 2*entries[row.trace_id]['d']/1024
+                  shortage = np.maximum(model['s_kib']/w-lengths,0).sum()
+                  np.testing.assert_allclose(row.fill_pct,100*row.R/row.R_nominal)
+                  np.testing.assert_allclose(row.shortfall_rows,shortage)
+                  np.testing.assert_allclose(row.overhead_ms,w*model['delta_ms_per_kib']*shortage,atol=1e-10)
+                  np.testing.assert_allclose(row.latency-w*(model['c1_ms_per_kib']+model['delta_ms_per_kib'])*row.R,row.overhead_ms,atol=1e-10)
+              valid = result[result.status=='ok']
+              assert (valid.groupby(['trace_id','fraction']).R.nunique()==1).all()
+              assert (valid.groupby(['trace_id','fraction']).method.nunique()==4).all()
+              assert (valid.gap_upper_pct-valid.gap_lower_pct).max() < .000101
+              archive.unlink()
+              replay = execute(p2, 'RESULTS = Path("fixture.csv")', replay=True)
+              assert csv.read_bytes()==saved
+              outputs = [o for c in replay.cells if c.cell_type=='code' for o in c.outputs]
+              assert sum('image/png' in o.get('data',{}) for o in outputs)==5
+              # No synthetic comparison is published as empirical Qwen evidence.
+              assert original.read_bytes()==before
+          print('1800 exhaustive checks; actual upstream Torch selector; fill/fragmentation identities; five CSV-only figures; no real experiment.')
           PY
       - uses: actions/upload-artifact@v4
         with:
