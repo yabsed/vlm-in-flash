@@ -1,0 +1,61 @@
+내 생각에 생각해볼 주제는 이거다
+
+---
+
+논문에서 명확히 명시되지 않은 목적함수과
+
+그 문제를 풀 수 있는 polynormial solution의 수학적 고찰
+
+---
+
+실제 chunk의 lenght-latency 모델에 대한 정교한 탐구
+
+x축이 chunk length 
+
+y축이 latency로 둘 때 원점을 지나는 직선을 생각할 때 
+
+saturation point에 해당하는 chunk length가 
+
+(latency / length)가 최소인 점일 수 있다는 것과
+
+그 앞뒤가 일차함수일 수 있다는 직관에 대한 시험 
+
+---
+
+작은 channel 갯수에 대해서 global solution을 구할 수 있고
+
+그걸 논문의 솔루션과 우리의 솔루션에 대해서 비교할 수 있다는 것
+
+---
+
+mask -> importance
+
+mask -> latency
+
+두 함수를 다 알고 있으니까 
+
+x축 latency : y축 importance 그래프를 그려서
+
+여러 방법론을 비교할 수 있다는 것 
+
+---
+
+saturation point chunk legnth를 매우 적절히 활용하는
+
+알고리즘을 통해서 논문의 성능을 거의 다 따라잡을 수 있는가?
+
+saturation point chunk length를 열심히 선택하는 것이
+
+수학적으로 나름 최적이라는 걸 보장할 수 있는가?
+
+---
+
+주제를 알겠지만 우리 프로젝트의 핵심은 코드 작성과 실험 뿐만이 아니라
+
+수학적인 가능성을 분석하는 거야. 
+
+왜냐면 그게 논문의 sweet blind spot이니까. 
+
+그러니까 수학 md 파일을 대충 작성해서는 절대로 안된다. 
+
+---

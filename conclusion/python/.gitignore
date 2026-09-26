@@ -1,0 +1,5 @@
+runs/
+scratch/
+__pycache__/
+.ipynb_checkpoints/
+*.bin
