@@ -1,0 +1,48 @@
+name: Standalone global oracle
+on:
+  pull_request:
+    paths:
+      - 'conclusion/python/ideas/03_global_oracle.ipynb'
+      - '.github/workflows/global-oracle-notebook.yml'
+permissions:
+  contents: read
+jobs:
+  notebook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
+      - name: Execute in an empty directory, without project modules or data
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import nbformat
+          from nbclient import NotebookClient
+          from nbconvert import HTMLExporter
+          source = Path('conclusion/python/ideas/03_global_oracle.ipynb')
+          out = Path(os.environ['RUNNER_TEMP']) / 'global-oracle'
+          out.mkdir()
+          nb = nbformat.read(source, as_version=4)
+          nb.cells.append(nbformat.v4.new_code_cell('assert checks == 1080\nassert len(frame) == 84\nassert timing.N.iloc[-1] == 4864\nassert (frame.gap_upper_pct - frame.gap_lower_pct).max() < 0.000101\nnp.testing.assert_allclose(summary.loc[("scattered", "Paper greedy"), "median"], 5.652804, atol=1e-5)\nframe.to_csv("comparison.csv", index=False)\ntiming.to_csv("scaling.csv", index=False)'))
+          NotebookClient(nb, timeout=180, kernel_name='python3', resources={'metadata': {'path': str(out)}}).execute()
+          nb.cells.pop()
+          outputs = [o for c in nb.cells if c.cell_type == 'code' for o in c.outputs]
+          assert not any(o.output_type in ('error', 'stream') for o in outputs)
+          assert sum('image/png' in o.get('data', {}) for o in outputs) == 4
+          for cell in nb.cells:
+              cell.metadata.pop('execution', None)
+          nbformat.write(nb, out / '03_global_oracle.ipynb')
+          html, _ = HTMLExporter().from_notebook_node(nb)
+          (out / '03_global_oracle.html').write_text(html)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standalone-global-oracle
+          path: ${{ runner.temp }}/global-oracle
