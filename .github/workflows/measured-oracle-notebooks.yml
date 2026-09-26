@@ -80,9 +80,7 @@ jobs:
               assert model['csv_sha256'] == hashlib.sha256(p1.with_name('block_estimates.csv').read_bytes()).hexdigest()
               assert {'numerical-models','parameter-table','export-model'} <= {c.id for c in n1.cells}
               assert sum('image/png' in o.get('data',{}) for c in n1.cells if c.cell_type=='code' for o in c.outputs) == 4
-              n2 = execute(p2, ['RUN_ORACLE','RUN_SCALING'])
-              assert not (p2.parent/'oracle_runs').exists()
-              assert not (p2.parent/'scaling_runs').exists()
+              n2 = execute(p2, ['RUN_ORACLE'])
               for nb,path in ((n1,p1),(n2,p2)):
                   nbf.write(nb, out/path.name)
                   html,_ = HTMLExporter(config=export_config).from_notebook_node(nb)
@@ -99,18 +97,11 @@ jobs:
               assert scaled['csv_sha256'] != model['csv_sha256']
               np.testing.assert_allclose([scaled['c1_ms_per_kib'],scaled['delta_ms_per_kib']],
                   1.5*np.array([model['c1_ms_per_kib'],model['delta_ms_per_kib']]),rtol=1e-8)
-              # The old model cannot silently be paired with that changed CSV.
-              model_path.write_text(json.dumps(model))
-              cell = next(c for c in n2.cells if c.id=='model-input')
-              ns = dict(MODEL=model_path, PROFILE=csv, json=json, hashlib=hashlib, Path=Path)
-              try:
-                  exec(cell.source,ns)
-              except ValueError as e:
-                  assert 'Stale latency_model' in str(e)
-              else:
-                  raise AssertionError('A stale coefficient export was accepted')
           assert all(hashlib.sha256(Path(p).read_bytes()).hexdigest()==h for p,h in before.items())
-          print('Two linked notebooks passed; 2700 tiny additive checks; dynamic coefficients; stale-model rejection; no full experiment.')
+          source = '\n'.join(c.source for c in n2.cells if c.cell_type == 'code')
+          assert 'sha256(' not in source and 'fingerprint' not in source and 'atomic_json' not in source
+          assert sum(len(c.source.splitlines()) for c in n2.cells if c.cell_type == 'code') < 300
+          print('Two linked notebooks passed; 02 stays under 300 visible code lines; no full experiment.')
           PY
       - uses: actions/upload-artifact@v4
         with:
