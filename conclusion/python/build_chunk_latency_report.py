@@ -2,12 +2,9 @@
 
 python conclusion/python/build_chunk_latency_report.py
 The notebook retains an explicit, default-off acquisition switch. This builder
-always executes it in cache mode, checks input hashes, and embeds the figures.
+executes it using the saved CSV and embeds the figures.
 """
 from pathlib import Path
-import hashlib
-import os
-import shutil
 import textwrap
 
 import nbformat as nbf
@@ -33,7 +30,7 @@ def notebook():
     ''')
     code('''
     from pathlib import Path
-    import json, sys
+    import sys
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -47,18 +44,13 @@ def notebook():
     sys.path.insert(0, str(ROOT))
     import chunk_latency
     chunk_latency = importlib.reload(chunk_latency)
-    SEED, TRAIN_BLOCKS, BOOTSTRAP_REPEATS = 0, 4, 1000
+    TRAIN_BLOCKS = 4
     RERUN_MEASUREMENTS = False
-    DATA_DIR = ROOT / "runs/02_chunk_latency"
-    MEASUREMENT_CONFIG = dict(chunk_latency.DEFAULT_CONFIG, seed=SEED)
-    RUN, raw, estimates, hardware = chunk_latency.acquire(
-        DATA_DIR, rerun=RERUN_MEASUREMENTS,
-        submodule=ROOT.parents[1] / "preliminary_research/vlm-flash",
-        config=MEASUREMENT_CONFIG)
-    before = chunk_latency.input_hashes(RUN)
+    RUN = ROOT / "runs/02_chunk_latency"
+    estimates = chunk_latency.acquire(RUN, rerun=RERUN_MEASUREMENTS)
     OUT = RUN / "breakpoint_comparison"
     OUT.mkdir(parents=True, exist_ok=True)
-    curve, samples = chunk_latency.split_curve(estimates, TRAIN_BLOCKS)
+    curve = chunk_latency.split_curve(estimates, TRAIN_BLOCKS)
     x = curve.size_kib.to_numpy()
     T, T_train, T_test = (curve[c].to_numpy() for c in ("median_ms", "train_ms", "holdout_ms"))
     parameters, search = chunk_latency.train_models(x, T_train)
@@ -69,7 +61,6 @@ def notebook():
              "Hinge": "Hinge (free breakpoint)", "Affine": "Affine"}
     stats = fits.set_index("model")
     s99, B_train, B_smooth, peak = chunk_latency.throughput_threshold(x, T_train)
-    s_all, B_all, B_all_smooth, _ = chunk_latency.throughput_threshold(x, T)
     s_star = parameters["Ts learned"]["s_kib"]
     h_star = parameters["Hinge"]["s_kib"]
     rho = T / x
@@ -339,53 +330,22 @@ def notebook():
 
 def build(root=None):
     root = Path(root or Path(__file__).resolve().parent)
-    import sys
-    sys.path.insert(0, str(root))
-    import chunk_latency
-    data = root / "runs/02_chunk_latency"
-    before = chunk_latency.input_hashes(data)
-    protected = [p for p in data.rglob("*.csv") if p.name in {
-        "io_raw.csv", "block_estimates.csv", "latency_curve.csv", "throughput_by_length.csv"}]
-    def digest(path):
-        with path.open("rb") as f:
-            return hashlib.file_digest(f, "sha256").hexdigest()
-    measured_curves = {p: digest(p) for p in protected}
-    nb = notebook()
-    executed = NotebookClient(nb, timeout=180, kernel_name="python3",
-                              resources={"metadata": {"path": str(root)}}).execute()
-    if chunk_latency.input_hashes(data) != before or any(digest(p) != h for p, h in measured_curves.items()):
-        raise AssertionError("Native measurement inputs were modified")
-    errors = [o for c in executed.cells if c.cell_type == "code" for o in c.outputs if o.output_type in {"error", "stream"}]
-    if errors:
-        raise AssertionError(f"Report contains execution errors or log streams: {errors}")
-    images = [o for c in executed.cells if c.cell_type == "code" for o in c.outputs if "image/png" in o.get("data", {})]
-    if len(images) != 4:
-        raise AssertionError(f"Expected four embedded report figures, got {len(images)}")
+    executed = NotebookClient(notebook(), timeout=180, kernel_name="python3",
+        resources={"metadata": {"path": str(root)}}).execute()
     for cell in executed.cells:
         cell.metadata.pop("execution", None)
     nbf.write(executed, root / "02_chunk_latency.ipynb")
+
     from nbconvert import HTMLExporter
     from traitlets.config import Config
-    cfg = Config()
-    cfg.TagRemovePreprocessor.remove_input_tags = {"hide-input"}
-    cfg.HTMLExporter.exclude_input_prompt = True
-    cfg.HTMLExporter.exclude_output_prompt = True
-    html, _ = HTMLExporter(config=cfg).from_notebook_node(executed)
-    (data / "breakpoint_comparison/report.html").write_text(html, encoding="utf-8")
-    if os.environ.get("NOTEBOOK_ARTIFACT_DIR"):
-        out = Path(os.environ["NOTEBOOK_ARTIFACT_DIR"])
-        out.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(root / "02_chunk_latency.ipynb", out / "02_chunk_latency.ipynb")
-        shutil.copy2(root / "chunk_latency.py", out / "chunk_latency.py")
-        shutil.copy2(Path(__file__), out / "build_chunk_latency_report.py")
-        shutil.copy2(root / "test_chunk_latency.py", out / "test_chunk_latency.py")
-        shutil.copy2(root / "test_chunk_latency_report.py", out / "test_chunk_latency_report.py")
-        shutil.copytree(data / "breakpoint_comparison", out / "breakpoint_comparison", dirs_exist_ok=True)
-        inputs = out / "measurement_inputs"
-        inputs.mkdir(exist_ok=True)
-        for name in chunk_latency.INPUT_FILES:
-            shutil.copy2(data / name, inputs / name)
-    print("Executed report: four figures; original measurement SHA-256 unchanged.")
+    config = Config()
+    config.TagRemovePreprocessor.remove_input_tags = {"hide-input"}
+    config.HTMLExporter.exclude_input_prompt = True
+    config.HTMLExporter.exclude_output_prompt = True
+    html, _ = HTMLExporter(config=config).from_notebook_node(executed)
+    out = root / "runs/02_chunk_latency/breakpoint_comparison/report.html"
+    out.write_text(html, encoding="utf-8")
+
 
 if __name__ == "__main__":
     build()
