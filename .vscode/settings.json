@@ -1,4 +1,8 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/conclusion/upstream/vlm-flash/scripts",
+        "${workspaceFolder}/conclusion/upstream/vlm-flash/src"
+    ]
 }
