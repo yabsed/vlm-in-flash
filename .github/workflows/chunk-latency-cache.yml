@@ -1,0 +1,37 @@
+name: Cached chunk-latency notebook
+on:
+  pull_request:
+    paths:
+      - 'conclusion/python/02_chunk_latency.ipynb'
+      - 'conclusion/python/chunk_latency.py'
+      - 'conclusion/python/test_chunk_latency.py'
+      - 'conclusion/python/runs/02_chunk_latency/**'
+      - '.github/workflows/chunk-latency-cache.yml'
+permissions:
+  contents: read
+jobs:
+  cached-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MPLBACKEND: Agg
+      NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/chunk-latency-artifact
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: conclusion/python
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only analysis dependencies
+        run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient ipykernel pytest tqdm
+      - name: Test and execute notebook against committed CSVs (no native reader)
+        run: python -m pytest -q -s conclusion/python/test_chunk_latency.py
+      - name: Publish executed notebook and comparison tables
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunk-latency-comparison
+          path: ${{ env.NOTEBOOK_ARTIFACT_DIR }}
+          if-no-files-found: error
+          retention-days: 14
