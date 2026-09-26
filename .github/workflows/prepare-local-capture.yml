@@ -1,0 +1,234 @@
+name: Prepare local capture and Paper seed
+on:
+  push:
+    branches: ['fix/oracle-local-traces-paper-seed']
+    paths: ['.github/workflows/prepare-local-capture.yml']
+permissions:
+  contents: write
+jobs:
+  edit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: module://matplotlib_inline.backend_inline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pyyaml
+      - name: Apply the two changes without running a model or benchmark
+        run: |
+          python - <<'PY'
+          import json, subprocess, copy
+          from pathlib import Path
+          import nbformat
+          assert not subprocess.check_output(['git','ls-files','*AGENTS.md'],text=True).strip()
+          path = Path('conclusion/python/results/02/02_global_oracle.ipynb')
+          nb = json.loads(path.read_text())
+          original = copy.deepcopy(nb)
+          cells = {c['id']: c for c in nb['cells']}
+          def src(key):
+              value = cells[key]['source']
+              return value if isinstance(value,str) else ''.join(value)
+          def set_src(key, value):
+              cells[key]['source'] = value.strip('\n')
+          before = sum(len(src(c['id']).splitlines()) for c in nb['cells'] if c['cell_type']=='code')
+          setup = src('setup').replace('TRACE = Path("../../../../experiments/22_predicted_lambda_trim/results/activation_traces.npz")', '''TRACE = Path("activation_traces.npz")
+          CAPTURE_TRACES = False
+          MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
+          MODEL_REVISION = "7ae557604adf67be50417f59c2c2f167def9a775"
+          PROMPTS = (
+              "Explain why contiguous flash reads can be faster than scattered reads.",
+              "Summarize the trade-off between neural-network sparsity and accuracy.",
+              "Write a short Python function that computes a moving average.",
+          )''')
+          assert 'experiments/22' not in setup
+          set_src('setup',setup)
+          set_src('global-dp-00',src('global-dp-00').replace(
+              'The main inputs are archived Qwen activation vectors, with their full projection widths.',
+              'The main inputs are Qwen activation vectors captured below, with their full projection widths.').replace(
+              'Neither switch runs a model forward or an SSD benchmark.',
+              'Set `CAPTURE_TRACES = True` once to create the local NPZ from dense model forwards, then set it back to `False` to reuse the file. No switch runs an SSD benchmark.'))
+          set_src('global-dp-20',r'''## Capture the projection inputs here, then read the local NPZ.
+
+          Set `CAPTURE_TRACES = True` to load the declared Qwen checkpoint and run one dense forward per prompt. The first capture requires PyTorch and Transformers; an uncached checkpoint is downloaded. Later runs read `activation_traces.npz` in this directory with `CAPTURE_TRACES = False`. A missing file raises an error rather than starting a model download.
+
+          A pre-forward hook records $v_i=\operatorname{mean}_{\rm batch,token}|x_i|$ for each attention or MLP projection. It returns nothing and does not change the input or dense output. The reduction follows the [reference importance expression](../../../upstream/vlm-flash/src/vlmflash/linear.py): take the absolute value and mean in the activation dtype, then convert the result to float32. The NPZ contains those vectors, projection dimensions, prompt indices, model revision and dtype; it is not a weight archive.
+
+          Select up to 32 evenly spaced traces per shape by default, or all traces with a zero cap. No channels are cropped, sorted, or tiled before selection. Normalize each vector to mean one. The budgets $R/N\simeq0.1,\ldots,0.9$ define the trajectory; many layers and budgets from three prompts are not independent prompts.''')
+          capture = '''def capture_traces():
+              import torch
+              from transformers import AutoModelForCausalLM, AutoTokenizer
+
+              device = "cuda" if torch.cuda.is_available() else "cpu"
+              tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
+              net = AutoModelForCausalLM.from_pretrained(
+                  MODEL_ID, revision=MODEL_REVISION, torch_dtype=torch.bfloat16).to(device).eval()
+              entries, arrays, hooks = [], {}, []
+
+              def record(name):
+                  def hook(layer, inputs):
+                      n, d = layer.in_features, layer.out_features
+                      key = f"values_{len(entries):06d}"
+                      arrays[key] = inputs[0].detach().abs().reshape(-1, n).mean(0).float().cpu().numpy()
+                      entries.append(dict(trace_id=len(entries), input_index=input_index,
+                          module=name, n=n, d=d, shape=f"{n}x{d}", array=key,
+                          num_tokens=int(tokens["input_ids"].numel())))
+                  return hook
+
+              try:
+                  for name, layer in net.named_modules():
+                      if isinstance(layer, torch.nn.Linear) and ".layers." in name and name.endswith("_proj"):
+                          hooks.append(layer.register_forward_pre_hook(record(name)))
+                  with torch.inference_mode():
+                      for input_index, prompt in enumerate(PROMPTS):
+                          text = tokenizer.apply_chat_template(
+                              [{"role": "user", "content": prompt}], tokenize=False, add_generation_prompt=True)
+                          tokens = tokenizer(text, return_tensors="pt", truncation=True, max_length=256).to(device)
+                          net(**tokens, use_cache=False)
+                          print(f"{input_index + 1}/{len(PROMPTS)} prompts captured", end="\\r")
+              finally:
+                  for handle in hooks:
+                      handle.remove()
+              assert entries, "No projection inputs were captured."
+              manifest = dict(model=MODEL_ID, model_revision=MODEL_REVISION,
+                  model_dtype=str(next(net.parameters()).dtype).split(".")[-1],
+                  prompts=list(PROMPTS), prompt_count=len(PROMPTS), traces=entries, trace_count=len(entries))
+              np.savez_compressed(TRACE, manifest_json=np.asarray(json.dumps(manifest)), **arrays)'''
+          capture_cell = dict(cell_type='code',execution_count=None,id='capture-traces',metadata={},outputs=[],source=capture)
+          pos = nb['cells'].index(cells['global-dp-21'])
+          nb['cells'].insert(pos,capture_cell)
+          set_src('global-dp-21','''if CAPTURE_TRACES:
+              capture_traces()
+          if not TRACE.is_file():
+              raise FileNotFoundError("Set CAPTURE_TRACES = True to create activation_traces.npz here.")
+          ''' + src('global-dp-21'))
+          set_src('global-dp-12', '''def solve(v, R, s, b1, b2, rtol=1e-6, initial=None):
+              assert 1 <= R <= len(v) and s > 0 and 0 <= b1 <= b2 and b2 > 0
+              assert 0 < rtol < 1
+              T = costs(len(v), s, b1, b2)
+              mask = paper(v, R, T, max(1, int(np.floor(s)))) if initial is None else initial
+              assert mask.shape == v.shape and mask.dtype == bool and mask.sum() == R
+              I, L = metrics(v, mask, T)
+              lower = I / L
+              upper = v[top_r(v, R)].sum() / (b2 * R)
+              assert lower > 0 or upper == 0
+              tolerance = rtol * lower
+              calls = 0
+              while upper - lower > tolerance:
+                  q = (lower + upper) / 2
+                  D = bellman(v, R, q, s, b1, b2)
+                  calls += 1
+                  if D[-1, -1] >= 0:
+                      mask = recover(v, R, q, T, D)
+                      I, L = metrics(v, mask, T)
+                      lower = I / L
+                  else:
+                      upper = q
+              return mask, lower, upper, calls''')
+          set_src('global-dp-10',r'''## Start from Paper, but keep an independent upper bound.
+
+          Paper greedy gives a feasible mask $M_P$ with exactly $R$ rows. Its ratio supplies the initial lower bound. Top-$R$ is not the starting solution: only its maximum possible importance is used in the upper bound, since every feasible mask has $L(M)\ge b_2R$.
+
+          $$\boxed{\ell_0=\frac{I(M_P)}{L(M_P)}\le\eta_R^\star\le u_0=\frac{I(\mathrm{Top}\text{-}R)}{b_2R}.}$$
+
+          Replacing the numerator of $u_0$ by $I(M_P)$ would be invalid: another mask can retain more importance. Paper is often a better starting ratio than Top-$R$, but that is not guaranteed for every vector.
+
+          Test $q=(\ell+u)/2$. If $F_R(q)<0$, replace $u$ by $q$. Otherwise recover a feasible mask and replace $\ell$ by its ratio. Each step at least halves the bracket. Stop when $u-\ell\le\epsilon\ell_0$; the returned mask satisfies
+
+          $$0\le1-\frac{I(M)/L(M)}{\eta_R^\star}\le\epsilon.$$
+
+          For nonzero importance, put $\kappa_0=u_0/\ell_0$. At most $\lceil\log_2(\kappa_0/\epsilon)\rceil$ additive solves suffice. This is an input-dependent bracket bound; the old $\max(1,s)$ bound relied on starting from Top-$R$ and is not assumed here. Zero importance gives two zero bounds immediately.
+
+          After constructing the Paper mask and the Top-$R$ importance bound, the search costs $O((N-R+1)(R+1)\log(\kappa_0/\epsilon))$. The main comparison passes its already computed Paper mask as `initial`, avoiding a second greedy pass. The recurrence is exact mathematically; the numerical bounds use float64, not formal interval arithmetic.''')
+          set_src('global-dp-16',src('global-dp-16').replace('## Compare selectors under the same constraint and the same cost.','## Paper greedy supplies the initial feasible mask.'))
+          # Define the seed before solve() is first called by the notebook's own checks.
+          paper_cells = [cells['global-dp-16'],cells['global-dp-17']]
+          nb['cells'] = [c for c in nb['cells'] if c not in paper_cells]
+          pos = nb['cells'].index(cells['global-dp-10'])
+          nb['cells'][pos:pos] = paper_cells
+          main = src('global-dp-23')
+          main = main.replace('            oracle, lower, upper, calls = solve(v, R, s, b1, b2)',
+              '            seed = paper(v, R, T, max(1, int(np.floor(s))))\n            oracle, lower, upper, calls = solve(v, R, s, b1, b2, initial=seed)')
+          main = main.replace('"Paper greedy": paper(v, R, T, max(1, int(np.floor(s))))','"Paper greedy": seed')
+          assert 'initial=seed' in main and '"Paper greedy": seed' in main
+          set_src('global-dp-23',main)
+          set_src('global-dp-32',src('global-dp-32').replace('        assert calls <= np.ceil(np.log2(max(1, s) / 1e-6))\n',''))
+          set_src('global-dp-31',src('global-dp-31')+'\n\nComplete solve times now include Paper initialization. The states-times-calls reference does not include that greedy preparation cost.')
+          for c in nb['cells']:
+              if c['cell_type']=='code':
+                  compile(c['source'] if isinstance(c['source'],str) else ''.join(c['source']), c['id'], 'exec')
+          nbformat.validate(nbformat.from_dict(nb))
+          after = sum(len((c['source'] if isinstance(c['source'],str) else ''.join(c['source'])).splitlines()) for c in nb['cells'] if c['cell_type']=='code')
+          # Existing mathematical kernels, selectors, and plot source remain unchanged.
+          old = {c['id']:c for c in original['cells']}
+          for key in ['global-dp-03','global-dp-06','global-dp-07','global-dp-09','global-dp-17','global-dp-19',
+                      'global-dp-24','global-dp-26','global-dp-27','global-dp-29','global-dp-33']:
+              assert cells[key]['source']==old[key]['source'],key
+          path.write_text(json.dumps(nb,ensure_ascii=False,indent=1)+'\n')
+          workflow = Path('.github/workflows/measured-oracle-notebooks.yml')
+          ci = workflow.read_text()
+          ci = ci.replace("n2 = execute(p2, ['RUN_ORACLE'])", "# CI uses the existing archive only as a local replay fixture.\n              shutil.copy2(inputs[1], p2.with_name('activation_traces.npz'))\n              n2 = execute(p2, ['CAPTURE_TRACES','RUN_ORACLE','RUN_SCALING'])")
+          ci = ci.replace("< 300", "< 400").replace('under 300 visible code lines','under 400 visible code lines (including local capture)')
+          assert "['CAPTURE_TRACES','RUN_ORACLE','RUN_SCALING']" in ci
+          workflow.write_text(ci)
+          print(f'Notebook 02 code lines: {before} -> {after}; local capture: {len(capture.splitlines())}; no helper files.')
+          print('Unchanged: DP recurrence/recovery, Paper and tiles definitions, all plot code, Notebook 01 and data.')
+          PY
+      - name: Execute existing notebook CI with all expensive switches disabled
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml, subprocess
+          workflow = yaml.safe_load(Path('.github/workflows/measured-oracle-notebooks.yml').read_text())
+          step = next(s for s in workflow['jobs']['notebooks']['steps'] if s.get('name')=='Execute linked reports and tiny identities only')
+          subprocess.run(['bash','-e','-c',step['run']],check=True)
+          PY
+      - name: Check Paper bounds and seed reuse without full experiments
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import numpy as np
+          from scipy.ndimage import maximum_filter1d
+          from itertools import product
+          nb=json.loads(Path('conclusion/python/results/02/02_global_oracle.ipynb').read_text())
+          cells={c['id']:c['source'] if isinstance(c['source'],str) else ''.join(c['source']) for c in nb['cells']}
+          ns=dict(np=np,maximum_filter1d=maximum_filter1d,product=product)
+          for key in ['global-dp-03','global-dp-06','global-dp-07','global-dp-09','global-dp-11','global-dp-17','global-dp-12','global-dp-14']:
+              exec(cells[key],ns)
+          # This actual Paper seed has an unsafe I(Paper)/(b2 R) upper bound.
+          v=np.random.default_rng(6).uniform(0,10,8)
+          R,s=4,2.5
+          T=ns['costs'](8,s,.25,1.)
+          seed=ns['paper'](v,R,T,2)
+          masks,imp,delay=ns['enumerate_small'](v,T)
+          exact=(imp[masks.sum(axis=1)==R]/delay[masks.sum(axis=1)==R]).max()
+          assert v[seed].sum()/R < exact
+          original_paper=ns['paper']
+          def forbidden(*args):
+              raise AssertionError('Paper must not run twice when an initial mask is supplied')
+          ns['paper']=forbidden
+          mask,lower,upper,calls=ns['solve'](v,R,s,.25,1.,initial=seed)
+          assert lower-1e-9<=exact<=upper+1e-9 and upper-lower<=1e-6*lower+1e-9
+          ns['paper']=original_paper
+          np.testing.assert_allclose(ns['solve'](v,R,s,.25,1.)[1:3],[lower,upper])
+          print('PASS actual-Paper upper-bound regression, explicit seed reuse, and default Paper initialization.')
+          PY
+      - name: Commit only notebook 02 and its CI wiring
+        run: |
+          git diff --exit-code -- conclusion/python/results/01 conclusion/upstream/vlm-flash ':(glob)**/*.csv' ':(glob)**/*.npz'
+          git add conclusion/python/results/02/02_global_oracle.ipynb .github/workflows/measured-oracle-notebooks.yml
+          git rm .github/workflows/prepare-local-capture.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Capture local activation traces in notebook 02 and seed the oracle with Paper'
+          git push origin HEAD:fix/oracle-local-traces-paper-seed
+      - uses: actions/upload-artifact@v4
+        with:
+          name: local-capture-paper-seed-report
+          path: ${{ runner.temp }}/measured-oracle
