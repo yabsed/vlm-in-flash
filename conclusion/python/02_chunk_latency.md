@@ -1,56 +1,37 @@
-# 02 · 실제 chunk length–latency와 포화점의 식별
+# 02 · 읽기 크기와 SSD latency
 
-## 검증할 명제
+이 실험은 연속해서 읽는 데이터 크기를 바꾸며 latency 곡선을 직접 측정한다. 크기는 KiB로 표시하고 CSV에는 byte와 bit 수도 저장한다. `1 KiB = 1024 bytes = 8192 bits`다.
 
-$\ell$은 4 KiB로 정렬된 저장 행의 수다. 원점에서 $(\ell,T(\ell))$로 가는 직선의 기울기와 throughput의 관계는
+## 측정 방법
 
-$$\rho(\ell)=T(\ell)/\ell,\qquad B(\ell)=4096\ell/T(\ell),\qquad
-\arg\min\rho=\arg\max B.$$
+`preliminary_research/vlm-flash/scripts/profile_flash.py`의 `prepare_blob`, `measure`, `saturation_throughput`을 그대로 호출한다. 해당 서브모듈의 native C++ `O_DIRECT` reader를 사용한다. 기존 실험의 결과 파일은 입력하지 않는다.
 
-이는 정의로부터의 항등식이다. **유한한 최적 길이의 존재**, **최초 포화점의 유일성**, **전후 두 직선 적합성**은 항등식이 아니라 측정할 가설이다. 예를 들어 $T(\ell)=a+b\ell$이면 $\rho=b+a/\ell$은 계속 감소해 유한 최소점이 없다.
+- 크기: 1–256 KiB는 1 KiB 간격, 260–768 KiB는 4 KiB 간격, 총 384개.
+- 각 크기에서 chunk 수: `1, 2, 4, 8, 16, 28, 32, 48, 64, 96, 128, 192, 256, 384, 512`. 128 MiB 파일에 들어가는 조합만 측정한다.
+- chunk 사이에는 32 KiB 간격을 둔다. CPU reader thread 6개, 각 조합마다 warmup 3회와 측정 10회.
+- 같은 크기들을 오름차순·내림차순으로 각각 측정한다. 두 곡선을 모두 보존해 순서에 따른 차이를 확인한다.
+- native reader의 요청 분할 한도가 768 KiB이므로 이번 sweep도 그 크기까지다. 작은 요청의 물리 I/O에는 alignment padding이 포함될 수 있다. 크기와 처리량의 분자는 논리적으로 요청한 byte다.
 
-## fresh 측정과 단위
+매 실행에서 새 난수 파일을 만들고 preallocation과 fsync를 수행한다. 공용 benchmark lock을 잡고 측정하며, `O_DIRECT`를 쓰지 못하면 중단한다. 임시 파일은 측정 후 삭제한다. 소스 hash, 서브모듈 revision, 장치 mount와 설정을 기록한다.
 
-각 실행에서 대상 filesystem에 512 MiB 난수 파일을 새로 쓰고 `fsync`한 뒤 Linux `O_DIRECT + preadv`로 읽는다. 4 KiB–8 MiB chunk를 측정하며 가장 큰 chunk도 batch 64개를 서로 다른 위치에서 읽도록 파일 크기를 정한다. 정렬된 버퍼를 사용하고 direct I/O 실패 시 중단한다. `/tmp` 같은 tmpfs는 SSD로 측정하지 않는다. 파일은 실행 후 삭제한다. 이는 page cache를 우회하지만 SSD controller cache까지 제거하는 실험은 아니다.
+## latency의 정의
 
-workers $p=4$, batch size $q\in\{1,8,32,64\}$, 서로 다른 offset들을 사용한다. 같은 반복 안에서 $(\ell,q)$ 순서를 무작위화한다. 7개 독립 반복 블록의 원시 시간 $t_{\ell,q,b}$를 모두 저장한다.
+크기가 $b$ KiB이고 chunk 수가 $q$인 배치의 native I/O 시간 중앙값을 $t_{b,q}$ µs라고 하면 논리 처리량은
 
-$$\widehat T_q(\ell)=\operatorname{median}_b(t_{\ell,q,b})/q.$$
+$$B(b,q)=\frac{qb/1024}{t_{b,q}/10^6}\quad[\mathrm{MiB/s}].$$
 
-이는 thread dispatch·Python 호출·completion을 포함한 **batch당 상각 비용**이다. 단일 read의 service time도, 논문의 C++/Jetson 성능 재현도 아니다. $q=64$를 기본 모델로 쓰되 $q=32$와의 차이를 반드시 표시한다. batch plateau가 확인되지 않으면 “포화 latency table”이라고 단정하지 않는다.
+서브모듈은 총 읽기량에 따른 처리량의 3점 이동평균 기울기가 작아지는 구간을 찾고 그 이후 처리량을 평균한다. 그 지점을 찾지 못하면 마지막 20% 점의 처리량을 평균하며, 점이 3개 미만이면 마지막 값을 사용한다. 따라서 출력은 이 절차에 따른 처리량 추정값이며 포화의 증명은 아니다. 각 크기의 배치별 처리량과 마지막 두 배치의 차이를 함께 보존한다.
 
-## 최소점과 plateau의 구별
+그 추정값 $\widehat B(b)$를 사용해
 
-측정한 길이 집합 $\mathcal G$에 대해서만
+$$\widehat L(b)=\frac{b/1024}{\widehat B(b)}\,1000\quad[\mathrm{ms}]$$
 
-$$\hat s_{\min}=\arg\min_{\ell\in\mathcal G}\widehat T_{64}(\ell)/\ell,\qquad
-\hat s_\varepsilon=\min\{\ell\in\mathcal G:\hat\rho(\ell)\le(1+\varepsilon)\min\hat\rho\},\quad\varepsilon=.05.$$
+로 크기별 latency를 계산한다. 이는 여러 chunk의 처리량에서 환산한 비용이다. 단일 read의 응답 시간이나 모델 전체 실행 시간이 아니다. 환산 전의 배치 시간도 `io_raw.csv`에 모두 남긴다.
 
-최대 throughput의 99% 기준은 $\rho\le\rho_{\min}/.99$와 같고 $\varepsilon=.05$와는 다른 정의다. 위 $s_\varepsilon$는 near-best 집합의 첫 원소이지 이후 모든 길이가 plateau라는 보장은 아니다. 최소점이 측정 상한에 붙거나 bootstrap 분포가 넓으면 범위를 넓혀야 한다. 상한을 포화점이라고 자동 대입하지 않는다.
+## 그림과 산출물
 
-반복 block을 길이 전체에 걸쳐 함께 bootstrap한다. 매 복제마다 median, 최소점, near-best 길이를 다시 계산한다. argmin의 선택 편향과 다중 후보 경쟁 때문에 한 점의 작은 오차막대를 포화점의 확신으로 해석하지 않는다.
+1. **읽기 크기 → latency**: 전체 범위와 짧은 요청 확대, 두 측정 방향과 평균.
+2. **latency / 크기**: 전체 범위의 로그 세로축과 큰 요청 구간의 선형 세로축 확대.
+3. **측정 진단**: 대표 크기별 총 읽기량–처리량, 오름/내림 방향 차이, 마지막 배치 크기 증가에 따른 처리량 변화.
 
-## 두 직선 가설의 경쟁 모델
-
-$$
-\begin{aligned}
-T_A(\ell)&=a+b\ell,\\
-T_H(\ell)&=a+b\ell+d(\ell-s)_+,\\
-T_S(\ell)&=b_1\ell+d\max(s,\ell),\quad b_1,d\ge0.
-\end{aligned}
-$$
-
-$T_H$는 연속 hinge이지만 기울기·절편을 강제하지 않는다. $T_S$는 다음의 강한 plateau 가설이다.
-
-$$T_S(\ell)=\begin{cases}ds+b_1\ell&\ell\le s,\\(b_1+d)\ell&\ell>s.\end{cases}
-\quad \frac{T_S(\ell)}\ell=b_1+d\max(s/\ell,1).$$
-
-따라서 $\ell\ge s$의 모든 점이 최소 기울기를 갖는다. “포화점만이 유일한 최적 길이”라는 결론은 나오지 않는다. $d=0$이면 모든 길이의 효율이 같다. $T_S(0)=0$은 별도로 정의한다.
-
-처음 4개 반복의 median으로 계수와 $s$를 선택한다. 남은 3개 반복에는 **계수와 breakpoint를 다시 맞추지 않는다**. 검증 RMSE·상대오차와 residual plot으로 가설을 비교한다. $s$는 양쪽에 측정점이 남는 interior grid만 탐색한다. 모델의 in-sample $R^2$만으로 두 직선을 채택하지 않는다.
-
-## 출력과 해석
-
-길이–latency 오차막대, 원점 접선, $T/\ell$, batch 수별 throughput, holdout residual, bootstrap 포화점 분포를 같은 노트북에 둔다. 원시 CSV와 mount·seed·workers·소스 hash를 실행별 디렉토리에 남긴다. 다른 노트북은 이 결과를 읽지 않고 필요한 측정을 새로 수행한다.
-
-측정 범위를 벗어난 값은 외삽하지 않는다. 행 크기 변경은 $s_{rows}=s_{bytes}/bytes_{row}$로 환산해야 하며, 4 KiB 실험의 행 수를 원본 모델의 채널 수와 자동으로 동일시할 수 없다.
+오름/내림 두 값의 차이는 반복 측정의 신뢰구간이 아니다. 그래프를 그릴 때 두 값의 범위를 그대로 표시하며 원시 10회 측정과 구분한다. 최적 길이나 breakpoint를 강제로 정하지 않고 관측한 곡선을 제시한다.

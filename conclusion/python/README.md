@@ -7,7 +7,7 @@
 | # | 질문 | 노트북 | 수학 문서 | 주요 검증 |
 |---|---|---|---|---|
 | 01 | 논문이 쓴 비율 목적은 실제로 어려운가? | [01_objective.ipynb](01_objective.ipynb) | [정의·단일 구간 정리](01_objective.md) | 완전탐색, 예산 채우기 반례 |
-| 02 | 실제 length–latency는 두 직선인가? | [02_chunk_latency.ipynb](02_chunk_latency.ipynb) | [측정·포화점·경쟁 모델](02_chunk_latency.md) | 새 direct I/O, holdout, bootstrap |
+| 02 | 읽기 크기에 따라 SSD latency는 어떻게 변하는가? | [02_chunk_latency.ipynb](02_chunk_latency.ipynb) | [크기 sweep·처리량 환산·측정 진단](02_chunk_latency.md) | 서브모듈 native profiler, 384개 크기, 오름/내림 sweep |
 | 03 | 작은 문제의 정확해와 얼마나 다른가? | [03_global_oracle.ipynb](03_global_oracle.ipynb) | [이산 Pareto와 regret](03_global_oracle.md) | 24개 입력의 모든 65,536 masks |
 | 04 | 무엇을 다항시간에 정확히 풀 수 있는가? | [04_polynomial_dp.ipynb](04_polynomial_dp.ipynb) | [일반 DP·선형 DP·duality](04_polynomial_dp.md) | oracle 대조, 실행 시간, unsupported point |
 | 05 | 새 실측 table 위에서 어느 방법이 유리한가? | [05_measured_frontier.ipynb](05_measured_frontier.ipynb) | [동일 importance 비교](05_measured_frontier.md) | latency–importance와 mask 그림 |
@@ -49,7 +49,8 @@ OPENBLAS_NUM_THREADS=1 python conclusion/python/check_algorithms.py
 
 - Python 및 직접 의존성의 검증 버전은 [requirements.txt](requirements.txt)에 고정했다. CUDA는 필요하지 않다.
 - 02·05·07·09는 Linux `O_DIRECT`, `preadv`, `findmnt`와 쓰기 가능한 디스크가 필요하다. 프로젝트 디렉토리의 filesystem을 측정한다. tmpfs와 direct I/O 실패는 중단하며 cached I/O로 바꾸지 않는다.
-- 02·05·07·09의 calibration은 최대 8 MiB chunk까지 측정하므로 임시 512 MiB 파일을 생성한다. 07의 별도 mask 검증 파일은 128 MiB다. 생성한 파일은 측정 후 삭제한다. 큰 모델 메모리와 측정 파일이 공존할 수 있으므로 수 GiB의 여유 메모리와 최소 1 GiB의 디스크 여유를 둔다.
+- 02는 `preliminary_research/vlm-flash` 서브모듈의 native C++ profiler를 사용한다. C++ 컴파일러와 Ninja가 필요하며 첫 실행에서 PyTorch extension을 빌드한다. 128 MiB 임시 파일에서 1–768 KiB의 384개 크기를 chunk 수별로 두 방향에서 측정하므로 전체 실행에는 시간이 걸린다. 실행 셀의 `SIZES_KIB`, `ITERS`, `WARMUP`으로 측정량을 명시적으로 조정할 수 있다.
+- 05·07·09의 Python calibration은 최대 8 MiB chunk까지 측정하므로 임시 512 MiB 파일을 생성한다. 07의 별도 mask 검증 파일은 128 MiB다. 생성한 파일은 측정 후 삭제한다. 큰 모델 메모리와 측정 파일이 공존할 수 있으므로 수 GiB의 여유 메모리와 최소 1 GiB의 디스크 여유를 둔다.
 - 08·09는 로컬 원본 `SmolLM2-360M-Instruct` snapshot을 사용한다. 기본 revision은 `a10cc1512eabd3dde888204e902eca88bddb4951`이다. 기본 cache에 없으면 `VLM_CHECKPOINT=/path/to/local/snapshot`으로 같은 구조의 checkpoint를 지정한다. 다운로드를 자동으로 수행하지 않으며, checkpoint가 없을 때 실험 결과를 만들어 대신하지 않는다.
 - 다른 I/O 작업과 동시에 실행하면 timing이 달라진다. 수치의 동일성이 아니라 고정 seed·동일 원본·동일 코드로 **같은 절차**를 반복할 수 있다는 의미의 재현성이다. kernel 실행에는 로컬 소켓이 필요하다.
 
@@ -59,6 +60,7 @@ OPENBLAS_NUM_THREADS=1 python conclusion/python/check_algorithms.py
 
 - `metadata.json`: seed, Python·라이브러리 버전, 소스·수학 문서·노트북 source의 SHA256, git revision.
 - `io_raw.csv`, `mask_io_raw.csv`, `selector_raw.csv`: 해당 실험의 새 원시 측정. 장치와 I/O 설정은 `hardware.json`에 기록한다.
+- 02의 `size_latency.csv`는 요청 크기(KiB/bytes/bits)와 두 방향의 환산 latency를 담는다. `batch_throughput.csv`와 `batch_tail_diagnostic.csv`는 처리량 추정의 근거를 보존한다. 서브모듈 revision과 실제 사용한 native/profiler 소스 hash도 기록한다.
 - `model.json`: 원본 checkpoint, weights SHA256, prompt, layer, dtype. activation은 항상 다시 계산한다.
 - 실험별 CSV/NPZ, 그림의 PNG/SVG, `findings.json`: 해당 실행의 출력. 어느 것도 다음 실행의 입력으로 읽지 않는다.
 
@@ -68,7 +70,7 @@ OPENBLAS_NUM_THREADS=1 python conclusion/python/check_algorithms.py
 
 ## 코드 규모와 공통부의 역할
 
-노트북의 Python 셀은 각각 약 60–120줄이다. 공통 모듈도 개별 500줄 미만이다. 한 줄에 여러 동작을 억지로 붙이거나 예전의 큰 experiment runner를 감추어 import하지 않았다.
+02는 서브모듈의 장치 측정 함수를 직접 호출하며 측정 설정·집계·그림은 노트북 안에 둔다. 나머지 노트북의 Python 셀은 각각 약 60–120줄이다. 공통 모듈도 개별 500줄 미만이다.
 
 | 파일 | 역할 | Python 줄 수 |
 |---|---|---:|
@@ -89,7 +91,8 @@ OPENBLAS_NUM_THREADS=1 python conclusion/python/check_algorithms.py
 |---|---|
 | 비율·고정 R·목적함수 정리: 04, 23, 24, 40 | 01, 04, 09 |
 | 작은 exact oracle·분포·quantization: 01–03, 06, 07, 10 | 03, 04 |
-| affine/two-line/lookup 모델: 11, 13, 14, 42 | 02, 04, 07 |
+| 읽기 크기별 SSD 곡선과 추가 측정: 26, 42 | 02 |
+| affine/two-line/lookup 모델: 11, 13, 14 | 04, 07 |
 | 현실적 규모·frontier·coverage: 05, 16, 19, 26, 28, 31, 34, 35 | 04, 05, 09 |
 | refinement·tile·빠른 selector: 08, 09, 15, 18, 20, 22, 25, 27, 29, 36–38, 43 | 05–07 |
 | selector/runtime·실제 weight/error: 17, 32, 39, 41, 45 | 07, 08 |
