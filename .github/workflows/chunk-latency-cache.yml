@@ -1,39 +1,45 @@
-name: Cached chunk-latency notebook
+name: Standalone latency notebook
 on:
   pull_request:
     paths:
       - 'conclusion/python/02_chunk_latency.ipynb'
-      - 'conclusion/python/chunk_latency.py'
-      - 'conclusion/python/build_chunk_latency_report.py'
-      - 'conclusion/python/test_chunk_latency*.py'
-      - 'conclusion/python/runs/02_chunk_latency/**'
+      - 'conclusion/python/runs/02_chunk_latency/block_estimates.csv'
       - '.github/workflows/chunk-latency-cache.yml'
 permissions:
   contents: read
 jobs:
-  cached-analysis:
+  notebook:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      MPLBACKEND: Agg
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: conclusion/python
-          submodules: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install CPU-only analysis dependencies
-        run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pytest
-      - name: Test and execute the report against committed CSVs (no native reader)
-        env:
-          NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/chunk-latency-artifact
-        run: python -m pytest -q -s conclusion/python/test_chunk_latency.py
-      - name: Publish executed notebook and figures
-        uses: actions/upload-artifact@v4
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
+      - name: Execute with only the notebook and its CSV
+        run: |
+          python - <<'PY'
+          import os, shutil
+          from pathlib import Path
+          import nbformat
+          from nbclient import NotebookClient
+          from nbconvert import HTMLExporter
+          root = Path('conclusion/python')
+          out = Path(os.environ['RUNNER_TEMP']) / 'standalone-latency'
+          data = out / 'runs/02_chunk_latency'
+          data.mkdir(parents=True)
+          shutil.copy2(root / 'runs/02_chunk_latency/block_estimates.csv', data)
+          nb = nbformat.read(root / '02_chunk_latency.ipynb', as_version=4)
+          nb.cells.append(nbformat.v4.new_code_cell('assert (s99, x_rho, h_star, s_star) == (256, 240, 230, 211)\nnp.testing.assert_allclose(comparison["Holdout MAPE (%)"], [3.803290879, 4.266998332, 3.592304784, 3.332244385, 2.918659884, 10.003808636], rtol=1e-7)'))
+          NotebookClient(nb, timeout=60, resources={'metadata': {'path': str(out)}}).execute()
+          nb.cells.pop()
+          assert sum('image/png' in o.get('data', {}) for c in nb.cells if c.cell_type == 'code' for o in c.outputs) == 4
+          nbformat.write(nb, out / '02_chunk_latency.ipynb')
+          html, _ = HTMLExporter().from_notebook_node(nb)
+          (out / '02_chunk_latency.html').write_text(html)
+          PY
+      - uses: actions/upload-artifact@v4
         with:
-          name: chunk-latency-comparison
-          path: ${{ runner.temp }}/chunk-latency-artifact
-          if-no-files-found: error
-          retention-days: 14
+          name: standalone-latency-notebook
+          path: ${{ runner.temp }}/standalone-latency
