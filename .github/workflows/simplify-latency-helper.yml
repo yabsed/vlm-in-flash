@@ -1,0 +1,106 @@
+name: Simplify latency helper callers
+on:
+  push:
+    branches: ['simplify/chunk-latency-helper']
+    paths: ['.github/workflows/simplify-latency-helper.yml']
+permissions:
+  contents: write
+jobs:
+  update:
+    if: github.repository == 'yabsed/vlm-in-flash'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: simplify/chunk-latency-helper
+          sparse-checkout: |
+            conclusion/python
+            .github/workflows
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pytest
+      - name: Update callers without replacing notebook prose or saved outputs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, re
+          root = Path('conclusion/python')
+          def simplify(source):
+              source = source.replace('import json, sys', 'import sys')
+              source = source.replace('SEED, TRAIN_BLOCKS, BOOTSTRAP_REPEATS = 0, 4, 1000', 'TRAIN_BLOCKS = 4')
+              source = source.replace('SEED, TRAIN_BLOCKS = 0, 4', 'TRAIN_BLOCKS = 4')
+              source = source.replace('DATA_DIR = ROOT / "runs/02_chunk_latency"', 'RUN = ROOT / "runs/02_chunk_latency"')
+              source = re.sub(
+                  r'(?m)^( *)MEASUREMENT_CONFIG = [^\n]*\n\1RUN, raw, estimates, hardware = chunk_latency.acquire\(\n'
+                  r'\1    DATA_DIR, rerun=RERUN_MEASUREMENTS,\n'
+                  r'\1    submodule=ROOT.parents\[1\] / "preliminary_research/vlm-flash",\n'
+                  r'\1    config=MEASUREMENT_CONFIG\)',
+                  r'\1estimates = chunk_latency.acquire(RUN, rerun=RERUN_MEASUREMENTS)', source)
+              source = re.sub(r'(?m)^ *before = chunk_latency.input_hashes\(RUN\)\n', '', source)
+              source = source.replace('curve, samples = chunk_latency.split_curve', 'curve = chunk_latency.split_curve')
+              source = re.sub(r'(?m)^ *s_all, B_all, B_all_smooth, _ = [^\n]*\n', '', source)
+              return source
+          p = root / '02_chunk_latency.ipynb'
+          nb = json.loads(p.read_text())
+          for cell in nb['cells']:
+              if cell['cell_type'] == 'code':
+                  cell['source'] = simplify(''.join(cell['source'])).splitlines(keepends=True)
+          p.write_text(json.dumps(nb, ensure_ascii=False, indent=1) + '\n')
+          p = root / 'build_chunk_latency_report.py'
+          s = simplify(p.read_text())
+          s = s.replace('always executes it in cache mode, checks input hashes, and embeds the figures.',
+                        'executes it using the saved CSV and embeds the figures.')
+          s = s.replace('import hashlib\n', '').replace('import os\n', '').replace('import shutil\n', '')
+          s = s[:s.index('def build(root=None):')] + '''def build(root=None):
+              root = Path(root or Path(__file__).resolve().parent)
+              executed = NotebookClient(notebook(), timeout=180, kernel_name="python3",
+                  resources={"metadata": {"path": str(root)}}).execute()
+              for cell in executed.cells:
+                  cell.metadata.pop("execution", None)
+              nbf.write(executed, root / "02_chunk_latency.ipynb")
+
+              from nbconvert import HTMLExporter
+              from traitlets.config import Config
+              config = Config()
+              config.TagRemovePreprocessor.remove_input_tags = {"hide-input"}
+              config.HTMLExporter.exclude_input_prompt = True
+              config.HTMLExporter.exclude_output_prompt = True
+              html, _ = HTMLExporter(config=config).from_notebook_node(executed)
+              out = root / "runs/02_chunk_latency/breakpoint_comparison/report.html"
+              out.write_text(html, encoding="utf-8")
+
+
+          if __name__ == "__main__":
+              build()
+          '''
+          p.write_text(s)
+          p = Path('.github/workflows/chunk-latency-cache.yml')
+          s = p.read_text().replace(' conclusion/python/test_chunk_latency_report.py', '').replace(' pytest tqdm', ' pytest')
+          p.write_text(s)
+          PY
+      - name: Test cached CSV analysis and notebook execution
+        env:
+          NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/simple-latency
+        run: |
+          python -m py_compile conclusion/python/build_chunk_latency_report.py
+          python -m pytest -q conclusion/python/test_chunk_latency.py
+          git diff --exit-code -- conclusion/python/runs
+      - name: Commit caller changes and remove this one-time workflow
+        run: |
+          git add conclusion/python/02_chunk_latency.ipynb conclusion/python/build_chunk_latency_report.py .github/workflows/chunk-latency-cache.yml
+          git rm .github/workflows/simplify-latency-helper.yml
+          git diff --cached --stat
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Use the CSV-only loader in notebook and report builder'
+          git push origin HEAD:simplify/chunk-latency-helper
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simple-latency-notebook
+          path: ${{ runner.temp }}/simple-latency
+          retention-days: 14
