@@ -1,0 +1,30 @@
+{
+  "platform": "Linux-7.2.5-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "torch": "2.11.0+cu130",
+  "cuda_sort": true,
+  "torch_threads": 1,
+  "reader_threads": 6,
+  "direct_io": true,
+  "destination": "cpu",
+  "tile_boundary_kib": 240.0,
+  "paper_ceiling_kib": 233.0,
+  "traces": 128,
+  "warmup": 3,
+  "repeats": 30,
+  "fractions": [
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9,
+    1.0
+  ],
+  "max_read_kib": 768,
+  "measurement": "prepared CPU importance through selected bytes on CPU; no model compute",
+  "profile_sha256": "deba96ae7c1d5a49ab821c18462f4699b4edd4f43c3c5f6586d85817de64a712",
+  "trace_sha256": "49d13118f7639cf7701ebdc5da2d9a8f43ebfc3e56c5c4c22a6d5bf65373419b",
+  "upstream_commit": "9023679ebfd1900fa2912c4098f51bfb9efa7bb8",
+  "mount": "/dev/nvme0n1p3[/home] btrfs /home"
+}
