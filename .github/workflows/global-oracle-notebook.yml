@@ -31,6 +31,9 @@ jobs:
           out = Path(os.environ['RUNNER_TEMP']) / 'global-oracle'
           out.mkdir()
           nb = nbformat.read(source, as_version=4)
+          cell = nb.cells[10]
+          cell.source = cell.source.replace(r'O((N-R+1)(R+1)\log(s/\epsilon))', r'O(N\log N+(N-R+1)(R+1)\log(s/\epsilon))')
+          cell.source = cell.source.replace(r'We use $\epsilon=10^{-6}$.', r'The first term is the single Top-$R$ sort. At a half budget the quadratic DP term dominates.' + '\n\n' + r'We use $\epsilon=10^{-6}$.')
           nb.cells.append(nbformat.v4.new_code_cell('assert checks == 1080\nassert len(frame) == 84\nassert timing.N.iloc[-1] == 4864\nassert (frame.gap_upper_pct - frame.gap_lower_pct).max() < 0.000101\nnp.testing.assert_allclose(summary.loc[("scattered", "Paper greedy"), "median"], 5.652804, atol=1e-5)\nframe.to_csv("comparison.csv", index=False)\ntiming.to_csv("scaling.csv", index=False)'))
           NotebookClient(nb, timeout=180, kernel_name='python3', resources={'metadata': {'path': str(out)}}).execute()
           nb.cells.pop()
@@ -49,7 +52,7 @@ jobs:
           git add conclusion/python/ideas/03_global_oracle.ipynb
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Embed the verified global DP tables and four figures'
+          git commit -m 'Account for sorting in the polynomial ratio bound'
           git push origin HEAD:report/03-polynomial-global-oracle
       - uses: actions/upload-artifact@v4
         with:
