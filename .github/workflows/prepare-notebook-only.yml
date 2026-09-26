@@ -1,0 +1,44 @@
+name: Prepare notebook-only report
+on:
+  push:
+    branches: ['refactor/notebook-only-upstream']
+    paths: ['.github/workflows/prepare-notebook-only.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Inspect source paths without executing experiments
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          names = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          for name in names:
+              path = Path(name)
+              if not name or not path.is_file() or path.name == 'prepare-notebook-only.yml':
+                  continue
+              if path.name == 'AGENTS.md':
+                  print('INSTRUCTIONS', name, '\n' + path.read_text())
+              if path.suffix not in {'.py', '.ipynb', '.md', '.sh', '.yml', '.yaml', '.toml'} and path.name != '.gitmodules':
+                  continue
+              if path.suffix == '.ipynb':
+                  text = '\n'.join(''.join(c['source']) for c in json.loads(path.read_text())['cells'])
+              else:
+                  text = path.read_text()
+              lines = text.splitlines()
+              hits = [i for i, s in enumerate(lines) if 'vlm-flash' in s or 'preliminary_research' in s]
+              if not hits:
+                  continue
+              print('\nFILE', name)
+              selected = set()
+              for i in hits:
+                  selected.update(range(max(0, i - 2), min(len(lines), i + 3)))
+              for i in sorted(selected):
+                  print(f'{i + 1}: {lines[i]}')
+          PY
