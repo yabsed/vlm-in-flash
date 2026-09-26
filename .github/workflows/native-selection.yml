@@ -48,7 +48,7 @@ jobs:
           setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
           assert 'RUN_BENCHMARK = False' in nb.cells[setup].source
           full = os.environ['GITHUB_EVENT_NAME'] == 'push'
-          override = 'RUN_BENCHMARK = True'
+          override = 'RUN_BENCHMARK = True\nRUN_CUDA = False'
           if not full:
               override += '\nMAX_TRACES_PER_SHAPE=1\nWARMUP,REPEATS=1,3\nRESULTS=Path("smoke.csv")\nENVIRONMENT=Path("smoke_environment.json")'
           nb.cells.insert(setup+1, nbf.v4.new_code_cell(override,id='ci-control'))
@@ -59,11 +59,54 @@ jobs:
           assert len(data) == (3456 if full else 108)
           assert data.mask_matches_02.all()
           assert (data.median_us > 0).all()
-          assert (data.query('method != "Paper greedy"').R_selected == data.query('method != "Paper greedy"').R_nominal).all()
+          assert set(data.method) == {"Paper CPU", "Saturation tiles", "Top-R"}
+          assert not data.cuda_sort.any() and 'matmul_ms' not in data
+          fixed = data[~data.method.str.startswith('Paper')]
+          assert (fixed.R_selected == fixed.R_nominal).all()
           for row in data.itertuples():
               times = json.loads(row.samples_us)
               assert len(times) == (31 if full else 3)
               np.testing.assert_allclose(row.median_us,np.median(times))
+          # CPU-only CI validates the new orchestration, not CUDA performance.
+          import torch
+          from time import perf_counter_ns
+          from unittest.mock import patch
+          cells = {c.id: c.source for c in nb.cells}
+          with patch.object(torch.cuda, 'is_available', return_value=False):
+              try:
+                  exec(cells['native-build'], dict(RUN_BENCHMARK=True, RUN_CUDA=True))
+              except AssertionError as error:
+                  assert 'no CPU fallback' in str(error)
+              else:
+                  raise AssertionError('CUDA request silently became CPU')
+          scope = dict(torch=torch, np=np, RUN_BENCHMARK=False, RUN_CUDA=False,
+                       WARMUP=1, REPEATS=3, perf_counter_ns=perf_counter_ns)
+          exec(cells['matmul-measurement'], scope)
+          for k in (0, 3, 7):
+              samples = scope['matmul_samples'](5, k, 11, torch.float32, device='cpu')
+              assert len(samples) == 3 and min(samples) > 0
+          # Deliberately synthetic GPU labels/times test reporting only; never published.
+          import matplotlib.pyplot as plt
+          fake = data.copy()
+          hybrid = fake[fake.method == 'Paper CPU'].assign(method='Paper GPU sort')
+          fake = pd.concat([fake, hybrid], ignore_index=True)
+          fake['matmul_ms'] = fake.R_selected * .001
+          report = dict(frame=fake, QUALITY=path.parent/'../02/oracle_results_fixed_r.csv',
+                        pd=pd, np=np, plt=plt)
+          with patch.object(plt, 'show', side_effect=lambda: plt.close('all')):
+              exec(cells['combined-cost'], report)
+          combined = report['online']
+          assert len(combined) == len(fake)
+          np.testing.assert_allclose(combined.projection_estimate_ms,
+              combined.median_us/1000 + combined.modeled_io_ms + combined.matmul_ms)
+          broken = fake.copy()
+          broken.loc[0, 'R_selected'] -= 1
+          try:
+              exec(cells['combined-cost'], dict(report, frame=broken))
+          except AssertionError as error:
+              assert 'selected counts' in str(error)
+          else:
+              raise AssertionError('Mismatched selected count accepted')
           if full:
               nbf.write(nb,path)
           out = Path(os.environ['RUNNER_TEMP'])/'selection-report'
