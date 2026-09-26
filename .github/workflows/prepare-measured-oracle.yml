@@ -49,7 +49,6 @@ jobs:
           for c in nb.cells:
               if c.cell_type=='code': compile(c.source,c.id,'exec')
           nbf.write(nb,p2)
-          # The HEAD has an orphan duplicate gitlink, not a second declared submodule.
           def entry(path):
               return subprocess.check_output(['git','ls-files','--stage','--',path],text=True).split()
           old,new = entry('preliminary_research/vlm-flash'),entry('conclusion/upstream/vlm-flash')
@@ -93,6 +92,8 @@ jobs:
           ns['T_holdout'] = ns['c1']*ns['z_grid'] + ns['delta']*np.maximum(ns['s_kib'],ns['z_grid'])
           for id in ('costs','bellman','global-dp-09','ratio-solve','tiles','upstream-selector','evaluate-mask'):
               exec(cells[id],ns)
+          normalization = [n for n in ast.parse(cells['trace-input']).body if isinstance(n,ast.FunctionDef) and n.name=='importance_vector']
+          exec(compile(ast.Module(body=normalization,type_ignores=[]),'notebook-normalization','exec'),ns)
           fixture = dict(trace_id=0,shape='9x896',n=9,d=896,module='verification',prompt_sha256='verification',
                          values=np.array([1,4,2,8,3,9,2,6,1],dtype=np.float32))
           ns['PAPER_GEOMETRY']['9x896'] = (4.,4.)
@@ -114,7 +115,7 @@ jobs:
               except AssertionError: pass
               else: raise AssertionError('Mismatched cache identity accepted')
           assert ns['one_case'](fixture,1/9,backend)['status']=='empty_selection'
-          v = ns['importance_vector'](fixture) if 'importance_vector' in ns else fixture['values'].astype(float)
+          v = ns['importance_vector'](fixture)
           q = 1.75
           T = ns['costs'](9,5/q,q*.01,q*.015)
           mask = np.ones(9,dtype=bool)
