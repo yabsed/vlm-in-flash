@@ -24,7 +24,7 @@ Compared methods:
 
 The production benchmark no longer generates a synthetic 1-D distribution.
 By default it reuses Experiment 22's archived Qwen2.5-0.5B-Instruct traces,
-captured by attaching the checked-out `preliminary_research/vlm-flash` code to
+captured by attaching the checked-out `conclusion/upstream/vlm-flash` code to
 a real dense model forward. Each trace is
 `mean(abs(projection_input), batch/token axes)` for one wrapped projection call.
 The deterministic default cap keeps 32 calls per supported Table-2 shape (128

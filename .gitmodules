@@ -1,3 +1,3 @@
 [submodule "vlm-flash"]
-	path = preliminary_research/vlm-flash
+	path = conclusion/upstream/vlm-flash
 	url = https://github.com/snuhcs/vlm-flash.git

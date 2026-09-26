@@ -37,7 +37,7 @@ import torch
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[1]
 PRELIMINARY_RESEARCH = PROJECT_ROOT / "preliminary_research"
-VLM_FLASH = PRELIMINARY_RESEARCH / "vlm-flash"
+VLM_FLASH = PROJECT_ROOT / "conclusion/upstream/vlm-flash"
 sys.path.insert(0, str(VLM_FLASH / "src"))
 
 from vlmflash import ChunkParams, LatencyTable, select_chunks, select_topk  # noqa: E402

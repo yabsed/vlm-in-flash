@@ -18,6 +18,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+UPSTREAM = ROOT.parent / "conclusion/upstream/vlm-flash"
 
 
 def records(v):
@@ -179,7 +180,7 @@ def check_case(v, a, c, rng, counts):
 def profile_checks():
     result={}
     for device,sat,advertised in [('agx',236,7450),('nano',348,3500)]:
-        path=ROOT/f'vlm-flash/src/vlmflash/profiles/orin-{device}.json'
+        path=UPSTREAM/f'src/vlmflash/profiles/orin-{device}.json'
         table=json.loads(path.read_text())['table']
         pairs=sorted((int(k),v) for k,v in table.items())
         assert [x for x,y in pairs]==list(range(1,len(pairs)+1))
@@ -234,7 +235,7 @@ def counterexamples():
 
 
 def implementation_checks():
-    sys.path.insert(0,str(ROOT/'vlm-flash/src'))
+    sys.path.insert(0,str(UPSTREAM/'src'))
     import torch
     from vlmflash import LatencyTable, ChunkParams, select_chunks, SparseLinear
     from types import SimpleNamespace
@@ -305,7 +306,7 @@ def main():
             check_case(v,a,c,rng,counts)
         print(f'Passed rational inputs at N={n}',flush=True)
     result={'status':'passed','idea_sha256':hashlib.sha256((ROOT/'idea.md').read_bytes()).hexdigest(),
-            'submodule_commit':subprocess.check_output(['git','-C',str(ROOT/'vlm-flash'),'rev-parse','HEAD'],text=True).strip(),
+            'submodule_commit':subprocess.check_output(['git','-C',str(UPSTREAM),'rev-parse','HEAD'],text=True).strip(),
             'seed':20260916,'counts':counts,'profiles':profile_checks(),'counterexamples':counterexamples()}
     if args.implementation: result['implementation']=implementation_checks()
     if args.output: args.output.write_text(json.dumps(result,indent=2)+'\n')

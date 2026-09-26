@@ -27,7 +27,7 @@ import pandas as pd
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[1]
 PROFILE_SCRIPT = (
-    PROJECT_ROOT / "preliminary_research" / "vlm-flash" / "scripts"
+    PROJECT_ROOT / "conclusion/upstream/vlm-flash" / "scripts"
     / "profile_flash.py"
 )
 OLD_PROFILE = (
