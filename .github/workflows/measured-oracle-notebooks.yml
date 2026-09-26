@@ -24,7 +24,7 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
-      - name: Check reports, upstream selection and CSV-only replay
+      - name: Check nominal budgets, upstream underfill and CSV-only replay
         run: |
           python - <<'PY'
           import json, os, shutil, tempfile
@@ -33,6 +33,7 @@ jobs:
           import pandas as pd
           import nbformat as nbf
           from nbclient import NotebookClient
+          from nbclient.exceptions import CellExecutionError
           from nbconvert import HTMLExporter
           from traitlets.config import Config
 
@@ -49,8 +50,10 @@ jobs:
               source = '\n'.join(c.source for c in nb.cells if c.cell_type == 'code')
               if path.name.startswith('02'):
                   assert all(x not in source for x in ('RUN_SCALING', 'sha256(', 'fingerprint', 'atomic_json', 'def paper('))
-                  assert sum(len(c.source.splitlines()) for c in nb.cells if c.cell_type == 'code') <= 377
+                  assert sum(len(c.source.splitlines()) for c in nb.cells if c.cell_type == 'code') <= 385
                   assert 'vlmflash.select_chunks(' in source
+                  solver = next(c.source for c in nb.cells if c.id == 'global-dp-12')
+                  assert 'initial' not in solver and 'paper' not in solver.lower()
               guard = nbf.v4.new_code_cell(f'import sys\nsys.modules.update({{n: None for n in {blocked!r}}})')
               nb.cells.insert(0, guard)
               setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
@@ -84,7 +87,7 @@ jobs:
               n1 = execute(p1)
               n2 = execute(p2)
               assert not p2.with_name('activation_traces.npz').exists()
-              assert not p2.with_name('oracle_results_upstream.csv').exists()
+              assert not p2.with_name('oracle_results_fixed_r.csv').exists()
               for nb,path in ((n1,p1),(n2,p2)):
                   nbf.write(nb, out/path.name)
                   html,_ = HTMLExporter(config=export).from_notebook_node(nb)
@@ -96,6 +99,8 @@ jobs:
                   key = f'v{i}'
                   arrays[key] = np.zeros(n,dtype=np.float32) if i==2 else np.random.default_rng(i).uniform(0,4,n).astype(np.float32)
                   entries.append(dict(trace_id=i,input_index=i,shape=f'{n}x{d}',n=n,d=d,array=key))
+              # Paper can beat the exact-R ratio by reading only the valuable 32-row block.
+              arrays['v0'] = np.r_[np.full(32,4.),np.zeros(32)].astype(np.float32)
               manifest = dict(model_dtype='bfloat16',traces=entries)
               archive = p2.with_name('fixture.npz')
               np.savez_compressed(archive, manifest_json=np.asarray(json.dumps(manifest)), **arrays)
@@ -105,31 +110,53 @@ jobs:
               saved = csv.read_bytes()
               result = pd.read_csv(csv)
               assert {'ok','empty_selection','zero_importance'} == set(result.status)
-              assert len(result.groupby(['trace_id','fraction'])) == 15
-              assert (result.query('method == "Paper greedy"').fill_pct < 100).any()
+              assert len(result)==60
+              assert (result.groupby(['trace_id','fraction']).method.nunique()==4).all()
+              paper = result[result.method=='Paper greedy']
+              exact = result[result.method!='Paper greedy']
+              assert (exact.R_selected==exact.R_nominal).all()
+              assert (paper.R_selected<=paper.R_nominal).all()
+              assert (paper.R_selected==0).any() and (paper.R_selected<paper.R_nominal).any()
+              assert (paper.R_selected==paper.R_nominal).any()
+              expected = np.maximum(1,(result.fraction*result.N).astype(int))
+              np.testing.assert_array_equal(result.R_nominal,expected)
+              eligible = (result.R_selected==result.R_nominal) & (result.status=='ok')
+              assert result.loc[~eligible,['gap_lower_pct','gap_upper_pct']].isna().all().all()
+              assert result.loc[eligible,['gap_lower_pct','gap_upper_pct']].notna().all().all()
+              assert (result.loc[eligible].gap_upper_pct-result.loc[eligible].gap_lower_pct).max() < .000101
               model = json.loads(p1.with_name('latency_model.json').read_text())
               for row in result.itertuples():
                   spans = np.asarray(json.loads(row.intervals),dtype=int).reshape(-1,2)
                   lengths = np.diff(spans,axis=1).ravel()
-                  assert lengths.sum()==row.R and len(lengths)==row.chunks
+                  assert lengths.sum()==row.R_selected and len(lengths)==row.chunks
                   w = 2*entries[row.trace_id]['d']/1024
                   shortage = np.maximum(model['s_kib']/w-lengths,0).sum()
-                  np.testing.assert_allclose(row.fill_pct,100*row.R/row.R_nominal)
+                  np.testing.assert_allclose(row.fill_pct,100*row.R_selected/row.R_nominal)
                   np.testing.assert_allclose(row.shortfall_rows,shortage)
                   np.testing.assert_allclose(row.overhead_ms,w*model['delta_ms_per_kib']*shortage,atol=1e-10)
-                  np.testing.assert_allclose(row.latency-w*(model['c1_ms_per_kib']+model['delta_ms_per_kib'])*row.R,row.overhead_ms,atol=1e-10)
-              valid = result[result.status=='ok']
-              assert (valid.groupby(['trace_id','fraction']).R.nunique()==1).all()
-              assert (valid.groupby(['trace_id','fraction']).method.nunique()==4).all()
-              assert (valid.gap_upper_pct-valid.gap_lower_pct).max() < .000101
+                  np.testing.assert_allclose(row.latency-w*(model['c1_ms_per_kib']+model['delta_ms_per_kib'])*row.R_selected,row.overhead_ms,atol=1e-10)
+              reversal = result[(result.trace_id==0) & np.isclose(result.fraction,.9)].set_index('method')
+              assert reversal.loc['Paper greedy','R_selected'] < reversal.loc['Global DP','R_selected']
+              ratios = reversal.importance/reversal.latency
+              assert ratios['Paper greedy'] > ratios['Global DP']
+              assert pd.isna(reversal.loc['Paper greedy','gap_upper_pct'])
+
+              # No legacy matched-R dataset can silently become a nominal-R report.
+              result.rename(columns={'R_selected':'R'}).to_csv(p2.with_name('legacy.csv'),index=False)
+              try:
+                  execute(p2, 'RESULTS = Path("legacy.csv")')
+              except CellExecutionError as e:
+                  assert 'Recompute the fixed-R CSV' in str(e)
+              else:
+                  raise AssertionError('Accepted a legacy matched-cardinality CSV')
               archive.unlink()
               replay = execute(p2, 'RESULTS = Path("fixture.csv")', replay=True)
               assert csv.read_bytes()==saved
               outputs = [o for c in replay.cells if c.cell_type=='code' for o in c.outputs]
               assert sum('image/png' in o.get('data',{}) for o in outputs)==5
-              # No synthetic comparison is published as empirical Qwen evidence.
               assert original.read_bytes()==before
-          print('1800 exhaustive checks; actual upstream Torch selector; fill/fragmentation identities; five CSV-only figures; no real experiment.')
+              # No synthetic comparison is published as empirical Qwen evidence.
+          print('1800 exhaustive checks; nominal-R oracle; actual upstream underfill including ratio reversal; five CSV-only figures; no real experiment.')
           PY
       - uses: actions/upload-artifact@v4
         with:
