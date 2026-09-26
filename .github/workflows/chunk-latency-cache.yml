@@ -2,8 +2,8 @@ name: Standalone latency notebook
 on:
   pull_request:
     paths:
-      - 'conclusion/python/02_chunk_latency.ipynb'
-      - 'conclusion/python/runs/02_chunk_latency/block_estimates.csv'
+      - 'conclusion/python/results/01/01_chunk_latency.ipynb'
+      - 'conclusion/python/results/01/block_estimates.csv'
       - '.github/workflows/chunk-latency-cache.yml'
 permissions:
   contents: read
@@ -17,27 +17,43 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
-      - name: Execute with only the notebook and its CSV
+      - name: Check acquisition control flow and execute cached analysis (no SSD benchmark)
         run: |
           python - <<'PY'
-          import os, shutil
+          import os, shutil, tempfile
           from pathlib import Path
           import nbformat
           from nbclient import NotebookClient
           from nbconvert import HTMLExporter
-          root = Path('conclusion/python')
+          root = Path('conclusion/python/results/01')
           out = Path(os.environ['RUNNER_TEMP']) / 'standalone-latency'
-          data = out / 'runs/02_chunk_latency'
-          data.mkdir(parents=True)
-          shutil.copy2(root / 'runs/02_chunk_latency/block_estimates.csv', data)
-          nb = nbformat.read(root / '02_chunk_latency.ipynb', as_version=4)
+          out.mkdir(parents=True)
+          shutil.copy2(root / 'block_estimates.csv', out)
+          nb = nbformat.read(root / '01_chunk_latency.ipynb', as_version=4)
+          setup = next(c.source for c in nb.cells if c.id == 'chunk-latency-01')
+          loader = next(c.source for c in nb.cells if c.id == 'measurement-load')
+          ns, calls = {}, []
+          exec(setup, ns)
+          def fake_measure(directory):
+              calls.append(directory)
+              return ns['pd'].read_csv(root / 'block_estimates.csv')
+          ns['measure'] = fake_measure
+          with tempfile.TemporaryDirectory() as directory:
+              ns['CSV_PATH'] = Path(directory) / 'block_estimates.csv'
+              exec(loader, ns)
+              assert ns['CSV_PATH'].is_file() and len(calls) == 1
+              exec(loader, ns)
+              assert len(calls) == 1
+              ns['RERUN_MEASUREMENTS'] = True
+              exec(loader, ns)
+              assert len(calls) == 2
           nb.cells.append(nbformat.v4.new_code_cell('assert (s99, x_rho, h_star, s_star) == (256, 240, 230, 211)\nnp.testing.assert_allclose(comparison["Holdout MAPE (%)"], [3.803290879, 4.266998332, 3.592304784, 3.332244385, 2.918659884, 10.003808636], rtol=1e-7)'))
-          NotebookClient(nb, timeout=60, resources={'metadata': {'path': str(out)}}).execute()
+          NotebookClient(nb, timeout=90, kernel_name='python3', resources={'metadata': {'path': str(out)}}).execute()
           nb.cells.pop()
           assert sum('image/png' in o.get('data', {}) for c in nb.cells if c.cell_type == 'code' for o in c.outputs) == 4
-          nbformat.write(nb, out / '02_chunk_latency.ipynb')
+          nbformat.write(nb, out / '01_chunk_latency.ipynb')
           html, _ = HTMLExporter().from_notebook_node(nb)
-          (out / '02_chunk_latency.html').write_text(html)
+          (out / '01_chunk_latency.html').write_text(html)
           PY
       - uses: actions/upload-artifact@v4
         with:
