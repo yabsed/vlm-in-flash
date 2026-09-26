@@ -1,7 +1,11 @@
 {
   "platform": "Linux-7.2.5-200.fc44.x86_64-x86_64-with-glibc2.43",
   "torch": "2.11.0+cu130",
-  "cuda_sort": true,
+  "cuda_available": true,
+  "paper_sort_devices": [
+    "cuda",
+    "cpu"
+  ],
   "torch_threads": 1,
   "reader_threads": 6,
   "direct_io": true,
