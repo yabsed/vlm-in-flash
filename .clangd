@@ -1,0 +1,12 @@
+If:
+  PathMatch: conclusion/python/results/03/.*\.cpp
+
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -DTORCH_API_INCLUDE_EXTENSION_H
+    - -DTORCH_EXTENSION_NAME=selectors
+    - -D_GLIBCXX_USE_CXX11_ABI=1
+    - -isystem/home/yabsed/miniconda3/lib/python3.13/site-packages/torch/include
+    - -isystem/home/yabsed/miniconda3/lib/python3.13/site-packages/torch/include/torch/csrc/api/include
+    - -isystem/home/yabsed/miniconda3/include/python3.13
