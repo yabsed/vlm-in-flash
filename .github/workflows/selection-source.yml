@@ -10,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - name: Bundle the existing report inputs and reference implementation
         run: |
+          git submodule update --init conclusion/upstream/vlm-flash
           mkdir -p /tmp/selection-source/conclusion/python
           cp -a conclusion/python/results /tmp/selection-source/conclusion/python/
           cp -a conclusion/upstream /tmp/selection-source/conclusion/
