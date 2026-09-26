@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-import core as C
+import conclusion.python.ideas.core as C
 
 
 def main():
