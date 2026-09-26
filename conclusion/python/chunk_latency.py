@@ -9,7 +9,11 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import nnls
 
+# 1KiB to 256KiB in 1KiB increments
+# then 260KiB to 768KiB in 4KiB increments.
 SIZES_KIB = np.r_[np.arange(1, 257), np.arange(260, 769, 4)].tolist()
+
+# default config 
 DEFAULT_CONFIG = dict(
     sizes_kib=SIZES_KIB, blocks=7, iterations=10, warmup=3, threads=6,
     blob_mib=128, chunk_counts=[1, 2, 4, 8, 16, 28, 32, 48, 64, 96, 128, 192, 256, 384, 512],
@@ -17,10 +21,11 @@ DEFAULT_CONFIG = dict(
     size_order="randomized within each block", logical_request_bytes=True,
     seed=0, blob_seed=0, estimator="profile_flash.saturation_throughput",
 )
+
 INPUT_FILES = ("hardware.json", "block_estimates.csv", "io_raw.csv")
 
 
-def input_hashes(run: Path) -> dict[str, str]:
+def inputhashes_(run: Path) -> dict[str, str]:
     result = {}
     for name in INPUT_FILES:
         with (Path(run) / name).open("rb") as stream:
