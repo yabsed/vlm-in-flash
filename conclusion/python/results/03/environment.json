@@ -1,0 +1,26 @@
+{
+  "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+  "cpu": "AMD EPYC 7763 64-Core Processor",
+  "python": "3.13.15",
+  "torch": "2.10.0+cpu",
+  "compiler": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+  "flags": "-O3; C++17",
+  "torch_threads": 1,
+  "cuda_sort": false,
+  "traces": 128,
+  "budgets": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ],
+  "warmup": 5,
+  "repeats": 31,
+  "source_commit": "cc4f8c589716fbcaee186cc9f2b928193d25a65e",
+  "upstream_commit": "9023679ebfd1900fa2912c4098f51bfb9efa7bb8"
+}
