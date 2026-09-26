@@ -1,0 +1,90 @@
+name: Native selection notebook
+on:
+  push:
+    branches: ['feat/native-selection-benchmark']
+    paths:
+      - 'conclusion/python/results/03/selectors.cpp'
+      - 'conclusion/python/results/03/03_selection_latency.ipynb'
+      - '.github/workflows/native-selection.yml'
+  pull_request:
+    paths:
+      - 'conclusion/python/results/03/**'
+      - '.github/workflows/native-selection.yml'
+permissions:
+  contents: write
+jobs:
+  selectors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CXX: clang++
+      MAX_JOBS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MPLBACKEND: module://matplotlib_inline.backend_inline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - run: git submodule update --init conclusion/upstream/vlm-flash
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install numpy pandas scipy matplotlib ninja nbformat nbclient nbconvert ipykernel
+      - name: Execute native selectors and check saved-mask agreement
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          import nbformat as nbf
+          import numpy as np
+          import pandas as pd
+          from nbclient import NotebookClient
+          from nbconvert import HTMLExporter
+          path = Path('conclusion/python/results/03/03_selection_latency.ipynb').resolve()
+          nb = nbf.read(path, as_version=4)
+          setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
+          assert 'RUN_BENCHMARK = False' in nb.cells[setup].source
+          full = os.environ['GITHUB_EVENT_NAME'] == 'push'
+          override = 'RUN_BENCHMARK = True'
+          if not full:
+              override += '\nMAX_TRACES_PER_SHAPE=1\nWARMUP,REPEATS=1,3\nRESULTS=Path("smoke.csv")\nENVIRONMENT=Path("smoke_environment.json")'
+          nb.cells.insert(setup+1, nbf.v4.new_code_cell(override,id='ci-control'))
+          NotebookClient(nb,timeout=500,kernel_name='python3',resources={'metadata':{'path':str(path.parent)}}).execute()
+          nb.cells = [c for c in nb.cells if c.id != 'ci-control']
+          csv = path.with_name('selection_results.csv' if full else 'smoke.csv')
+          data = pd.read_csv(csv)
+          assert len(data) == (3456 if full else 108)
+          assert data.mask_matches_02.all()
+          assert (data.median_us > 0).all()
+          assert (data.query('method != "Paper greedy"').R_selected == data.query('method != "Paper greedy"').R_nominal).all()
+          for row in data.itertuples():
+              times = json.loads(row.samples_us)
+              assert len(times) == (31 if full else 3)
+              np.testing.assert_allclose(row.median_us,np.median(times))
+          if full:
+              nbf.write(nb,path)
+          out = Path(os.environ['RUNNER_TEMP'])/'selection-report'
+          out.mkdir()
+          nbf.write(nb,out/path.name)
+          html,_ = HTMLExporter().from_notebook_node(nb)
+          (out/'report.html').write_text(html)
+          (out/'selection_results.csv').write_bytes(csv.read_bytes())
+          env = path.with_name('environment.json' if full else 'smoke_environment.json')
+          (out/'environment.json').write_bytes(env.read_bytes())
+          print('Native mask checks and timing samples passed:',len(data),'rows; full run:',full)
+          PY
+      - name: Save the measured report on the experiment branch
+        if: github.event_name == 'push'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add conclusion/python/results/03/03_selection_latency.ipynb conclusion/python/results/03/selection_results.csv conclusion/python/results/03/environment.json
+          git diff --cached --quiet || git commit -m 'Record CPU native-selection measurements and figures'
+          git push origin HEAD:feat/native-selection-benchmark
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-selection-report-${{ github.event_name }}
+          path: ${{ runner.temp }}/selection-report
