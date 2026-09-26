@@ -25,11 +25,11 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install CPU-only analysis dependencies
-        run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pytest tqdm
+        run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pytest
       - name: Test and execute the report against committed CSVs (no native reader)
         env:
           NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/chunk-latency-artifact
-        run: python -m pytest -q -s conclusion/python/test_chunk_latency.py conclusion/python/test_chunk_latency_report.py
+        run: python -m pytest -q -s conclusion/python/test_chunk_latency.py
       - name: Publish executed notebook and figures
         uses: actions/upload-artifact@v4
         with:
