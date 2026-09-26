@@ -29,10 +29,8 @@ jobs:
       - name: Test and execute the report against committed CSVs (no native reader)
         env:
           NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/chunk-latency-artifact
-        run: |
-          python -m pytest -q -s conclusion/python/test_chunk_latency.py conclusion/python/test_chunk_latency_report.py
-          python -c 'import json, os, pathlib; p = pathlib.Path(os.environ["NOTEBOOK_ARTIFACT_DIR"]) / "breakpoint_comparison/findings.json"; f = json.loads(p.read_text()); print(json.dumps({"ts_free_breakpoint_kib": f["ts_free_breakpoint_kib"], "comparison": f["comparison"]}, indent=2))'
-      - name: Publish executed notebook and comparison tables
+        run: python -m pytest -q -s conclusion/python/test_chunk_latency.py conclusion/python/test_chunk_latency_report.py
+      - name: Publish executed notebook and figures
         uses: actions/upload-artifact@v4
         with:
           name: chunk-latency-comparison

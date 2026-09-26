@@ -1,5 +1,0 @@
-definition,size_kib,criterion
-99% throughput crossing,256.0,first crossing of smoothed training throughput
-Raw efficiency minimum,240.0,all-block minimum of T/x; retrospective anchor
-Hinge boundary,230.0,training-MSE minimum in the hinge family
-Two-line boundary,211.0,training-MSE minimum in the constrained two-line family

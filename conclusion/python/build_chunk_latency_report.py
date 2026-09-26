@@ -328,55 +328,7 @@ def notebook():
     this reader and measurement procedure, not a universal SSD service-time law.
 
     [Mathematical context](../../preliminary_research/idea.md) ·
-    [Saved measurements](runs/02_chunk_latency/) ·
-    [Coefficients and numerical comparison](runs/02_chunk_latency/breakpoint_comparison/model_comparison.csv)
-    ''')
-    code('''
-    # Reproduce audit tables without exposing acquisition machinery in the report.
-    boot_rng = np.random.default_rng(SEED + 1)
-    bootstrap = []
-    for _ in range(BOOTSTRAP_REPEATS):
-        sampled = samples[:, boot_rng.integers(0, samples.shape[1], samples.shape[1])]
-        median_ms = np.median(sampled, axis=1)
-        ratio_b = median_ms / x
-        bootstrap.append([chunk_latency.throughput_threshold(x, median_ms)[0],
-            x[ratio_b.argmin()], x[np.flatnonzero(ratio_b <= 1.05 * ratio_b.min())[0]]])
-    boot = pd.DataFrame(bootstrap, columns=["saturation_99pct_kib", "argmin_kib", "near_best_kib"])
-    boot.to_csv(OUT / "bootstrap_selections.csv", index=False)
-    public = fits.set_index("model").loc[order].reset_index().copy()
-    public["model"] = public.model.map(names)
-    public["boundary"] = ["fixed", "fixed", "fixed", "free", "free", "none"]
-    public.to_csv(OUT / "model_comparison.csv", index=False)
-    search.assign(family=search.kind.map({"Ts": "Two-line", "Hinge": "Hinge"})).to_csv(OUT / "breakpoint_search.csv", index=False)
-    pd.DataFrame({"size_kib": x, "holdout_ms": T_test, **{names[k]: predictions[k] for k in order}}).to_csv(OUT / "model_predictions.csv", index=False)
-    (OUT / "model_parameters.json").write_text(json.dumps({names[k]: parameters[k] for k in order}, indent=2))
-    pd.DataFrame([
-        ("99% throughput crossing", s99, "first crossing of smoothed training throughput"),
-        ("Raw efficiency minimum", x_rho, "all-block minimum of T/x; retrospective anchor"),
-        ("Hinge boundary", h_star, "training-MSE minimum in the hinge family"),
-        ("Two-line boundary", s_star, "training-MSE minimum in the constrained two-line family")
-    ], columns=["definition", "size_kib", "criterion"]).to_csv(OUT / "breakpoint_definitions.csv", index=False)
-    provenance = dict(input_sha256=before, acquisition=hardware,
-                      train_blocks=list(range(TRAIN_BLOCKS)), holdout_blocks=list(range(TRAIN_BLOCKS, samples.shape[1])),
-                      native_measurements_repeated=RERUN_MEASUREMENTS,
-                      interpretation="retrospective within-run comparison; training-only free-boundary selection")
-    (OUT / "input_provenance.json").write_text(json.dumps(provenance, indent=2))
-    summary = dict(primary_model="Ts@240", primary_label=names["Ts@240"],
-        fixed_breakpoints_kib=[240, 256, 230], saturation_99pct_kib=s99,
-        all_blocks_saturation_99pct_kib=s_all, argmin_kib=x_rho,
-        hinge_breakpoint_kib=h_star, ts_free_breakpoint_kib=s_star,
-        ts_learned_breakpoint_kib=s_star,  # Backward-compatible machine key; never a display label.
-        model_parameters={names[k]: parameters[k] for k in order}, comparison=public.to_dict("records"),
-        post_s_below_99pct_count=below, post_s_count=n_tail,
-        post_s_ratio_cv_pct=tail_cv, post_s_ratio_endpoint_change_pct=tail_drift,
-        hinge_tail_intercept_us=tail_intercept_us,
-        ts_1pct_rmse_band_kib=[float(band.s_kib.min()), float(band.s_kib.max())],
-        bootstrap_90pct=boot.quantile([.05, .95]).to_dict(),
-        scope="Finite measured grid; equal-size-weighted training MSE; amortized latency, not isolated-read service time")
-    (OUT / "findings.json").write_text(json.dumps(summary, indent=2))
-    assert chunk_latency.input_hashes(RUN) == before, "Raw measurement inputs changed"
-    if not RERUN_MEASUREMENTS:
-        assert "torch" not in sys.modules and "profile_flash" not in sys.modules
+    [Saved measurements](runs/02_chunk_latency/)
     ''')
     for i, cell in enumerate(cells):
         cell.id = f"latency-report-{i:02d}"

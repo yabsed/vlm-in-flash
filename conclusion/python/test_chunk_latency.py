@@ -180,22 +180,27 @@ def execute_notebook(root, config, *, artifacts=False):
     nb.cells.append(nbformat.v4.new_code_cell("assert 'torch' not in sys.modules\nassert 'profile_flash' not in sys.modules"))
     executed = NotebookClient(nb, timeout=120, kernel_name="python3",
         resources={"metadata": {"path": str(root)}}).execute()
-    findings = json.loads((root / "runs/02_chunk_latency/breakpoint_comparison/findings.json").read_text())
-    assert findings["primary_model"] == "Ts@240"
-    assert len(findings["comparison"]) == 6
     assert not list(root.rglob("*.dat"))
     if artifacts and os.environ.get("NOTEBOOK_ARTIFACT_DIR"):
         out = Path(os.environ["NOTEBOOK_ARTIFACT_DIR"])
         out.mkdir(parents=True, exist_ok=True)
         nbformat.write(executed, out / "02_chunk_latency.executed.ipynb")
         shutil.copytree(root / "runs/02_chunk_latency/breakpoint_comparison", out / "breakpoint_comparison", dirs_exist_ok=True)
-    return findings
+    _, estimates, _ = cl.load_cached(root / "runs/02_chunk_latency", config)
+    curve, _ = cl.split_curve(estimates)
+    x = curve.size_kib.to_numpy()
+    parameters, _ = cl.train_models(x, curve.train_ms)
+    fits, _ = cl.compare_models(x, curve.holdout_ms, parameters)
+    s99 = cl.throughput_threshold(x, curve.train_ms)[0]
+    rho = curve.median_ms.to_numpy() / x
+    return dict(s_star=parameters["Ts learned"]["s_kib"], hinge_breakpoint_kib=parameters["Hinge"]["s_kib"],
+                argmin_kib=float(x[rho.argmin()]), saturation_99pct_kib=s99, n_models=len(fits))
 
 
 def test_notebook_run_all_with_synthetic_cache(tmp_path):
     config = make_cache(tmp_path / "runs/02_chunk_latency")
-    findings = execute_notebook(tmp_path, config)
-    assert findings["ts_learned_breakpoint_kib"] == 220
+    summary = execute_notebook(tmp_path, config)
+    assert summary["s_star"] == 220
 
 
 def test_notebook_run_all_with_committed_cache(tmp_path):
@@ -207,10 +212,11 @@ def test_notebook_run_all_with_committed_cache(tmp_path):
     before = cl.input_hashes(source)
     for name in cl.INPUT_FILES:
         shutil.copy2(source / name, destination / name)
-    findings = execute_notebook(tmp_path, cl.DEFAULT_CONFIG, artifacts=True)
+    summary = execute_notebook(tmp_path, cl.DEFAULT_CONFIG, artifacts=True)
     assert cl.input_hashes(source) == before
     assert cl.input_hashes(destination) == before
-    assert findings["argmin_kib"] == 240
-    assert findings["saturation_99pct_kib"] == 256
-    assert findings["hinge_breakpoint_kib"] == 230
-    print(json.dumps({k: findings[k] for k in ("argmin_kib", "saturation_99pct_kib", "hinge_breakpoint_kib", "ts_learned_breakpoint_kib")}))
+    assert summary["n_models"] == 6
+    assert summary["argmin_kib"] == 240
+    assert summary["saturation_99pct_kib"] == 256
+    assert summary["hinge_breakpoint_kib"] == 230
+    print(json.dumps({k: summary[k] for k in ("argmin_kib", "saturation_99pct_kib", "hinge_breakpoint_kib", "s_star")}))
