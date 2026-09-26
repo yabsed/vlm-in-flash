@@ -1,14 +1,43 @@
 {
-  "Affine": {
-    "kind": "Affine",
-    "s_kib": null,
+  "Two-line (240 KiB)": {
+    "kind": "Ts",
+    "s_kib": 240.0,
     "coefficients": [
-      0.0065329705483863606,
-      0.0001707980993881335
+      0.00013610741383706385,
+      4.737076485360285e-05
     ],
-    "train_mse_ms2": 1.4584897594748707e-05
+    "train_mse_ms2": 5.611350868746038e-06
   },
-  "Hinge": {
+  "Two-line (256 KiB)": {
+    "kind": "Ts",
+    "s_kib": 256.0,
+    "coefficients": [
+      0.00014063365391609522,
+      4.2607821803552117e-05
+    ],
+    "train_mse_ms2": 6.227522209546693e-06
+  },
+  "Two-line (230 KiB)": {
+    "kind": "Ts",
+    "s_kib": 230.0,
+    "coefficients": [
+      0.0001329605150886658,
+      5.0669040774048904e-05
+    ],
+    "train_mse_ms2": 5.348789367102526e-06
+  },
+  "Two-line (free breakpoint)": {
+    "kind": "Ts",
+    "s_kib": 211.0,
+    "coefficients": [
+      0.0001261864654522137,
+      5.773558400007367e-05
+    ],
+    "train_mse_ms2": 5.151409770336036e-06,
+    "breakpoint_at_search_edge": false,
+    "breakpoint_identified": true
+  },
+  "Hinge (free breakpoint)": {
     "kind": "Hinge",
     "s_kib": 230.0,
     "coefficients": [
@@ -20,42 +49,13 @@
     "breakpoint_at_search_edge": false,
     "breakpoint_identified": true
   },
-  "Ts learned": {
-    "kind": "Ts",
-    "s_kib": 211.0,
+  "Affine": {
+    "kind": "Affine",
+    "s_kib": null,
     "coefficients": [
-      0.0001261864654522137,
-      5.773558400007367e-05
+      0.0065329705483863606,
+      0.0001707980993881335
     ],
-    "train_mse_ms2": 5.151409770336036e-06,
-    "breakpoint_at_search_edge": false,
-    "breakpoint_identified": true
-  },
-  "Ts@240": {
-    "kind": "Ts",
-    "s_kib": 240.0,
-    "coefficients": [
-      0.00013610741383706385,
-      4.737076485360285e-05
-    ],
-    "train_mse_ms2": 5.611350868746038e-06
-  },
-  "Ts@256": {
-    "kind": "Ts",
-    "s_kib": 256.0,
-    "coefficients": [
-      0.00014063365391609522,
-      4.2607821803552117e-05
-    ],
-    "train_mse_ms2": 6.227522209546693e-06
-  },
-  "Ts@230": {
-    "kind": "Ts",
-    "s_kib": 230.0,
-    "coefficients": [
-      0.0001329605150886658,
-      5.0669040774048904e-05
-    ],
-    "train_mse_ms2": 5.348789367102526e-06
+    "train_mse_ms2": 1.4584897594748707e-05
   }
 }
