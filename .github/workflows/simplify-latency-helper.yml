@@ -79,9 +79,6 @@ jobs:
               build()
           '''
           p.write_text(s)
-          p = Path('.github/workflows/chunk-latency-cache.yml')
-          s = p.read_text().replace(' conclusion/python/test_chunk_latency_report.py', '').replace(' pytest tqdm', ' pytest')
-          p.write_text(s)
           PY
       - name: Test cached CSV analysis and notebook execution
         env:
@@ -90,10 +87,9 @@ jobs:
           python -m py_compile conclusion/python/build_chunk_latency_report.py
           python -m pytest -q conclusion/python/test_chunk_latency.py
           git diff --exit-code -- conclusion/python/runs
-      - name: Commit caller changes and remove this one-time workflow
+      - name: Commit caller changes
         run: |
-          git add conclusion/python/02_chunk_latency.ipynb conclusion/python/build_chunk_latency_report.py .github/workflows/chunk-latency-cache.yml
-          git rm .github/workflows/simplify-latency-helper.yml
+          git add conclusion/python/02_chunk_latency.ipynb conclusion/python/build_chunk_latency_report.py
           git diff --cached --stat
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
