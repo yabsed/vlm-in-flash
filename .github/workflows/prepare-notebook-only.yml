@@ -4,41 +4,207 @@ on:
     branches: ['refactor/notebook-only-upstream']
     paths: ['.github/workflows/prepare-notebook-only.yml']
 permissions:
-  contents: read
+  contents: write
 jobs:
   prepare:
+    if: github.repository == 'yabsed/vlm-in-flash'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: refactor/notebook-only-upstream
           submodules: false
-      - name: Inspect source paths without executing experiments
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pyyaml
+      - name: Edit source and paths without changing measurements
         run: |
           python - <<'PY'
           import json, subprocess
           from pathlib import Path
-          names = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
-          for name in names:
-              path = Path(name)
-              if not name or not path.is_file() or path.name == 'prepare-notebook-only.yml':
-                  continue
-              if path.name == 'AGENTS.md':
-                  print('INSTRUCTIONS', name, '\n' + path.read_text())
-              if path.suffix not in {'.py', '.ipynb', '.md', '.sh', '.yml', '.yaml', '.toml'} and path.name != '.gitmodules':
-                  continue
-              if path.suffix == '.ipynb':
-                  text = '\n'.join(''.join(c['source']) for c in json.loads(path.read_text())['cells'])
-              else:
-                  text = path.read_text()
-              lines = text.splitlines()
-              hits = [i for i, s in enumerate(lines) if 'vlm-flash' in s or 'preliminary_research' in s]
-              if not hits:
-                  continue
-              print('\nFILE', name)
-              selected = set()
-              for i in hits:
-                  selected.update(range(max(0, i - 2), min(len(lines), i + 3)))
-              for i in sorted(selected):
-                  print(f'{i + 1}: {lines[i]}')
+          import nbformat as nbf
+          def git(*args):
+              return subprocess.check_output(['git', *args], text=True).strip()
+          old = 'preliminary_research/vlm-flash'
+          new = 'conclusion/upstream/vlm-flash'
+          pin = git('ls-files', '--stage', old).split()[1]
+          assert pin == '9023679ebfd1900fa2912c4098f51bfb9efa7bb8'
+          Path('conclusion/upstream').mkdir(parents=True, exist_ok=True)
+          git('mv', old, new)
+          assert git('ls-files', '--stage', new).split()[1] == pin
+          assert git('config', '-f', '.gitmodules', 'submodule.vlm-flash.path') == new
+
+          root = Path('conclusion/python/results/01')
+          p = root / '01_chunk_latency.ipynb'
+          nb = nbf.read(p, as_version=4)
+          cells = {c.id: c for c in nb.cells}
+          original_native = cells['native-acquisition'].source
+          original_figures = [o.data['image/png'] for c in nb.cells if c.cell_type == 'code'
+                              for o in c.outputs if 'image/png' in o.get('data', {})]
+          for cell in nb.cells:
+              cell.source = cell.source.replace('../../../../' + old, '../../../upstream/vlm-flash')
+          cells['measurement-definition'].source = cells['measurement-definition'].source.replace(
+              'The folded cell defines acquisition. It is called only when `RERUN_MEASUREMENTS` is explicitly enabled; an absent CSV otherwise raises an error. Paths are relative to this notebook\'s directory. Fresh acquisition requires the initialized submodule and its native build dependencies, with the CSV directory on the target SSD.',
+              'The acquisition definition is folded below. With `RERUN_MEASUREMENTS = False`, evaluation reads the saved CSV; a missing file does not start a measurement. Paths are relative to this notebook. Fresh acquisition requires the initialized submodule and its native build dependencies, with the CSV directory on the target SSD.')
+          cells['block-definition'].source += (
+              '\n\nEach size occurs once per block, with positive finite costs satisfying the throughput identity above. '
+              'The folded check enforces these conditions before fitting. It does not prescribe a numerical breakpoint.')
+          validation = nbf.v4.new_code_cell('''columns = {
+              "block", "order", "size_kib", "latency_ms", "throughput_mib_s",
+              "count_points", "max_count",
+          }
+          assert set(data) == columns, "The profile must use the seven-column schema."
+          assert len(data) == BLOCKS * len(SIZES_KIB), "The block grid is incomplete."
+          assert set(data.block) == set(range(BLOCKS))
+          assert set(data.size_kib) == set(SIZES_KIB)
+          assert not data.duplicated(["block", "size_kib"]).any()
+          assert not data.duplicated(["block", "order"]).any()
+          assert data.order.between(0, len(SIZES_KIB) - 1).all()
+          indices = data[["block", "order", "size_kib", "count_points", "max_count"]].to_numpy(float)
+          assert np.isfinite(indices).all() and (indices == np.floor(indices)).all()
+          values = data[["latency_ms", "throughput_mib_s", "count_points", "max_count"]].to_numpy(float)
+          assert np.isfinite(values).all() and (values > 0).all()
+          np.testing.assert_allclose(
+              data.latency_ms, 1000 * data.size_kib / (1024 * data.throughput_mib_s),
+              rtol=1e-9, atol=1e-12,
+          )''', id='profile-identities', metadata={'jupyter': {'source_hidden': True}, 'tags': ['hide-input']})
+          nb.cells.insert(nb.cells.index(cells['block-curves']), validation)
+          cells['block-curves'].source = cells['block-curves'].source.replace(
+              'wide = data.pivot(index="size_kib", columns="block", values="latency_ms").sort_index().sort_index(axis=1)',
+              'wide = data.pivot(index="size_kib", columns="block", values="latency_ms")\nwide = wide.sort_index().sort_index(axis=1)')
+          assert cells['native-acquisition'].source == original_native
+          assert original_figures == [o.data['image/png'] for c in nb.cells if c.cell_type == 'code'
+                                     for o in c.outputs if 'image/png' in o.get('data', {})]
+          nbf.validate(nb)
+          nbf.write(nb, p)
+          git('rm', str(root / 'test_chunk_latency.py'))
+
+          def replace(path, before, after):
+              p = Path(path)
+              text = p.read_text()
+              assert before in text, (path, before)
+              p.write_text(text.replace(before, after))
+          replace('conclusion/python/ideas/check_algorithms.py',
+                  'root / "preliminary_research/vlm-flash/src"', 'root / "upstream/vlm-flash/src"')
+          replace('experiments/01_random_r_bound/run_experiment.py',
+                  'VLM_FLASH = PRELIMINARY_RESEARCH / "vlm-flash"',
+                  'VLM_FLASH = PROJECT_ROOT / "conclusion/upstream/vlm-flash"')
+          for name in ('22_predicted_lambda_trim', '42_post_s_ssd_linearity'):
+              replace(f'experiments/{name}/run_experiment.py',
+                      'PROJECT_ROOT / "preliminary_research" / "vlm-flash"',
+                      'PROJECT_ROOT / "conclusion/upstream/vlm-flash"')
+          for name in ('conclusion/python/ideas/README.ipynb',
+                       'experiments/22_predicted_lambda_trim/run_experiment.py',
+                       'experiments/24_fixed_r_ratio/README.md',
+                       'experiments/25_gpu_tiles/README.md',
+                       'experiments/26_frontier_adaptive_trim/README.md',
+                       'experiments/30_idea/idea2.md'):
+              replace(name, old, new)
+          replace('preliminary_research/verification/report.md',
+                  '../vlm-flash/', '../../conclusion/upstream/vlm-flash/')
+          p = 'preliminary_research/verification/verify_idea.py'
+          replace(p, 'ROOT = Path(__file__).resolve().parents[1]',
+                  'ROOT = Path(__file__).resolve().parents[1]\nUPSTREAM = ROOT.parent / "conclusion/upstream/vlm-flash"')
+          replace(p, "ROOT/f'vlm-flash/src/", "UPSTREAM/f'src/")
+          replace(p, "ROOT/'vlm-flash/src'", "UPSTREAM/'src'")
+          replace(p, "ROOT/'vlm-flash'", "UPSTREAM")
+          Path('conclusion/upstream/README.md').write_text('''# Reference implementation
+
+          `vlm-flash/` is the unchanged Git submodule from `snuhcs/vlm-flash`. Its
+          revision is recorded by the parent repository, not selected at runtime.
+          The latency notebook calls its profiler and native reader rather than
+          maintaining another I/O implementation.
+
+          From the repository root:
+
+          ```sh
+          git submodule sync --recursive
+          git submodule update --init --recursive conclusion/upstream/vlm-flash
+          ```
+
+          [Notebook 01](../python/results/01/01_chunk_latency.ipynb) contains the
+          acquisition definition, data checks, model fits and figures. With
+          `RERUN_MEASUREMENTS = False`, it reads the existing CSV and never starts
+          acquisition merely because the CSV is missing. Native acquisition is
+          explicit and requires the submodule's native build dependencies.
+
+          The notebook CI checks the saved report without initializing or importing
+          this submodule. It does not claim to reproduce hardware timings.
+          ''')
+          changed = git('diff', '--name-only', 'HEAD').splitlines()
+          for name in changed:
+              p = Path(name)
+              if p.suffix == '.py' and p.exists():
+                  compile(p.read_text(), name, 'exec')
+              if p.suffix == '.ipynb' and p.exists():
+                  nbf.validate(nbf.read(p, as_version=4))
+          git('diff', '--exit-code', 'HEAD', '--', '*.csv', '*.json', '*.npz',
+              'conclusion/python/results/01/01_chunk_latency1.ipynb', 'preliminary_research/idea.md')
+          print('Moved unchanged submodule:', pin)
+          print('Native acquisition source and four embedded figure payloads are unchanged.')
+          print('Changed source paths:\n' + '\n'.join(changed))
           PY
+      - name: Validate the same notebook-only CI, without native imports
+        env:
+          REPORT_DIR: ${{ runner.temp }}/latency-report
+          MPLBACKEND: module://matplotlib_inline.backend_inline
+        run: |
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          import yaml
+          workflow = yaml.safe_load(Path('.github/workflows/chunk-latency-cache.yml').read_text())
+          step = next(s for s in workflow['jobs']['notebook']['steps']
+                      if s.get('name') == 'Execute the notebook against saved data only')
+          subprocess.run(['bash', '-e', '-c', step['run']], check=True)
+          PY
+      - name: Check the relocated submodule and consumer paths without running it
+        run: |
+          git submodule update --init --depth=1 conclusion/upstream/vlm-flash
+          test "$(git -C conclusion/upstream/vlm-flash rev-parse HEAD)" = 9023679ebfd1900fa2912c4098f51bfb9efa7bb8
+          python - <<'PY'
+          import ast, json, subprocess
+          from pathlib import Path
+          expected = Path('conclusion/upstream/vlm-flash').resolve()
+          checks = {
+              'experiments/01_random_r_bound/run_experiment.py': ('HERE', 'PROJECT_ROOT', 'VLM_FLASH'),
+              'experiments/22_predicted_lambda_trim/run_experiment.py': ('HERE', 'PROJECT_ROOT', 'VLMFLASH_ROOT'),
+              'experiments/42_post_s_ssd_linearity/run_experiment.py': ('HERE', 'PROJECT_ROOT', 'PROFILE_SCRIPT'),
+              'preliminary_research/verification/verify_idea.py': ('ROOT', 'UPSTREAM'),
+          }
+          for name, wanted in checks.items():
+              namespace = {'Path': Path, '__file__': str(Path(name).resolve())}
+              tree = ast.parse(Path(name).read_text())
+              for node in tree.body:
+                  if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id in wanted for t in node.targets):
+                      exec(compile(ast.Module(body=[node], type_ignores=[]), name, 'exec'), namespace)
+              path = namespace[wanted[-1]].resolve()
+              assert path == expected or path == expected / 'scripts/profile_flash.py', (name, path)
+          root = Path('conclusion/python/results/01')
+          nb = json.loads((root / '01_chunk_latency.ipynb').read_text())
+          setup = ''.join(next(c['source'] for c in nb['cells'] if c['id'] == 'setup'))
+          value = next(n.value for n in ast.parse(setup).body if isinstance(n, ast.Assign)
+                       and any(isinstance(t, ast.Name) and t.id == 'SUBMODULE' for t in n.targets))
+          assert (root / ast.literal_eval(value.args[0])).resolve() == expected
+          assert (Path('conclusion/python/ideas/check_algorithms.py').resolve().parents[2]
+                  / 'upstream/vlm-flash/src').resolve() == expected / 'src'
+          for rel in ('scripts/profile_flash.py', 'src/vlmflash/csrc/native.cc', 'src/vlmflash/profiles/orin-agx.json'):
+              assert (expected / rel).is_file(), rel
+          print('All relocated runtime paths resolve to the pinned submodule; no experiments executed.')
+          PY
+      - name: Commit the changes and remove this one-time workflow
+        run: |
+          git rm .github/workflows/prepare-notebook-only.yml
+          git add .gitmodules conclusion experiments preliminary_research/verification
+          git diff --cached --check
+          git diff --cached --stat
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Keep notebook 01 self-validating and relocate the unchanged reference submodule'
+          git push origin HEAD:refactor/notebook-only-upstream
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notebook-only-latency-report
+          path: ${{ runner.temp }}/latency-report
