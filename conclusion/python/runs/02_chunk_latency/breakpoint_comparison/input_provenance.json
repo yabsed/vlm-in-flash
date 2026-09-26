@@ -1,11 +1,10 @@
 {
-  "source_directory": "/home/yabsed/Documents/fall26/work/graduate-paper/vlm-in-flash/conclusion/python/runs/02_chunk_latency",
-  "source_sha256": {
+  "input_sha256": {
     "hardware.json": "c7c7b8ffd8e98ddda899ff9a488db79fbe0c2162bad951197304633abd5eb65c",
     "block_estimates.csv": "7cc7356c6b096b486bdb4c8cef68018989244f9b8843adee3cb6de07eaacbb21",
     "io_raw.csv": "1a443958478d7d5f13b48d58250f97b99762df7de330303dad29560aeec163a4"
   },
-  "source_hardware": {
+  "acquisition": {
     "mount": {
       "source": "/dev/nvme0n1p3[/home]",
       "fstype": "btrfs",
@@ -427,7 +426,6 @@
     "blob_seed": 0,
     "estimator": "profile_flash.saturation_throughput"
   },
-  "remeasured": false,
   "train_blocks": [
     0,
     1,
@@ -439,11 +437,6 @@
     5,
     6
   ],
-  "selection_objective": "unweighted training MSE on the measured positive-size grid",
-  "primary_model": "Ts@240",
-  "fixed_breakpoints_kib": [
-    240,
-    256,
-    230
-  ]
+  "native_measurements_repeated": false,
+  "interpretation": "retrospective within-run comparison; training-only free-boundary selection"
 }
