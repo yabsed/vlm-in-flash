@@ -19,7 +19,9 @@
   "s_kib": 207.0,
   "c1_ms_per_kib": 0.0001242581894101549,
   "delta_ms_per_kib": 5.924495830751175e-05,
+  "s_eff_kib": 240.0,
   "s99_kib": 233.0,
+  "s_hinge_kib": 229.0,
   "measured_grid_kib": [
     1.0,
     2.0,
