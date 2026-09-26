@@ -1,0 +1,44 @@
+name: Prepare native latency report from saved CSV
+on:
+  push:
+    branches: ['fix/native-latency-report']
+    paths:
+      - '.github/prepare_native_report.py'
+      - '.github/workflows/prepare-native-latency-report.yml'
+permissions:
+  contents: write
+jobs:
+  report:
+    if: github.repository == 'yabsed/vlm-in-flash'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/native-latency-report
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel pytest
+      - name: Assemble and validate the report without importing a native reader
+        env:
+          NOTEBOOK_ARTIFACT_DIR: ${{ runner.temp }}/native-latency-report
+        run: |
+          python .github/prepare_native_report.py
+          python -m pytest -q conclusion/python/results/01/test_chunk_latency.py
+          cmp conclusion/python/results/01/block_estimates.csv conclusion/python/results/01/block_estimates1.csv
+          git diff --exit-code -- conclusion/python/results/01/*.csv preliminary_research/vlm-flash
+          cp "$NOTEBOOK_ARTIFACT_DIR/01_chunk_latency.ipynb" conclusion/python/results/01/01_chunk_latency.ipynb
+      - name: Commit the embedded figures and remove one-time assembly files
+        run: |
+          git add conclusion/python/results/01/01_chunk_latency.ipynb
+          git rm .github/prepare_native_report.py .github/workflows/prepare-native-latency-report.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Use the submodule reader and present cached results as a mathematical report'
+          git push origin HEAD:fix/native-latency-report
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-latency-report
+          path: ${{ runner.temp }}/native-latency-report
