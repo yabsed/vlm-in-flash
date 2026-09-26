@@ -47,7 +47,7 @@ def notebook():
     sys.path.insert(0, str(ROOT))
     import chunk_latency
     chunk_latency = importlib.reload(chunk_latency)
-    SEED, TRAIN_BLOCKS, BOOTSTRAP_REPEATS = 0, 4, 1000
+    SEED, TRAIN_BLOCKS = 0, 4
     RERUN_MEASUREMENTS = False
     DATA_DIR = ROOT / "runs/02_chunk_latency"
     MEASUREMENT_CONFIG = dict(chunk_latency.DEFAULT_CONFIG, seed=SEED)
@@ -371,8 +371,7 @@ def notebook():
         post_s_ratio_cv_pct=tail_cv, post_s_ratio_endpoint_change_pct=tail_drift,
         hinge_tail_intercept_us=tail_intercept_us,
         ts_1pct_rmse_band_kib=[float(band.s_kib.min()), float(band.s_kib.max())],
-        bootstrap_90pct=boot.quantile([.05, .95]).to_dict(),
-        scope="Finite measured grid; equal-size-weighted training MSE; amortized latency, not isolated-read service time")
+            scope="Finite measured grid; equal-size-weighted training MSE; amortized latency, not isolated-read service time")
     (OUT / "findings.json").write_text(json.dumps(summary, indent=2))
     assert chunk_latency.input_hashes(RUN) == before, "Raw measurement inputs changed"
     if not RERUN_MEASUREMENTS:
