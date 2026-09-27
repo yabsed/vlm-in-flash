@@ -3,15 +3,64 @@
   "torch": "2.11.0+cu130",
   "cuda_available": true,
   "paper_sort_devices": [
-    "cuda",
-    "cpu"
+    "cuda"
   ],
+  "paper_tuning": {
+    "4864x896": {
+      "best": {
+        "start_kb": 8,
+        "jump_cap_kb": 12,
+        "overhead_ms": 1.488,
+        "est_read_ms": 1.353,
+        "utility": 3246.608,
+        "rows_selected": 4376
+      },
+      "num_feasible": 247,
+      "num_evaluated": 256
+    },
+    "896x128": {
+      "best": {
+        "start_kb": 4,
+        "jump_cap_kb": 4,
+        "overhead_ms": 0.133,
+        "est_read_ms": 0.037,
+        "utility": 21392.786,
+        "rows_selected": 800
+      },
+      "num_feasible": 256,
+      "num_evaluated": 256
+    },
+    "896x4864": {
+      "best": {
+        "start_kb": 4,
+        "jump_cap_kb": 4,
+        "overhead_ms": 1.217,
+        "est_read_ms": 1.359,
+        "utility": 605.672,
+        "rows_selected": 807
+      },
+      "num_feasible": 36,
+      "num_evaluated": 36
+    },
+    "896x896": {
+      "best": {
+        "start_kb": 4,
+        "jump_cap_kb": 4,
+        "overhead_ms": 1.207,
+        "est_read_ms": 0.262,
+        "utility": 3112.827,
+        "rows_selected": 806
+      },
+      "num_feasible": 256,
+      "num_evaluated": 256
+    }
+  },
   "torch_threads": 1,
   "reader_threads": 6,
   "direct_io": true,
   "destination": "cpu",
   "tile_boundary_kib": 256.0,
-  "paper_ceiling_kib": 256.0,
+  "paper_ceiling_kib": 768.0,
   "traces": 128,
   "warmup": 3,
   "repeats": 30,
