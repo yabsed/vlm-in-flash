@@ -5,6 +5,7 @@ on:
       - 'conclusion/python/results/01/**'
       - 'conclusion/python/results/02/**'
       - 'conclusion/upstream/vlm-flash'
+      - '.github/scripts/check_global_oracle.py'
       - '.github/workflows/measured-oracle-notebooks.yml'
 permissions:
   contents: read
@@ -24,6 +25,8 @@ jobs:
           python-version: '3.11'
       - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
       - run: python -m pip install numpy pandas scipy matplotlib nbformat nbclient nbconvert ipykernel
+      - name: Check the oracle against exhaustive enumeration
+        run: python .github/scripts/check_global_oracle.py
       - name: Check nominal budgets, upstream underfill and CSV-only replay
         run: |
           python - <<'PY'
@@ -45,10 +48,11 @@ jobs:
           export = Config({'TagRemovePreprocessor': {'remove_input_tags': ['hide-input']},
                            'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
 
-          def execute(path, overrides='', blocked=('torch', 'profile_flash', 'vlmflash', 'transformers'), fixture=False, replay=False):
+          def execute(path, overrides='', blocked=('torch', 'profile_flash', 'vlmflash', 'transformers'), fixture=False):
               nb = nbf.read(path, as_version=4)
+              sources = {c.id: c.source for c in nb.cells}
               source = '\n'.join(c.source for c in nb.cells if c.cell_type == 'code')
-              if path.name.startswith('02'):
+              if path.name == '02_global_oracle.ipynb':
                   assert all(x not in source for x in ('RUN_SCALING', 'sha256(', 'fingerprint', 'atomic_json', 'def paper('))
                   assert sum(len(c.source.splitlines()) for c in nb.cells if c.cell_type == 'code') <= 385
                   assert 'vlmflash.select_chunks(' in source
@@ -57,38 +61,43 @@ jobs:
               guard = nbf.v4.new_code_cell(f'import sys\nsys.modules.update({{n: None for n in {blocked!r}}})')
               nb.cells.insert(0, guard)
               setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
-              flags = 'assert CAPTURE_TRACES is False and RUN_ORACLE is False' if path.name.startswith('02') else ''
-              control = nbf.v4.new_code_cell(flags + '\n' + overrides)
+              control = nbf.v4.new_code_cell(overrides)
               nb.cells.insert(setup+1, control)
               if fixture:
                   next(c for c in nb.cells if c.id == 'global-dp-17').source += '\nPAPER_GEOMETRY.update({"64x128": (8,8), "17x4096": (8,8), "8x4096": (8,8)})'
-              if fixture or replay:
-                  c = next(c for c in nb.cells if c.id == 'jump-mask-plot')
-                  c.source = c.source.replace('JUMP_SHAPE = "896x128"', 'JUMP_SHAPE = "64x128"')
-              if replay:
-                  c = next(c for c in nb.cells if c.id == 'global-dp-23')
-                  c.source = 'def forbidden(*args, **kwargs):\n    raise AssertionError("CSV replay attempted computation")\nload_paper = capture_traces = solve = forbidden\n' + c.source
               nbf.validate(nb)
               NotebookClient(nb, timeout=120, kernel_name='python3', resources={'metadata': {'path': str(path.parent)}}).execute()
               nb.cells = [c for c in nb.cells if c.id not in (guard.id, control.id)]
+              for cell in nb.cells:
+                  cell.source = sources[cell.id]
               return nb
 
           with tempfile.TemporaryDirectory() as tmp:
               work = Path(tmp)
               for rel in ('conclusion/python/results/01/01_chunk_latency.ipynb',
                           'conclusion/python/results/01/block_estimates.csv',
+                          'conclusion/python/results/02/oracle_results_fixed_r.csv',
+                          'conclusion/python/results/02/02_analyze_oracle.ipynb',
                           'conclusion/python/results/02/02_global_oracle.ipynb'):
                   dest = work / rel
                   dest.parent.mkdir(parents=True, exist_ok=True)
                   shutil.copy2(repo / rel, dest)
-              shutil.copytree(repo/'conclusion/upstream/vlm-flash', work/'conclusion/upstream/vlm-flash', ignore=shutil.ignore_patterns('.git'))
+              shutil.copytree(repo/'conclusion/upstream/vlm-flash/src', work/'conclusion/upstream/vlm-flash/src')
               p1 = work/'conclusion/python/results/01/01_chunk_latency.ipynb'
               p2 = work/'conclusion/python/results/02/02_global_oracle.ipynb'
+              analysis = p2.with_name('02_analyze_oracle.ipynb')
               n1 = execute(p1)
-              n2 = execute(p2)
-              assert not p2.with_name('activation_traces.npz').exists()
-              assert not p2.with_name('oracle_results_fixed_r.csv').exists()
-              for nb,path in ((n1,p1),(n2,p2)):
+              # The report runs with only its CSV, without NPZ, model JSON or upstream code.
+              report_dir = work/'csv-report'
+              report_dir.mkdir()
+              report_path = report_dir/analysis.name
+              shutil.copy2(analysis, report_path)
+              report_csv = report_dir/'oracle_results_fixed_r.csv'
+              shutil.copy2(p2.with_name(report_csv.name), report_csv)
+              report_before = report_csv.read_bytes()
+              n2 = execute(report_path)
+              assert report_csv.read_bytes() == report_before
+              for nb,path in ((n1,p1),(n2,report_path)):
                   nbf.write(nb, out/path.name)
                   html,_ = HTMLExporter(config=export).from_notebook_node(nb)
                   (out/path.with_suffix('.html').name).write_text(html,encoding='utf-8')
@@ -104,7 +113,7 @@ jobs:
               manifest = dict(model_dtype='bfloat16',traces=entries)
               archive = p2.with_name('fixture.npz')
               np.savez_compressed(archive, manifest_json=np.asarray(json.dumps(manifest)), **arrays)
-              overrides = 'TRACE = Path("fixture.npz")\nRESULTS = Path("fixture.csv")\nRUN_ORACLE = True\nPAPER_IMPL = "torch"\nMAX_TRACES_PER_SHAPE = 0\nBUDGETS = np.array([.1,.5,.7,.8,.9])'
+              overrides = 'TRACE = Path("fixture.npz")\nRESULTS = Path("fixture.csv")\nPAPER_IMPL = "torch"\nMAX_TRACES_PER_SHAPE = 0\nBUDGETS = np.array([.1,.5,.7,.8,.9])'
               execute(p2, overrides, blocked=('transformers','profile_flash'), fixture=True)
               csv = p2.with_name('fixture.csv')
               saved = csv.read_bytes()
@@ -144,19 +153,19 @@ jobs:
               # No legacy matched-R dataset can silently become a nominal-R report.
               result.rename(columns={'R_selected':'R'}).to_csv(p2.with_name('legacy.csv'),index=False)
               try:
-                  execute(p2, 'RESULTS = Path("legacy.csv")')
+                  execute(analysis, 'RESULTS = Path("legacy.csv")')
               except CellExecutionError as e:
-                  assert 'Recompute the fixed-R CSV' in str(e)
+                  assert 'R_selected' in str(e)
               else:
                   raise AssertionError('Accepted a legacy matched-cardinality CSV')
               archive.unlink()
-              replay = execute(p2, 'RESULTS = Path("fixture.csv")', replay=True)
+              replay = execute(analysis, 'RESULTS = Path("fixture.csv")')
               assert csv.read_bytes()==saved
               outputs = [o for c in replay.cells if c.cell_type=='code' for o in c.outputs]
-              assert sum('image/png' in o.get('data',{}) for o in outputs)==5
+              assert sum('image/png' in o.get('data',{}) for o in outputs)==4
               assert original.read_bytes()==before
               # No synthetic comparison is published as empirical Qwen evidence.
-          print('1800 exhaustive checks; nominal-R oracle; actual upstream underfill including ratio reversal; five CSV-only figures; no real experiment.')
+          print('Nominal-R oracle; actual upstream underfill including ratio reversal; four fixture figures from CSV alone; saved experiment replayed.')
           PY
       - uses: actions/upload-artifact@v4
         with:
