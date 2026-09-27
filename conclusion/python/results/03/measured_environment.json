@@ -10,19 +10,19 @@
       "best": {
         "start_kb": 8,
         "jump_cap_kb": 12,
-        "overhead_ms": 1.488,
+        "overhead_ms": 1.58,
         "est_read_ms": 1.353,
         "utility": 3246.608,
         "rows_selected": 4376
       },
-      "num_feasible": 247,
+      "num_feasible": 245,
       "num_evaluated": 256
     },
     "896x128": {
       "best": {
         "start_kb": 4,
         "jump_cap_kb": 4,
-        "overhead_ms": 0.133,
+        "overhead_ms": 0.167,
         "est_read_ms": 0.037,
         "utility": 21392.786,
         "rows_selected": 800
@@ -34,7 +34,7 @@
       "best": {
         "start_kb": 4,
         "jump_cap_kb": 4,
-        "overhead_ms": 1.217,
+        "overhead_ms": 1.204,
         "est_read_ms": 1.359,
         "utility": 605.672,
         "rows_selected": 807
@@ -46,7 +46,7 @@
       "best": {
         "start_kb": 4,
         "jump_cap_kb": 4,
-        "overhead_ms": 1.207,
+        "overhead_ms": 1.177,
         "est_read_ms": 0.262,
         "utility": 3112.827,
         "rows_selected": 806
