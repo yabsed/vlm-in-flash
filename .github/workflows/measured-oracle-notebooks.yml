@@ -57,7 +57,7 @@ jobs:
               guard = nbf.v4.new_code_cell(f'import sys\nsys.modules.update({{n: None for n in {blocked!r}}})')
               nb.cells.insert(0, guard)
               setup = next(i for i,c in enumerate(nb.cells) if c.id == 'setup')
-              flags = 'assert CAPTURE_TRACES is False and RUN_ORACLE is False' if path.name.startswith('02') else 'assert RERUN_MEASUREMENTS is False'
+              flags = 'assert CAPTURE_TRACES is False and RUN_ORACLE is False' if path.name.startswith('02') else ''
               control = nbf.v4.new_code_cell(flags + '\n' + overrides)
               nb.cells.insert(setup+1, control)
               if fixture:

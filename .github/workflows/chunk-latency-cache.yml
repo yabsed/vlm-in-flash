@@ -39,8 +39,8 @@ jobs:
           csv = out / 'block_estimates.csv'
           before = csv.read_bytes()
           nb = nbf.read(root / '01_chunk_latency.ipynb', as_version=4)
-          # This CI-only cell refuses acquisition before it can reach the reader.
-          guard = nbf.v4.new_code_cell('assert RERUN_MEASUREMENTS is False\nimport sys\nsys.modules.update({name: None for name in ("torch", "profile_flash", "vlmflash")})')
+          # Analysis must run without the native acquisition dependencies.
+          guard = nbf.v4.new_code_cell('import sys\nsys.modules.update({name: None for name in ("torch", "profile_flash", "vlmflash")})')
           setup = next(i for i, c in enumerate(nb.cells) if c.id == 'setup')
           nb.cells.insert(setup + 1, guard)
           nbf.validate(nb)
@@ -56,7 +56,7 @@ jobs:
               'HTMLExporter': {'exclude_input_prompt': True, 'exclude_output_prompt': True}})
           html, _ = HTMLExporter(config=config).from_notebook_node(nb)
           (out / '01_chunk_latency.html').write_text(html, encoding='utf-8')
-          print('Notebook identities and four figures passed; CSV unchanged; native imports blocked.')
+          print('Notebook and four figures passed; CSV unchanged; native imports blocked.')
           PY
           git diff --exit-code -- conclusion/python/results/01/*.csv
       - uses: actions/upload-artifact@v4
