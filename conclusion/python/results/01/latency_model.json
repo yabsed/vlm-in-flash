@@ -4,7 +4,7 @@
     "length": "KiB",
     "time": "ms"
   },
-  "csv_sha256": "deba96ae7c1d5a49ab821c18462f4699b4edd4f43c3c5f6586d85817de64a712",
+  "csv_sha256": "1cee085b819cdb89a1cc28dd4e9568e613f51294bf7a6ad4c951dc513129f914",
   "fit_blocks": [
     0,
     1,
@@ -17,11 +17,11 @@
     6
   ],
   "s_kib": 207.0,
-  "c1_ms_per_kib": 0.0001242581894101549,
-  "delta_ms_per_kib": 5.924495830751175e-05,
-  "s_eff_kib": 240.0,
-  "s99_kib": 233.0,
-  "s_hinge_kib": 229.0,
+  "c1_ms_per_kib": 0.00012835207725675913,
+  "delta_ms_per_kib": 5.891793218019764e-05,
+  "s_eff_kib": 256.0,
+  "s99_kib": 256.0,
+  "s_hinge_kib": 228.0,
   "measured_grid_kib": [
     1.0,
     2.0,
