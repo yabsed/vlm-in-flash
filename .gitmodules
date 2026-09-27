@@ -1,3 +1,6 @@
 [submodule "vlm-flash"]
 	path = conclusion/upstream/vlm-flash
 	url = https://github.com/snuhcs/vlm-flash.git
+[submodule "final"]
+	path = final
+	url = https://github.com/yabsed/vlm-in-flash-jupyter.git
