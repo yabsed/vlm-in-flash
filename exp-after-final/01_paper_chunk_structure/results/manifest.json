@@ -1,0 +1,117 @@
+{
+  "started_at": "2026-10-24T21:23:06.667870+09:00",
+  "completed_at": "2026-10-24T21:23:28.031539+09:00",
+  "elapsed_seconds": 21.36381732800146,
+  "source_final": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final",
+  "inputs": {
+    "traces": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/activation_traces.json",
+      "sha256": "2263c9917221edddd819232371d1e20ab64b72df8c07d6a7e6feda312cf4ec9f"
+    },
+    "model": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/01/latency_model.json",
+      "sha256": "4ea2b05a7f0d3020836036b571cc306bba3a2765c5e57d9ffe2b74432264d39b"
+    },
+    "profile": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/01/chunk_latency_measurements.csv",
+      "sha256": "fcb75411bfbe4b98690e6b5350db868a35bd7f3472b39f284fb4b457c9b5ac14"
+    },
+    "measurement_environment": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/03/measured_environment.json",
+      "sha256": "933fd6ba7b09f83be58aa6c982854592ed1938ed50f1ad88ba0d2b7fb611f12e"
+    },
+    "upstream_policy": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/vlm-flash/src/vlmflash/policy.py",
+      "sha256": "17263581987689eb57b587c46f31859432a78c422f186c0af24f98790a134d2f"
+    },
+    "upstream_latency": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/vlm-flash/src/vlmflash/latency.py",
+      "sha256": "23da57dfd9d13e2f82c6137db8f85cdd2e1435ba00158fbfde3457b026681d45"
+    },
+    "upstream_native": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/vlm-flash/src/vlmflash/csrc/native.cc",
+      "sha256": "5dc626527bf3bd1d852a9dea0384605d92e04c110e61ecfcf8fa61abd0d9092d"
+    },
+    "capture_notebook": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_01_capture_traces.ipynb",
+      "sha256": "d60fd6a2ff2bdd9a79090efe5d58980f37d2a0a99a57d42480224e4d2d1909fc"
+    },
+    "selector_notebook": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/02/02_03_selector_sweep.ipynb",
+      "sha256": "b1787516b407070529a2dce75f34322aeab62fa2decdb905b3bc0226abb8f3dd"
+    },
+    "measurement_notebook": {
+      "path": "/home/yabsed/Documents/fall26/work/mathmatics/graduate-paper/vlm-in-flash/final/results/03/03_01_measure_selection_latency.ipynb",
+      "sha256": "e115d19745dad508252fb7db6e630b5e38b4646f63269557ac9318386bda9986"
+    }
+  },
+  "experiment_code": {
+    "analyze.py": "e3a4ec503d46dfd718445c62247e6bda0bc1e6a94b41f562342586779b774314",
+    "run_experiment.py": "2c7f1604e99a6a1ccc7ed436de4a64e24efe1045508df8f1dea5b739505e1106"
+  },
+  "upstream_commit": "9023679ebfd1900fa2912c4098f51bfb9efa7bb8",
+  "python": "3.13.11 | packaged by Anaconda, Inc. | (main, Dec 10 2025, 21:28:48) [GCC 14.3.0]",
+  "platform": "Linux-7.2.10-200.fc44.x86_64-x86_64-with-glibc2.43",
+  "numpy": "2.4.0",
+  "pandas": "2.3.3",
+  "torch": "2.11.0+cu130",
+  "numba": "0.67.0",
+  "matplotlib": "3.10.8",
+  "torch_threads": 1,
+  "sort_device": "cpu",
+  "new_io_measurement": false,
+  "new_model_inference": false,
+  "trace_count": 504,
+  "archive_trace_count": 504,
+  "model_id": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+  "trace_context": "three text prompts; archived raw mean-absolute input activations; original row order",
+  "importance_normalization": "none; float32 upstream inputs; float64 diagnostic sums",
+  "fractions": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ],
+  "configs": [
+    "paper_lookup_s99",
+    "notebook02_twoline",
+    "notebook03_full_lookup"
+  ],
+  "case_count": 13608,
+  "checked_invariant_cases": 13608,
+  "reference_comparisons": 216,
+  "reference_all_equal": true,
+  "verify_trace_ids": [
+    0,
+    1,
+    4,
+    6,
+    499,
+    500,
+    502,
+    503
+  ],
+  "s_model_kib": 208.0,
+  "s99_kib": 233.0,
+  "peak_efficiency_kib": 240.0,
+  "alpha_ms_per_kib": 0.00018382332024890552,
+  "delta_ms_per_kib": 5.875431662230494e-05,
+  "profile_train_repeats": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "config_descriptions": {
+    "paper_lookup_s99": "training-profile lookup; notebook02 geometry and s99 cap",
+    "notebook02_twoline": "exact notebook02 cost table and geometry",
+    "notebook03_full_lookup": "all-repeat lookup; recorded notebook03 tuning and full profile cap; all archived traces, fractions .1-.9"
+  },
+  "limitation": "Model diagnostic only; no SSD timing or model-quality evaluation. Traces and budgets are related observations."
+}
