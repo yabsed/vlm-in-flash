@@ -1,0 +1,20 @@
+{
+  "source": "https://arxiv.org/pdf/2511.18692v1#page=4",
+  "pdf_sha256": "c751ed6b61c68b72914f97d27601f130970abf4125d3fbd3c13089e5de259711",
+  "page_index": 3,
+  "x0": 158.3982696533203,
+  "x500": 287.48126220703125,
+  "y0": 147.06231689453125,
+  "y6": 81.1803207397461,
+  "drawing_marker_ranges_inclusive": {
+    "Nano": [
+      25,
+      535
+    ],
+    "AGX": [
+      539,
+      793
+    ]
+  },
+  "note": "Published axis units retained; no assumed decimal/binary conversion."
+}

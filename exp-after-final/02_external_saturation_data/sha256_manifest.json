@@ -1,0 +1,157 @@
+[
+  {
+    "path": "README.md",
+    "bytes": 6669,
+    "sha256": "2f100f286a306616ed56aad6daa48c42320225a86327cb9124aa2692e797c1d4"
+  },
+  {
+    "path": "analyze.py",
+    "bytes": 9084,
+    "sha256": "bc71076ae41c164ff15b3d02be1929678eaf4eb792d464bc38cac3948ac39fae"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/LICENSE",
+    "bytes": 1088,
+    "sha256": "990129f295aa33c6f045c11d8548fcfd94976000eca65274b3d26c16e30480ad"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/131072bs/1zone/1.json",
+    "bytes": 7232,
+    "sha256": "9ef8cb80586ec479e0bab887e2f710f840a258681cbbc1ca40bf508bb6946ac5"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/131072bs/1zone/32.json",
+    "bytes": 7240,
+    "sha256": "3d3f52b44f135e5baf79f61f780f4ed52676ee0ce71b48ccc208122bb9e4387b"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/131072bs/1zone/64.json",
+    "bytes": 7242,
+    "sha256": "3740be303166f4e29a11caca35f941f212c3e2cf3ac5ee3b393b4f01a06d78f3"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/16384bs/1zone/1.json",
+    "bytes": 7229,
+    "sha256": "b4042bee609ae0cd4f1833c5fcf2925e3c9d0e0a827eacf9b296c78b789b7bf2"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/16384bs/1zone/32.json",
+    "bytes": 7247,
+    "sha256": "d4f638b2762039bca05dd1de39f29d899ff2ddd6e32824e6487ac83fada0c86b"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/16384bs/1zone/64.json",
+    "bytes": 7251,
+    "sha256": "9ec1988494acf8f3d6a4245603da48639ebee1b3bd884f248bfb5cdfc39343fb"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/32768bs/1zone/1.json",
+    "bytes": 7230,
+    "sha256": "4c56720a5098cc77043b8591e6a30a589d7057f2fb9ddb0e55a646d2265912de"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/32768bs/1zone/32.json",
+    "bytes": 7245,
+    "sha256": "e749fa9a0007359698365a85f1e1726869c2792ecdd65d365e1451807732a778"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/32768bs/1zone/64.json",
+    "bytes": 7248,
+    "sha256": "721595dcea440311f20ec43e8db7133ef2d8e993e0a3c1d2033ea3dbd9b62779"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/4096bs/1zone/1.json",
+    "bytes": 7228,
+    "sha256": "d048c5315c68a80021f694b7ffb28050ff223c2e38a128acf543ec6ffebfe775"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/4096bs/1zone/32.json",
+    "bytes": 7249,
+    "sha256": "79f7393a8bd525423562fd91e34baf1d94633bad2dd0cca4653796f4934c0991"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/4096bs/1zone/64.json",
+    "bytes": 7251,
+    "sha256": "df3120d8abce32f921dd405fec0fd67a0594d7fddd5a8ad2e2ec218aeac6b2bb"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/65536bs/1zone/1.json",
+    "bytes": 7232,
+    "sha256": "a9b2a6e6f045629fff4d46ecd0eb86b074e865b31cdd7643e5d4e7e3faaa41fa"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/65536bs/1zone/32.json",
+    "bytes": 7238,
+    "sha256": "45de07205ead0e1b2bff87729a896ce3bcda2ab38c14a80db5235ada2538ece4"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/65536bs/1zone/64.json",
+    "bytes": 7240,
+    "sha256": "5700a159348286c76c8bbeff202afb62ed0be6cb9a06efe846d786e8df6bc1d7"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/8192bs/1zone/1.json",
+    "bytes": 7228,
+    "sha256": "b44c3e71158a63b2864af37941ff029c5a2c9b23318c282aad9606d81d048941"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/8192bs/1zone/32.json",
+    "bytes": 7250,
+    "sha256": "141a11b778ab45ba1301d1e830bc630ec6f613dcf42062a27766be68a589bf1b"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/data/io_uring/zns-a/lbaf0/read/8192bs/1zone/64.json",
+    "bytes": 7253,
+    "sha256": "180573b0ecd29bc6ba3b617d2ca128e4eb91739188b66f4bc000e2bddaa2614a"
+  },
+  {
+    "path": "raw/NVMeBenchmarks/manifest.json",
+    "bytes": 5580,
+    "sha256": "e5da4332dce754d718fa9ec81d345fa0adbfd53d8c5ea8a4e2080bcad293d2b8"
+  },
+  {
+    "path": "raw/adms10-petrov.pdf",
+    "bytes": 1600457,
+    "sha256": "cf37c3e7732bd703ab9ce10ca38a75cacf99d145d20c36c84c84aaa6dc1d2f18"
+  },
+  {
+    "path": "results/external_saturation_evidence.pdf",
+    "bytes": 36096,
+    "sha256": "864c947c07e5c5b28749d7a421dcb41d943a778d977b236a65d4e43f2f6b451c"
+  },
+  {
+    "path": "results/external_saturation_evidence.png",
+    "bytes": 356200,
+    "sha256": "81d5a1e2df071e4aac11c7282c119adc9ea28bfabe57f766bfab4e2a2c8190e5"
+  },
+  {
+    "path": "results/intel_x25e_published_tables.csv",
+    "bytes": 672,
+    "sha256": "807386d8987dc2b222e2d8acf3a32b8cdc39257adca58bcec41914069ef86fd0"
+  },
+  {
+    "path": "results/metrics.json",
+    "bytes": 2027,
+    "sha256": "5163c48fcdc4565272abcd23a5054ccf27e90e6921596833cd83fbde47ea2f5e"
+  },
+  {
+    "path": "results/vlm_digitization_metadata.json",
+    "bytes": 481,
+    "sha256": "a863c6caffef80be49133305f41776e13f466c422aad9774516ab31eb4e10aa9"
+  },
+  {
+    "path": "results/vlmflash_fig4a_digitized.csv",
+    "bytes": 72274,
+    "sha256": "9f7b38730b009e4be44334a480b667a4604d9f5dbfdd7f7b30fbfd549db73d09"
+  },
+  {
+    "path": "results/vlmflash_fig4a_source.png",
+    "bytes": 46952,
+    "sha256": "4e5ee5839ece9dbba1dcde5180bf5f5dc332bc90be2cf63f6907d52e0edc6d52"
+  },
+  {
+    "path": "results/zns_raw_read_summary.csv",
+    "bytes": 6489,
+    "sha256": "1326dedf3546fe66cf876e2e147ed69cc1e5409fc804f8a0768c50e9a8936c10"
+  }
+]

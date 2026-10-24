@@ -1,0 +1,9 @@
+block_kb_as_published,sequential_read_mb_s_qd32,sequential_read_latency_ms_qd1,latency_us_per_published_kb,provenance
+8,196,0.064,8.0,published_table_transcription_not_raw_repeats
+16,239,0.093,5.8125,published_table_transcription_not_raw_repeats
+32,248,0.152,4.75,published_table_transcription_not_raw_repeats
+64,248,0.282,4.40625,published_table_transcription_not_raw_repeats
+128,252,0.529,4.1328125,published_table_transcription_not_raw_repeats
+256,252,1.062,4.1484375,published_table_transcription_not_raw_repeats
+512,252,2.115,4.130859375,published_table_transcription_not_raw_repeats
+1024,252,4.249,4.1494140625,published_table_transcription_not_raw_repeats
