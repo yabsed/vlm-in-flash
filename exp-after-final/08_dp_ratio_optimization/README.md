@@ -109,7 +109,7 @@ I(M)-qL(M)
 =L(M)\left(\frac{I(M)}{L(M)}-q\right)
 $$
 
-이고 $L(M)>0$이므로, $F_R(q)$의 부호는 현재 $q$와 최적 비율의 관계를 알려준다.
+이고 $L(M)>0$이므로 다음이 성립한다.
 
 $$
 F_R(q)
@@ -120,11 +120,11 @@ F_R(q)
 \end{cases}
 $$
 
-따라서 $F_R(q)=0$이 되는 $q$를 찾으면 된다. 현재 구현은 DP가 반환한 mask의 비율로 $q$를 갱신하는 Dinkelbach 방법을 사용한다.
+최적 비율은 $F_R(q)=0$의 해이다. 이 해를 구하기 위해 Dinkelbach 방법을 사용한다.
 
-먼저 길이 $R$의 연속 구간 중 중요도가 가장 큰 mask를 $M_C$, 중요도가 가장 높은 $R$개 행을 선택한 mask를 $M_T$라 하자. 
+길이 $R$의 연속 구간 중 중요도가 가장 큰 mask를 $M_C$, 중요도가 가장 높은 $R$개 행을 선택한 mask를 $M_T$라 하자.
 
-$M_C$의 비용은 $T(R)$이고, 모든 가능한 mask는 $I(M)\le I(M_T)$, $ T(R)\le L(M)$을 만족하므로 초기 하한과 상한을
+$M_C$의 비용은 $T(R)$이고, 모든 가능한 mask는 $I(M)\le I(M_T)$, $T(R)\le L(M)$을 만족하므로 초기 하한과 상한을
 
 $$
 q_0=\frac{I(M_C)}{T(R)}
@@ -132,33 +132,32 @@ q_0=\frac{I(M_C)}{T(R)}
 u_0=\frac{I(M_T)}{T(R)}
 $$
 
-로 둘 수 있다. 상한은 최대 보존 중요도를 비용 하한으로 나눈 값이다.
+로 둔다.
 
-$k$번째 반복에서 $q=q_k$로 DP를 풀고, 복원한 mask를 $M_k$라 하자. 이때 $F_R(q_k)=I(M_k)-q_kL(M_k)$이므로 다음 비율은
+$k$번째 반복에서 $q=q_k$로 DP를 풀고, 복원한 mask를 $M_k$라 하자. $F_R(q_k)=I(M_k)-q_kL(M_k)$을 이용하여 다음 비율을
 
 $$
 \boxed{
+\begin{aligned}
 q_{k+1}
-=\frac{I(M_k)}{L(M_k)}
-=q_k+\frac{F_R(q_k)}{L(M_k)}.
+&=\frac{I(M_k)}{L(M_k)}\\
+&=\frac{q_kL(M_k)+F_R(q_k)}{L(M_k)}\\
+&=q_k+\frac{F_R(q_k)}{L(M_k)}
+\end{aligned}
 }
 $$
 
-이다. $q_k\le q^\star$이면 $F_R(q_k)\ge0$이고, $M_k$도 정확히 $R$개 행을 선택하므로 $q_k\le q_{k+1}\le q^\star$이다. 잔차가 양수인 동안 비율은 증가하며, 잔차가 $0$이면 $M_k$는 원래 비율 문제의 최적해이다. 가능한 mask의 수가 유한하므로, 각 DP를 정확히 풀고 정확한 산술을 사용하면 유한 번의 갱신으로 최적값에 도달한다.
+로 갱신한다.
+
+$q_k\le q^\star$이면 $F_R(q_k)\ge0$이고, $M_k$도 정확히 $R$개 행을 선택하므로 $q_k\le q_{k+1}\le q^\star$이다. $F_R(q_k)>0$인 동안 비율은 증가하고, $F_R(q_k)=0$이면 $M_k$는 원래 비율 문제의 최적해이다. 가능한 mask의 수는 유한하므로, 정확한 DP 풀이와 산술 연산 아래에서는 유한 번의 반복으로 최적값에 도달한다.
 
 #### 2.3.4 잔차를 이용한 상한의 갱신
 
-실제 구현에서는 잔차를 이용해 상한도 갱신한다. 임의의 최적 mask $M^\star$는 $I(M^\star)/L(M^\star)=q^\star$를 만족하므로
+임의의 최적 mask $M^\star$에 대해 $I(M^\star)=q^\star L(M^\star)$이다. 
 
-$$
-\begin{aligned}
-I(M^\star)-q_kL(M^\star)
-&=q^\star L(M^\star)-q_kL(M^\star)\\
-&=(q^\star-q_k)L(M^\star).
-\end{aligned}
-$$
+또한 $q^\star-q_k\ge0$이고 $T(R)\le L(M^\star)$이다. 
 
-현재 $q_k\le q^\star$이고 $L(M^\star)\ge T(R)$이므로, 비용 하한에 음이 아닌 $q^\star-q_k$를 곱해도 부등호 방향이 유지된다. 또한 $F_R(q_k)$는 모든 가능한 mask에서 $I-q_kL$을 최대화한 값이므로, $M^\star$를 대입한 값 이상이다. 따라서
+$F_R(q_k)$의 정의에 의해 $I(M^\star)-q_kL(M^\star)\le F_R(q_k)$이므로
 
 $$
 \begin{aligned}
@@ -176,7 +175,7 @@ q^\star
 \le q_k+\frac{F_R(q_k)}{T(R)}.
 $$
 
-기존 상한 $u_k$와 새로 얻은 상한은 모두 $q^\star$ 이상이므로, 둘 중 작은 값을 취한
+기존 상한 $u_k$와 위 식의 우변은 모두 $q^\star$ 이상이므로 상한을
 
 $$
 u_{k+1}
@@ -186,13 +185,13 @@ q_k+\frac{F_R(q_k)}{T(R)}
 \right\}
 $$
 
-도 유효한 상한이다. 따라서 $q_k\le q^\star\le u_k$를 유지하면서, 양의 초기 하한 $q_0$에 대해
+로 갱신한다. 각 반복에서 $q_k\le q^\star\le u_k$를 유지하며, $q_0>0$일 때
 
 $$
 u_k-q_k\le\varepsilon q_0
 $$
 
-이면 반복을 종료한다. 
+이면 반복을 종료한다.
 
-현재 노트북은 float64 연산과 $\varepsilon=10^{-6}$을 사용하며, 위 오차 관계는 정확한 산술을 기준으로 한 보장이다. DP를 $K$회 호출할 때 DP 계산과 mask 복원에 드는 총 시간은 $O(K(N-R+1)(R+1))$이다.
+구현에서는 float64 연산과 $\varepsilon=10^{-6}$을 사용한다. DP를 $K$회 호출할 때 DP 계산과 mask 복원에 드는 총 시간은 $O(K(N-R+1)(R+1))$이다.
 
