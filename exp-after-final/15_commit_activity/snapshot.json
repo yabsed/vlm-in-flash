@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-10-28T05:23:44+09:00",
+  "timezone": "Asia/Seoul",
+  "start": "2026-09-01",
+  "as_of": "2026-10-28",
+  "date_field": "committer_date",
+  "history_scope": "all ancestors of each recorded HEAD; no nested submodules",
+  "heads": {
+    "vlm-in-flash": "64cb5277f9b077ed2981acca8c8d8bd7265f7e74",
+    "final": "5fbf420dcc3e14bc73d1953b90030d4ab47d3efc"
+  }
+}

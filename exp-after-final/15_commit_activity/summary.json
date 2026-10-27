@@ -1,0 +1,100 @@
+{
+  "snapshot": {
+    "captured_at": "2026-10-28T05:23:44+09:00",
+    "timezone": "Asia/Seoul",
+    "start": "2026-09-01",
+    "as_of": "2026-10-28",
+    "date_field": "committer_date",
+    "history_scope": "all ancestors of each recorded HEAD; no nested submodules",
+    "heads": {
+      "vlm-in-flash": "64cb5277f9b077ed2981acca8c8d8bd7265f7e74",
+      "final": "5fbf420dcc3e14bc73d1953b90030d4ab47d3efc"
+    }
+  },
+  "total_commits": 304,
+  "unique_hashes_across_repositories": 304,
+  "human_non_merge_commits": 275,
+  "bot_commits": 13,
+  "merge_commits": 16,
+  "active_days": 17,
+  "longest_active_streak_days": 4,
+  "peak_day": "2026-09-26",
+  "peak_day_commits": 78,
+  "author_committer_day_differences": [
+    "870ea38c81b54e646d09cf0c048260d7e67aacb2"
+  ],
+  "monthly": [
+    {
+      "month": "2026-09",
+      "repository": "vlm-in-flash",
+      "commits": 208,
+      "human_non_merge": 179,
+      "bot": 13,
+      "merge": 16,
+      "active_days": 7,
+      "observed_calendar_days": 30,
+      "commits_per_calendar_day": 6.933,
+      "commits_per_active_day": 29.714
+    },
+    {
+      "month": "2026-09",
+      "repository": "final",
+      "commits": 12,
+      "human_non_merge": 12,
+      "bot": 0,
+      "merge": 0,
+      "active_days": 1,
+      "observed_calendar_days": 30,
+      "commits_per_calendar_day": 0.4,
+      "commits_per_active_day": 12.0
+    },
+    {
+      "month": "2026-09",
+      "repository": "combined",
+      "commits": 220,
+      "human_non_merge": 191,
+      "bot": 13,
+      "merge": 16,
+      "active_days": 7,
+      "observed_calendar_days": 30,
+      "commits_per_calendar_day": 7.333,
+      "commits_per_active_day": 31.429
+    },
+    {
+      "month": "2026-10",
+      "repository": "vlm-in-flash",
+      "commits": 20,
+      "human_non_merge": 20,
+      "bot": 0,
+      "merge": 0,
+      "active_days": 3,
+      "observed_calendar_days": 28,
+      "commits_per_calendar_day": 0.714,
+      "commits_per_active_day": 6.667
+    },
+    {
+      "month": "2026-10",
+      "repository": "final",
+      "commits": 64,
+      "human_non_merge": 64,
+      "bot": 0,
+      "merge": 0,
+      "active_days": 9,
+      "observed_calendar_days": 28,
+      "commits_per_calendar_day": 2.286,
+      "commits_per_active_day": 7.111
+    },
+    {
+      "month": "2026-10",
+      "repository": "combined",
+      "commits": 84,
+      "human_non_merge": 84,
+      "bot": 0,
+      "merge": 0,
+      "active_days": 10,
+      "observed_calendar_days": 28,
+      "commits_per_calendar_day": 3.0,
+      "commits_per_active_day": 8.4
+    }
+  ]
+}

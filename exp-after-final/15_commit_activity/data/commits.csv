@@ -1,0 +1,305 @@
+﻿repository,sha,author,committer,authored_at_kst,committed_at_kst,date_kst,hour_kst,parent_count,is_bot,is_merge,human_non_merge,author_committer_day_differs,subject
+vlm-in-flash,e76763c004ecb427cbb9d0531928d3e23d98d9dd,yabsed,yabsed,2026-09-16T02:42:08+09:00,2026-09-16T02:42:08+09:00,2026-09-16,2,0,0,0,1,0,init idea
+vlm-in-flash,fee9771d4a95ea9b667232539368886f77d4a57c,yabsed,yabsed,2026-09-16T02:59:36+09:00,2026-09-16T02:59:36+09:00,2026-09-16,2,1,0,0,1,0,idea 2
+vlm-in-flash,cc37b81abea3fd7ff0ec769a662e30debcaa4f9c,yabsed,yabsed,2026-09-16T03:11:43+09:00,2026-09-16T03:11:43+09:00,2026-09-16,3,1,0,0,1,0,idea3
+vlm-in-flash,4ec9695d89b9ec67896b9099911cd0c86912ffe4,yabsed,yabsed,2026-09-16T03:19:35+09:00,2026-09-16T03:19:35+09:00,2026-09-16,3,1,0,0,1,0,idea3
+vlm-in-flash,16e75b998f3ad94934fed404f92d2e4e2bd070f1,yabsed,yabsed,2026-09-16T03:38:04+09:00,2026-09-16T03:38:04+09:00,2026-09-16,3,1,0,0,1,0,idea4
+vlm-in-flash,94c7fbcded09df2c171615b50c739755ac5cf6cc,yabsed,yabsed,2026-09-16T03:38:58+09:00,2026-09-16T03:38:58+09:00,2026-09-16,3,1,0,0,1,0,idea 3
+vlm-in-flash,4549126584eb06cb4cdd5836e2f39e2012c443a5,yabsed,yabsed,2026-09-16T04:04:03+09:00,2026-09-16T04:04:03+09:00,2026-09-16,4,1,0,0,1,0,add
+vlm-in-flash,4b19f9f2b6cdf62adf33afb0ac14b7b6ab865c25,yabsed,yabsed,2026-09-16T04:13:08+09:00,2026-09-16T04:13:08+09:00,2026-09-16,4,1,0,0,1,0,idea5
+vlm-in-flash,839fceb92e8540b14e96cc9e90c9f7a50965712e,yabsed,yabsed,2026-09-16T04:40:52+09:00,2026-09-16T04:40:52+09:00,2026-09-16,4,1,0,0,1,0,idea6
+vlm-in-flash,acfe26959d0bd5cebefc934fcdaf711f6bf3d445,yabsed,yabsed,2026-09-16T04:46:41+09:00,2026-09-16T04:46:41+09:00,2026-09-16,4,1,0,0,1,0,almost end
+vlm-in-flash,a7e2b1377916acdeac859b7d8c71326ebcf2b787,yabsed,yabsed,2026-09-16T04:52:02+09:00,2026-09-16T04:52:02+09:00,2026-09-16,4,1,0,0,1,0,add ###
+vlm-in-flash,30a1555dd55a0879763676d5a49361ffc9bc301d,yabsed,yabsed,2026-09-16T04:53:25+09:00,2026-09-16T04:53:25+09:00,2026-09-16,4,1,0,0,1,0,add paper
+vlm-in-flash,64c5de944eab515fce7b8f81802b1629cd6e7f1a,yabsed,yabsed,2026-09-16T04:54:56+09:00,2026-09-16T04:54:56+09:00,2026-09-16,4,1,0,0,1,0,add submodules
+vlm-in-flash,7c6928b12719c193cef0bf58d87817f33543d033,yabsed,yabsed,2026-09-16T05:02:34+09:00,2026-09-16T05:02:34+09:00,2026-09-16,5,1,0,0,1,0,update
+vlm-in-flash,10c8661b6dc3732729e912556ed17100a700d4b8,yabsed,yabsed,2026-09-16T05:16:10+09:00,2026-09-16T05:16:10+09:00,2026-09-16,5,1,0,0,1,0,almost finished
+vlm-in-flash,db6295997a85725bcc44607049cda3bd65413965,yabsed,yabsed,2026-09-16T05:28:17+09:00,2026-09-16T05:28:17+09:00,2026-09-16,5,1,0,0,1,0,Report
+vlm-in-flash,d13b68a067c9ffad89be34a4097335df6b33b510,yabsed,yabsed,2026-09-16T05:39:56+09:00,2026-09-16T05:39:56+09:00,2026-09-16,5,1,0,0,1,0,update pdf
+vlm-in-flash,6f33ff1295fa27078c2df6ca742e44352a47de2e,yabsed,yabsed,2026-09-16T05:56:15+09:00,2026-09-16T05:56:15+09:00,2026-09-16,5,1,0,0,1,0,e-mail
+vlm-in-flash,97d092c745eb3adb90a4de3df0d523f7994e81f7,yabsed,yabsed,2026-09-16T05:58:43+09:00,2026-09-16T05:58:43+09:00,2026-09-16,5,1,0,0,1,0,sketch
+vlm-in-flash,b5e380481e63e2fe3495991edeedf1a1fac104ab,yabsed,yabsed,2026-09-16T06:02:59+09:00,2026-09-16T06:02:59+09:00,2026-09-16,6,1,0,0,1,0,move to research directory
+vlm-in-flash,dec23b5b9eef12896110073dedc3b62f504f9cc3,yabsed,yabsed,2026-09-16T06:06:41+09:00,2026-09-16T06:06:41+09:00,2026-09-16,6,1,0,0,1,0,email to send
+vlm-in-flash,e51649f881ef500840b980e7445142d5be07aed0,yabsed,yabsed,2026-09-16T06:08:57+09:00,2026-09-16T06:09:27+09:00,2026-09-16,6,1,0,0,1,0,modify email.txt
+vlm-in-flash,86b5e9e6679409de23ca1daebb922f584fa63d7a,yabsed,yabsed,2026-09-16T06:09:58+09:00,2026-09-16T06:09:58+09:00,2026-09-16,6,1,0,0,1,0,idea.pdf
+vlm-in-flash,897b8fe52178e82d44ca376611119354aae0eca7,yabsed,yabsed,2026-09-16T06:12:34+09:00,2026-09-16T06:12:34+09:00,2026-09-16,6,1,0,0,1,0,📃 docs: minor email change
+vlm-in-flash,202d5ef12af5fd15aa27c2adb8d59bd1e18ae9e9,yabsed,yabsed,2026-09-16T06:13:34+09:00,2026-09-16T06:13:34+09:00,2026-09-16,6,1,0,0,1,0,📃 docs: add chatgpt chat
+vlm-in-flash,91c103f79bab3bd3c05499dcc0cadb0d9fc16978,yabsed,yabsed,2026-09-16T18:48:43+09:00,2026-09-16T18:48:43+09:00,2026-09-16,18,1,0,0,1,0,init experiment
+vlm-in-flash,4b957ad7c272eae93bdb602d486e3fed08db55d5,yabsed,yabsed,2026-09-16T19:12:06+09:00,2026-09-16T19:12:06+09:00,2026-09-16,19,1,0,0,1,0,failed lagrange
+vlm-in-flash,ba9cd9378f43b5031afcb5bfa43d5e16ae95624f,yabsed,yabsed,2026-09-16T19:33:00+09:00,2026-09-16T19:33:00+09:00,2026-09-16,19,1,0,0,1,0,quantized
+vlm-in-flash,5172fb45ee5a7448c53c3c0314c4a58e9eef77b3,yabsed,yabsed,2026-09-16T19:41:54+09:00,2026-09-16T19:41:54+09:00,2026-09-16,19,1,0,0,1,0,make it simple
+vlm-in-flash,ecafac083139392c4cefb0e9214ba6607fdc0540,yabsed,yabsed,2026-09-16T19:48:24+09:00,2026-09-16T19:48:24+09:00,2026-09-16,19,1,0,0,1,0,🦄 refactor: 새로운 디렉토리 구조
+vlm-in-flash,e9a3514e55c730a2dc34e7b5b5f7e7bb8441ff99,yabsed,yabsed,2026-09-16T20:05:05+09:00,2026-09-16T20:05:05+09:00,2026-09-16,20,1,0,0,1,0,✨ feat: 실험 2
+vlm-in-flash,c1d998c5d53cd6eaf5470daac7da43571f501724,yabsed,yabsed,2026-09-16T20:25:44+09:00,2026-09-16T20:25:44+09:00,2026-09-16,20,1,0,0,1,0,✨ feat: add exact coverage
+vlm-in-flash,d7b29152f2da2473e1471ad25123409e635054a7,yabsed,yabsed,2026-09-16T20:28:56+09:00,2026-09-16T20:28:56+09:00,2026-09-16,20,1,0,0,1,0,🐞 fix: remove strange graph
+vlm-in-flash,0143c26a58dd75a428472fe71758c1ac850d0b6a,yabsed,yabsed,2026-09-16T20:47:38+09:00,2026-09-16T20:47:38+09:00,2026-09-16,20,1,0,0,1,0,✨ feat: 실험 3
+vlm-in-flash,dd8d5f6dff1029051dbf0db5b11d9823b2b36f46,yabsed,yabsed,2026-09-16T21:21:14+09:00,2026-09-16T21:21:14+09:00,2026-09-16,21,1,0,0,1,0,✨ feat: 실험 4
+vlm-in-flash,0e53edad3c3be5a047d1d83f05197e47c64acc1a,yabsed,yabsed,2026-09-16T21:51:49+09:00,2026-09-16T21:51:49+09:00,2026-09-16,21,1,0,0,1,0,✨ feat: 실험 5
+vlm-in-flash,62d63eb9e3e426d992f88da72c1125c464c2d5f8,yabsed,yabsed,2026-09-16T22:48:58+09:00,2026-09-16T22:48:58+09:00,2026-09-16,22,1,0,0,1,0,✨ feat: 실험 6
+vlm-in-flash,b4f7d6ace7ed3fd573c06bdfa01c4041f621694d,yabsed,yabsed,2026-09-16T23:33:06+09:00,2026-09-16T23:33:06+09:00,2026-09-16,23,1,0,0,1,0,✨ feat: 실험 7
+vlm-in-flash,f2999ce4185ee6256499621a769ae33f60def172,yabsed,yabsed,2026-09-16T23:52:51+09:00,2026-09-16T23:52:51+09:00,2026-09-16,23,1,0,0,1,0,✨ feat: 실험 8
+vlm-in-flash,eb296797221659e665edaf812f603bfdaf8e2290,yabsed,yabsed,2026-09-17T00:04:58+09:00,2026-09-17T00:04:58+09:00,2026-09-17,0,1,0,0,1,0,📃 docs: algorithm of 실험 8
+vlm-in-flash,72b13604b2c4031d2fc7801607dbc0553458c158,yabsed,yabsed,2026-09-17T00:32:59+09:00,2026-09-17T00:32:59+09:00,2026-09-17,0,1,0,0,1,0,✨ feat: 실험 9
+vlm-in-flash,1bfb7086b4795a997acfae52c449c3516b9803a0,yabsed,yabsed,2026-09-17T00:45:08+09:00,2026-09-17T00:45:08+09:00,2026-09-17,0,1,0,0,1,0,✨ feat: 실험 10
+vlm-in-flash,038a7009d77c19099ff296059216ddb481c3c283,yabsed,yabsed,2026-09-17T00:57:18+09:00,2026-09-17T00:57:18+09:00,2026-09-17,0,1,0,0,1,0,실험 11
+vlm-in-flash,b22d534d8472588793f50e9527579138806a615e,yabsed,yabsed,2026-09-17T01:33:29+09:00,2026-09-17T01:33:29+09:00,2026-09-17,1,1,0,0,1,0,double note
+vlm-in-flash,f869a08f7df9d682e5924271d750339eaacb0709,yabsed,yabsed,2026-09-17T02:03:53+09:00,2026-09-17T02:03:53+09:00,2026-09-17,2,1,0,0,1,0,실험 13
+vlm-in-flash,7bb6940cd069bbbf59ff41adb064d8067699b3b8,yabsed,yabsed,2026-09-17T02:32:33+09:00,2026-09-17T02:32:33+09:00,2026-09-17,2,1,0,0,1,0,실험 14
+vlm-in-flash,14bfdd982e8fb69acbec95884cd6c4116eebafe3,yabsed,yabsed,2026-09-17T02:50:08+09:00,2026-09-17T02:50:08+09:00,2026-09-17,2,1,0,0,1,0,실험 15
+vlm-in-flash,e804abb9ea400ce0d8c3c3d2e102ec768ff6d93d,yabsed,yabsed,2026-09-17T22:01:15+09:00,2026-09-17T22:01:15+09:00,2026-09-17,22,1,0,0,1,0,16
+vlm-in-flash,ce02d28eceb72f1eb95cc7a5046c7aa5e03158cf,yabsed,yabsed,2026-09-17T22:14:21+09:00,2026-09-17T22:14:21+09:00,2026-09-17,22,1,0,0,1,0,16 update
+vlm-in-flash,ed3c31339efb8b57e5a4be23298b970c49be494a,yabsed,yabsed,2026-09-17T22:36:36+09:00,2026-09-17T22:36:36+09:00,2026-09-17,22,1,0,0,1,0,16
+vlm-in-flash,85e0bc21573039163abe58f2c14763caa9594367,yabsed,yabsed,2026-09-17T23:39:56+09:00,2026-09-17T23:39:56+09:00,2026-09-17,23,1,0,0,1,0,wow16
+vlm-in-flash,f584a64ec5acf44787c5aa387338dbc33d596a7e,yabsed,yabsed,2026-09-18T00:40:57+09:00,2026-09-18T00:40:57+09:00,2026-09-18,0,1,0,0,1,0,17
+vlm-in-flash,4fd56e0d5caa09fd1cf91a1f2f34012ace15d803,yabsed,yabsed,2026-09-18T00:59:51+09:00,2026-09-18T00:59:51+09:00,2026-09-18,0,1,0,0,1,0,18
+vlm-in-flash,f69d536dbc4c551c9ee0deb0df55c71902c3d5b2,yabsed,yabsed,2026-09-18T01:11:31+09:00,2026-09-18T01:11:31+09:00,2026-09-18,1,1,0,0,1,0,19
+vlm-in-flash,5ab199ef3c856c49cfbc12f7c88a58fd834dbea4,yabsed,yabsed,2026-09-18T01:36:08+09:00,2026-09-18T01:36:08+09:00,2026-09-18,1,1,0,0,1,0,20
+vlm-in-flash,04a5e78e0e0831305fcb6598b4ca4fe6e807e544,yabsed,yabsed,2026-09-18T01:56:14+09:00,2026-09-18T01:56:14+09:00,2026-09-18,1,1,0,0,1,0,TD-2L
+vlm-in-flash,f5ee702db3ada9eb98d54a674785fb92ac435881,yabsed,yabsed,2026-09-18T01:58:04+09:00,2026-09-18T01:58:04+09:00,2026-09-18,1,1,0,0,1,0,21
+vlm-in-flash,35cd8a7236b90b6f56916612bc47b222282b0843,yabsed,yabsed,2026-09-18T02:18:58+09:00,2026-09-18T02:18:58+09:00,2026-09-18,2,1,0,0,1,0,22
+vlm-in-flash,aa8400bd146a054eea0089bfb818997510c13e11,yabsed,yabsed,2026-09-18T02:19:43+09:00,2026-09-18T02:19:43+09:00,2026-09-18,2,1,0,0,1,0,23
+vlm-in-flash,3b34485f53742d8067b1f0129b53f6541499305b,yabsed,yabsed,2026-09-18T02:46:04+09:00,2026-09-18T02:46:04+09:00,2026-09-18,2,1,0,0,1,0,24
+vlm-in-flash,50276da93645ea456303cd0de11aaa742ac1414e,yabsed,yabsed,2026-09-18T03:07:57+09:00,2026-09-18T03:07:57+09:00,2026-09-18,3,1,0,0,1,0,25
+vlm-in-flash,79992de32a2e1d36dead697d3395cc3b6e7f7b06,yabsed,yabsed,2026-09-18T16:02:16+09:00,2026-09-18T16:02:16+09:00,2026-09-18,16,1,0,0,1,0,22
+vlm-in-flash,6b91d0c980a9ef29ddd93557a1633f66087107f4,yabsed,yabsed,2026-09-18T16:19:01+09:00,2026-09-18T16:19:01+09:00,2026-09-18,16,1,0,0,1,0,Hmmm
+vlm-in-flash,d814e3fc4dd857a162f071402faf9baac5661281,yabsed,yabsed,2026-09-18T16:55:05+09:00,2026-09-18T16:55:05+09:00,2026-09-18,16,1,0,0,1,0,26
+vlm-in-flash,d5ae5ef427e11624b9579b3c7161a1d10a863a9b,yabsed,yabsed,2026-09-18T17:25:44+09:00,2026-09-18T17:25:44+09:00,2026-09-18,17,1,0,0,1,0,26
+vlm-in-flash,e9750003feadc6761352c4e8f6102660a0e0f7c7,yabsed,yabsed,2026-09-18T18:04:08+09:00,2026-09-18T18:04:08+09:00,2026-09-18,18,1,0,0,1,0,28
+vlm-in-flash,4d7f1148e933b1e90524fd04d07dfa712d2965f2,yabsed,yabsed,2026-09-18T18:28:21+09:00,2026-09-18T18:28:21+09:00,2026-09-18,18,1,0,0,1,0,2930
+vlm-in-flash,90ba5539e70e43a62daded5c834f50fa837cfd13,yabsed,yabsed,2026-09-18T18:42:17+09:00,2026-09-18T18:42:17+09:00,2026-09-18,18,1,0,0,1,0,idea2
+vlm-in-flash,2772fe086d6a776fb3845614eee33e4f024403e4,yabsed,yabsed,2026-09-18T18:57:37+09:00,2026-09-18T18:57:37+09:00,2026-09-18,18,1,0,0,1,0,31
+vlm-in-flash,8ed70216a9c5dc4f203fd924f5a53424dfca91d0,yabsed,yabsed,2026-09-18T19:30:19+09:00,2026-09-18T19:30:19+09:00,2026-09-18,19,1,0,0,1,0,32
+vlm-in-flash,26d8c9f91a86e64d840052c9ac72ee2ecdd1379c,yabsed,yabsed,2026-09-18T20:06:31+09:00,2026-09-18T20:06:31+09:00,2026-09-18,20,1,0,0,1,0,34
+vlm-in-flash,93a0cb709373b1c6e1f53a59f9f41e0d776ddb4e,yabsed,yabsed,2026-09-18T20:25:50+09:00,2026-09-18T20:25:50+09:00,2026-09-18,20,1,0,0,1,0,35
+vlm-in-flash,2c71a92a5055b56fc518d07bc3170b0568f93f5d,yabsed,yabsed,2026-09-18T20:44:14+09:00,2026-09-18T20:44:14+09:00,2026-09-18,20,1,0,0,1,0,36
+vlm-in-flash,9b162f79d048c7314a5f85e0a5344083da537676,yabsed,yabsed,2026-09-18T21:04:16+09:00,2026-09-18T21:04:16+09:00,2026-09-18,21,1,0,0,1,0,37
+vlm-in-flash,11a3db580681090266e88066f317d666adb6f1a1,yabsed,yabsed,2026-09-18T21:27:00+09:00,2026-09-18T21:27:00+09:00,2026-09-18,21,1,0,0,1,0,38
+vlm-in-flash,c3f3637ec994fdc1f7ceae5a511fe7913c6249b6,yabsed,yabsed,2026-09-18T22:05:11+09:00,2026-09-18T22:05:11+09:00,2026-09-18,22,1,0,0,1,0,end
+vlm-in-flash,38c028095291680e64a86b73fc8ebe70d935841e,yabsed,yabsed,2026-09-18T22:33:55+09:00,2026-09-18T22:33:55+09:00,2026-09-18,22,1,0,0,1,0,40
+vlm-in-flash,6eb0fe99a0633f8b678828cd79489251cdf8c4f4,yabsed,yabsed,2026-09-18T23:03:49+09:00,2026-09-18T23:03:49+09:00,2026-09-18,23,1,0,0,1,0,41
+vlm-in-flash,d7166e03add9f5ffae543a5fc6c46147eccc7e43,yabsed,yabsed,2026-09-18T23:31:48+09:00,2026-09-18T23:39:45+09:00,2026-09-18,23,1,0,0,1,0,s
+vlm-in-flash,e1b13c5ba26cacb3c2c00fe660f84769fe0d46af,yabsed,yabsed,2026-09-19T00:18:50+09:00,2026-09-19T00:18:50+09:00,2026-09-19,0,1,0,0,1,0,Refactor code structure for improved readability and maintainability
+vlm-in-flash,d808e4381c49d9bbcec91cda62af8abe119bce73,yabsed,yabsed,2026-09-19T00:29:05+09:00,2026-09-19T00:29:05+09:00,2026-09-19,0,1,0,0,1,0,43
+vlm-in-flash,870ea38c81b54e646d09cf0c048260d7e67aacb2,yabsed,yabsed,2026-09-25T16:11:10+09:00,2026-09-26T13:08:33+09:00,2026-09-26,13,1,0,0,1,1,prompt
+vlm-in-flash,3f438b3556035a627e93ee4ad86cbe98c19ccb52,yabsed,yabsed,2026-09-26T13:43:37+09:00,2026-09-26T13:43:37+09:00,2026-09-26,13,1,0,0,1,0,first shot
+vlm-in-flash,292c5754c5b8b3bb73e7c775e4241340e5dbc7b0,yabsed,yabsed,2026-09-26T13:48:42+09:00,2026-09-26T13:48:42+09:00,2026-09-26,13,1,0,0,1,0,move to python directory
+vlm-in-flash,f813d8bc743c62ca945d6bd4ccb8b6f7f58e08ad,yabsed,yabsed,2026-09-26T14:05:31+09:00,2026-09-26T14:05:31+09:00,2026-09-26,14,1,0,0,1,0,move to design directory
+vlm-in-flash,ef7590e35f481937cb805de649083c561e74bf26,yabsed,yabsed,2026-09-26T14:14:12+09:00,2026-09-26T14:14:12+09:00,2026-09-26,14,1,0,0,1,0,remove conclusion duplicate
+vlm-in-flash,8360c410487b468cd1e8f61fc26354c3ffe34593,yabsed,yabsed,2026-09-26T14:35:46+09:00,2026-09-26T14:35:46+09:00,2026-09-26,14,1,0,0,1,0,revive
+vlm-in-flash,e97badd8bef760d7adab523c6449d57a4967207a,yabsed,yabsed,2026-09-26T14:57:02+09:00,2026-09-26T14:57:02+09:00,2026-09-26,14,1,0,0,1,0,new ex2
+vlm-in-flash,262747f39bda353756fa18806f4029aa157887b3,yabsed,yabsed,2026-09-26T15:07:10+09:00,2026-09-26T15:07:10+09:00,2026-09-26,15,1,0,0,1,0,update documents
+vlm-in-flash,d2dbd54f48aeb9a7efda56cdcdff11ffe89c9344,yabsed,yabsed,2026-09-26T15:29:11+09:00,2026-09-26T15:29:11+09:00,2026-09-26,15,1,0,0,1,0,Beta
+vlm-in-flash,e6a45ea7a73f1aa8856e8a70808e87f8e158798b,yabsed,yabsed,2026-09-26T15:44:36+09:00,2026-09-26T15:44:36+09:00,2026-09-26,15,1,0,0,1,0,update notebook
+vlm-in-flash,c52f8c662d4eb433f77c68dbfeace710cbe9a229,yabsed,yabsed,2026-09-26T16:19:24+09:00,2026-09-26T16:19:24+09:00,2026-09-26,16,1,0,0,1,0,실험 2 backup
+vlm-in-flash,a713f574749c1e8cf3bfe2c8e5b716f25b788f26,yabsed,yabsed,2026-09-26T16:28:04+09:00,2026-09-26T16:28:04+09:00,2026-09-26,16,1,0,0,1,0,update 2
+vlm-in-flash,108caa3e7bbc784bdcfa6a0ce5247668073b5251,Seol Handong,Seol Handong,2026-09-26T17:03:25+09:00,2026-09-26T17:03:25+09:00,2026-09-26,17,1,0,0,1,0,Compare fixed and learned Ts breakpoints; reuse notebook CSVs by default
+vlm-in-flash,03b9a5035c4115babce7eb1805557d062ae2efe4,Seol Handong,Seol Handong,2026-09-26T17:05:08+09:00,2026-09-26T17:05:08+09:00,2026-09-26,17,1,0,0,1,0,Fix Actions context scope for notebook artifact directory
+vlm-in-flash,27b04edf7a39ceb7eede9021cb323cbb45d09921,Seol Handong,GitHub,2026-09-26T17:10:19+09:00,2026-09-26T17:10:19+09:00,2026-09-26,17,2,0,1,0,0,Merge pull request #1 from yabsed/feat/chunk-latency-learned-ts-cache
+vlm-in-flash,8727979edbb72d52a9797becf3449a966f0a904e,yabsed,yabsed,2026-09-26T17:11:17+09:00,2026-09-26T17:11:17+09:00,2026-09-26,17,1,0,0,1,0,result
+vlm-in-flash,9f03d24f863841d56f3a7f32e0dc06ab5c866c10,Seol Handong,Seol Handong,2026-09-26T17:33:02+09:00,2026-09-26T17:33:02+09:00,2026-09-26,17,1,0,0,1,0,Write notebook 02 as an executable mathematical report with interpreted figures
+vlm-in-flash,042b78840cedbb8049be4263facac7d7ef78795e,Seol Handong,Seol Handong,2026-09-26T17:33:22+09:00,2026-09-26T17:33:22+09:00,2026-09-26,17,1,0,0,1,0,"Check report figures, language, fitted values, and unchanged measurement provenance"
+vlm-in-flash,2f135d4e1404cfeaa47286d8c587dfca75d00f3d,Seol Handong,Seol Handong,2026-09-26T17:33:53+09:00,2026-09-26T17:33:53+09:00,2026-09-26,17,1,0,0,1,0,Assemble the report from immutable cached measurements on the review branch
+vlm-in-flash,2602dea0d94eb0e4ff71730cb3a966cd04161d03,github-actions[bot],github-actions[bot],2026-09-26T17:34:37+09:00,2026-09-26T17:34:37+09:00,2026-09-26,17,1,1,0,0,0,Embed the executed latency report and polished model figures
+vlm-in-flash,087bdf34635b2d824c7f5713ab51f82ea04c66fa,Seol Handong,Seol Handong,2026-09-26T17:37:36+09:00,2026-09-26T17:37:36+09:00,2026-09-26,17,1,0,0,1,0,Remove one-time report assembly workflow after verified output commit
+vlm-in-flash,aa3f3d917f639390d3e353e0cb537bef00110389,Seol Handong,Seol Handong,2026-09-26T17:37:47+09:00,2026-09-26T17:37:47+09:00,2026-09-26,17,1,0,0,1,0,Keep report verification in the read-only cached-analysis CI
+vlm-in-flash,797df564922c2076fb7c115e2decab23d5d07e45,Seol Handong,GitHub,2026-09-26T17:44:12+09:00,2026-09-26T17:44:12+09:00,2026-09-26,17,2,0,1,0,0,Merge pull request #2 from yabsed/report/chunk-latency-8727979
+vlm-in-flash,acdf8eac0d3e31a317a9d9e38958b039ae540779,yabsed,yabsed,2026-09-26T18:11:00+09:00,2026-09-26T18:11:00+09:00,2026-09-26,18,1,0,0,1,0,ch 2
+vlm-in-flash,338bdb7b972737015812d8a92d4356da6ee410d4,yabsed,yabsed,2026-09-26T18:12:48+09:00,2026-09-26T18:12:48+09:00,2026-09-26,18,1,0,0,1,0,update ch 2
+vlm-in-flash,4ff77660ffc2c9b36093062b70aca15f76a2798e,yabsed,yabsed,2026-09-26T18:35:46+09:00,2026-09-26T18:35:46+09:00,2026-09-26,18,1,0,0,1,0,update ch2
+vlm-in-flash,1201454f4efcc61435b53a8dd717a2fdcdefd0b3,yabsed,yabsed,2026-09-26T18:38:02+09:00,2026-09-26T18:38:02+09:00,2026-09-26,18,1,0,0,1,0,for gpt
+vlm-in-flash,33816dc577098e73d1f3fb3912887d9cbf93496e,Seol Handong,Seol Handong,2026-09-26T18:48:12+09:00,2026-09-26T18:48:12+09:00,2026-09-26,18,1,0,0,1,0,Simplify chunk latency analysis to plain CSV reads and model fitting
+vlm-in-flash,c442af07ccb8e09d7f2dee01c1089d01f69d3137,Seol Handong,Seol Handong,2026-09-26T18:50:05+09:00,2026-09-26T18:50:05+09:00,2026-09-26,18,1,0,0,1,0,Limit one-time caller update to notebook and Python source
+vlm-in-flash,ca3e7db33df10818349f8a8eb153ef17b90a53f3,github-actions[bot],github-actions[bot],2026-09-26T18:50:44+09:00,2026-09-26T18:50:44+09:00,2026-09-26,18,1,1,0,0,0,Use the CSV-only loader in notebook and report builder
+vlm-in-flash,96e038f25d631a74a35d06f4ba57d362ef2e535c,Seol Handong,Seol Handong,2026-09-26T18:51:25+09:00,2026-09-26T18:51:25+09:00,2026-09-26,18,1,0,0,1,0,Remove one-time editing workflow and keep only the small regression suite
+vlm-in-flash,313a3aba489276062924be6e934496a4c6a3e6bb,Seol Handong,GitHub,2026-09-26T18:53:03+09:00,2026-09-26T18:53:03+09:00,2026-09-26,18,2,0,1,0,0,Merge pull request #3 from yabsed/simplify/chunk-latency-helper
+vlm-in-flash,431735dadf1d1dbaa95928ed0bd1d8e2937d89f9,Seol Handong,Seol Handong,2026-09-26T19:13:25+09:00,2026-09-26T19:13:25+09:00,2026-09-26,19,1,0,0,1,0,Make notebook 02 a self-contained mathematical report; remove Python helpers
+vlm-in-flash,5fc63961f332858a8ca9251bcf0331d5a61c131d,github-actions[bot],github-actions[bot],2026-09-26T19:14:21+09:00,2026-09-26T19:14:21+09:00,2026-09-26,19,1,1,0,0,0,Embed executed standalone notebook figures and tables
+vlm-in-flash,d44b8efcf8cb477c8ed2235ae8d4c80e57b0c095,Seol Handong,Seol Handong,2026-09-26T19:14:54+09:00,2026-09-26T19:14:54+09:00,2026-09-26,19,1,0,0,1,0,Remove one-time output embedding job; keep standalone read-only CI
+vlm-in-flash,8a0532a6f114b5c6cce121457be1720cb9fb7885,yabsed,yabsed,2026-09-26T19:26:26+09:00,2026-09-26T19:27:55+09:00,2026-09-26,19,1,0,0,1,0,refactoring: single file central
+vlm-in-flash,433b608d562eaae2cbb4f7e56ee71514642a828d,Seol Handong,Seol Handong,2026-09-26T19:38:31+09:00,2026-09-26T19:38:31+09:00,2026-09-26,19,1,0,0,1,0,Assemble in-notebook acquisition and execute against the existing CSV
+vlm-in-flash,6e435e3c80ae777c9fbcd187e09258e2d3bddb4e,github-actions[bot],github-actions[bot],2026-09-26T19:39:27+09:00,2026-09-26T19:39:27+09:00,2026-09-26,19,1,1,0,0,0,"Include direct-I/O measurement, estimation and analysis in one notebook"
+vlm-in-flash,4944face55413a2524b66479ae0f0088b582fc18,Seol Handong,Seol Handong,2026-09-26T19:40:00+09:00,2026-09-26T19:40:00+09:00,2026-09-26,19,1,0,0,1,0,Check cache reuse and standalone notebook at its new location
+vlm-in-flash,58983bb3e96c67d0f6e5365b8f3a3ba50f1da719,Seol Handong,Seol Handong,2026-09-26T19:40:33+09:00,2026-09-26T19:40:33+09:00,2026-09-26,19,1,0,0,1,0,Remove one-time notebook assembly workflow
+vlm-in-flash,a3cec8bdfe0885f37440d9dd977493e52bf91199,Seol Handong,GitHub,2026-09-26T19:44:19+09:00,2026-09-26T19:44:19+09:00,2026-09-26,19,2,0,1,0,0,Merge pull request #6 from yabsed/feat/latency-notebook-acquisition
+vlm-in-flash,93ac47795b35dc755f41047d51d7240a8839a3d8,Seol Handong,Seol Handong,2026-09-26T20:19:50+09:00,2026-09-26T20:19:50+09:00,2026-09-26,20,1,0,0,1,0,Replace exhaustive global illustration with a standalone polynomial fixed-budget oracle
+vlm-in-flash,b23f8c4f4420ced69d50c1d075501a2f9187c75a,Seol Handong,Seol Handong,2026-09-26T20:20:39+09:00,2026-09-26T20:20:39+09:00,2026-09-26,20,1,0,0,1,0,Execute and embed the standalone polynomial oracle report
+vlm-in-flash,ff199f1604ed7246747a36e3578a400fe5058812,github-actions[bot],github-actions[bot],2026-09-26T20:21:40+09:00,2026-09-26T20:21:40+09:00,2026-09-26,20,1,1,0,0,0,Embed the verified global DP tables and four figures
+vlm-in-flash,5676b8aab67f7e681f1f6e7a1333df57a1f274cf,Seol Handong,Seol Handong,2026-09-26T20:22:39+09:00,2026-09-26T20:22:39+09:00,2026-09-26,20,1,0,0,1,0,Include the initial Top-R sort in the full complexity statement
+vlm-in-flash,cdcf9c7bb8b5dd89db8d3e43975523f47dc7df9d,github-actions[bot],github-actions[bot],2026-09-26T20:24:00+09:00,2026-09-26T20:24:00+09:00,2026-09-26,20,1,1,0,0,0,Account for sorting in the polynomial ratio bound
+vlm-in-flash,f9cf986a95fc61f8c9a9c66ab2d59c838dd617c1,Seol Handong,Seol Handong,2026-09-26T20:24:27+09:00,2026-09-26T20:24:27+09:00,2026-09-26,20,1,0,0,1,0,Keep only read-only standalone notebook verification for pull requests
+vlm-in-flash,7b164a310671c2531cca3448312b0d671e0ce156,yabsed,yabsed,2026-09-26T20:27:17+09:00,2026-09-26T20:27:17+09:00,2026-09-26,20,1,0,0,1,0,adf
+vlm-in-flash,aa5a83e8b919caee0ceb29ddab32bf9c8e07ed81,Seol Handong,GitHub,2026-09-26T20:31:07+09:00,2026-09-26T20:31:07+09:00,2026-09-26,20,2,0,1,0,0,Merge pull request #7 from yabsed/report/03-polynomial-global-oracle
+vlm-in-flash,b852ec50c5498ad6d89180bbbe2361211313c36e,yabsed,yabsed,2026-09-26T20:38:38+09:00,2026-09-26T20:38:38+09:00,2026-09-26,20,1,0,0,1,0,2
+vlm-in-flash,33fc0e6a650e343296bfa9d69851e1a4b2774f51,Seol Handong,Seol Handong,2026-09-26T20:52:13+09:00,2026-09-26T20:52:13+09:00,2026-09-26,20,1,0,0,1,0,"Restore the native reference and prepare a concise, cache-only latency report"
+vlm-in-flash,689ed829c4a601aeb828a21d85a4522f9e24913c,github-actions[bot],github-actions[bot],2026-09-26T20:53:09+09:00,2026-09-26T20:53:09+09:00,2026-09-26,20,1,1,0,0,0,Use the submodule reader and present cached results as a mathematical report
+vlm-in-flash,96e825360aa72856418b53717b71bcf3449792cc,Seol Handong,GitHub,2026-09-26T20:58:07+09:00,2026-09-26T20:58:07+09:00,2026-09-26,20,2,0,1,0,0,Merge pull request #8 from yabsed/fix/native-latency-report
+vlm-in-flash,0651b8d309dae230eee3418674e13e49ac9942a5,Seol Handong,Seol Handong,2026-09-26T21:05:10+09:00,2026-09-26T21:05:10+09:00,2026-09-26,21,1,0,0,1,0,Audit reference paths before moving the unchanged submodule
+vlm-in-flash,3e848ea75d898b134c8d7635175a7751e48f0b6d,Seol Handong,Seol Handong,2026-09-26T21:08:57+09:00,2026-09-26T21:08:57+09:00,2026-09-26,21,1,0,0,1,0,Execute the notebook itself in CI without a separate pytest suite
+vlm-in-flash,76ab88452d56de82df142a47b935de1bb75bab6d,Seol Handong,Seol Handong,2026-09-26T21:09:57+09:00,2026-09-26T21:09:57+09:00,2026-09-26,21,1,0,0,1,0,Move the reference submodule and fold data identities into notebook 01
+vlm-in-flash,e2bcc7f8e7a9df02c41889e93a65bd2d0efc2122,github-actions[bot],github-actions[bot],2026-09-26T21:10:44+09:00,2026-09-26T21:10:44+09:00,2026-09-26,21,1,1,0,0,0,Keep notebook 01 self-validating and relocate the unchanged reference submodule
+vlm-in-flash,0488fee90ccbacd10bd965928c3d94c408eb4fcb,Seol Handong,GitHub,2026-09-26T21:14:08+09:00,2026-09-26T21:14:08+09:00,2026-09-26,21,2,0,1,0,0,Merge pull request #9 from yabsed/refactor/notebook-only-upstream
+vlm-in-flash,337fb8cd50af8ac453436e882bdae04e6d170815,yabsed,yabsed,2026-09-26T21:23:15+09:00,2026-09-26T21:23:15+09:00,2026-09-26,21,1,0,0,1,0,vsc warnings
+vlm-in-flash,a53e56a65fc162070e1ac7f301cb884e60203231,yabsed,yabsed,2026-09-26T21:23:58+09:00,2026-09-26T21:23:58+09:00,2026-09-26,21,1,0,0,1,0,remove
+vlm-in-flash,71e7d85b1804482c7c0c70ce4501aab4739fa20b,yabsed,yabsed,2026-09-26T21:59:40+09:00,2026-09-26T21:59:40+09:00,2026-09-26,21,1,0,0,1,0,finalize 1
+vlm-in-flash,f3620ce022a7b7bcb69a4bbb7be043343d90910f,yabsed,yabsed,2026-09-26T22:02:44+09:00,2026-09-26T22:02:44+09:00,2026-09-26,22,1,0,0,1,0,paper 2
+vlm-in-flash,8447a6a21e08fd5bd7425cec9e5e6961d9e21422,Seol Handong,Seol Handong,2026-09-26T22:26:57+09:00,2026-09-26T22:26:57+09:00,2026-09-26,22,1,0,0,1,0,Prepare measured-model equations and a resumable real-trace oracle notebook
+vlm-in-flash,ab0d868e004cacecd2a81bb713b5972dc7352b95,Seol Handong,Seol Handong,2026-09-26T22:29:11+09:00,2026-09-26T22:29:11+09:00,2026-09-26,22,1,0,0,1,0,Validate the linked notebooks without native I/O or a real-trace sweep
+vlm-in-flash,8bde39e25f898fa6b98090083a5c42913c170ad4,Seol Handong,Seol Handong,2026-09-26T22:29:52+09:00,2026-09-26T22:29:52+09:00,2026-09-26,22,1,0,0,1,0,Assemble and validate both notebooks from saved data only
+vlm-in-flash,d647e3002f0b8433b59e3bfb7801ab6f071530eb,Seol Handong,Seol Handong,2026-09-26T22:33:15+09:00,2026-09-26T22:33:15+09:00,2026-09-26,22,1,0,0,1,0,Check the upstream selector on tiny fixtures and finalize report artifacts
+vlm-in-flash,60ffc69cb686cedbd1910c0ff286e88495b6f95e,Seol Handong,Seol Handong,2026-09-26T22:34:54+09:00,2026-09-26T22:34:54+09:00,2026-09-26,22,1,0,0,1,0,Use the notebook's own normalization in the tiny upstream integration check
+vlm-in-flash,754b46a66b121ab59c55aab018c8107021b3c053,github-actions[bot],github-actions[bot],2026-09-26T22:35:57+09:00,2026-09-26T22:35:57+09:00,2026-09-26,22,1,1,0,0,0,"Embed fitted equations and a validated, unrun real-trace oracle protocol"
+vlm-in-flash,bfd58e77562aa00566d409352d30a015c724831e,Seol Handong,GitHub,2026-09-26T22:43:53+09:00,2026-09-26T22:43:53+09:00,2026-09-26,22,2,0,1,0,0,Merge pull request #10 from yabsed/feat/measured-global-oracle
+vlm-in-flash,45a9e0c535a1d8db7fc777a18b803f47382f06b7,Seol Handong,Seol Handong,2026-09-26T23:01:19+09:00,2026-09-26T23:01:19+09:00,2026-09-26,23,1,0,0,1,0,Make notebook 02 readable line by line
+vlm-in-flash,672781630bf8ed44ad101806fb43d2ba6abbe63a,Seol Handong,Seol Handong,2026-09-26T23:01:22+09:00,2026-09-26T23:01:22+09:00,2026-09-26,23,1,0,0,1,0,Align notebook CI with the simplified oracle report
+vlm-in-flash,339f47f61bd96207532e8f41a14e716ec041b42c,Seol Handong,Seol Handong,2026-09-26T23:02:54+09:00,2026-09-26T23:02:54+09:00,2026-09-26,23,1,0,0,1,0,Keep report outputs clean while preserving run progress
+vlm-in-flash,1969cc6f2d2a9f104823be47f5f53a32b6d8101c,Seol Handong,GitHub,2026-09-26T23:05:02+09:00,2026-09-26T23:05:02+09:00,2026-09-26,23,2,0,1,0,0,Merge pull request #11 from yabsed/refactor/readable-global-oracle
+vlm-in-flash,513b3d9f96892d4c84ff755ab92f350c5841a3e5,yabsed,yabsed,2026-09-26T23:17:55+09:00,2026-09-26T23:17:55+09:00,2026-09-26,23,1,0,0,1,0,Result of 02
+vlm-in-flash,8f55f9d87c48c598e4310e8b9d13bc79df76cb3b,Seol Handong,Seol Handong,2026-09-26T23:23:16+09:00,2026-09-26T23:23:16+09:00,2026-09-26,23,1,0,0,1,0,Restore the reference tiles and fixed-budget trade-off report without running the experiment
+vlm-in-flash,9a9f72e7acf97fa5a687ce1f0307fbc0398eff16,github-actions[bot],github-actions[bot],2026-09-26T23:24:01+09:00,2026-09-26T23:24:01+09:00,2026-09-26,23,1,1,0,0,0,Restore reference saturation tiles and fixed-budget latency–importance trajectories
+vlm-in-flash,3fdfaeac2103ffaaa38a4daefe576f08a0615033,Seol Handong,GitHub,2026-09-26T23:28:04+09:00,2026-09-26T23:28:04+09:00,2026-09-26,23,2,0,1,0,0,Merge pull request #12 from yabsed/fix/restore-saturation-tradeoff
+vlm-in-flash,4440ecfb7ae9a3cd766217868ee9804c0173cd26,yabsed,yabsed,2026-09-26T23:44:38+09:00,2026-09-26T23:44:38+09:00,2026-09-26,23,1,0,0,1,0,02
+vlm-in-flash,fc64ba54e0e56637ec512fc9a4256c54e02c3c35,Seol Handong,Seol Handong,2026-09-27T00:03:17+09:00,2026-09-27T00:03:17+09:00,2026-09-27,0,1,0,0,1,0,Restore the attached oracle notebook with Qwen inputs and measured two-line costs
+vlm-in-flash,a1f8ee272496ce99843e412136bb9000242b12c4,Seol Handong,GitHub,2026-09-27T00:07:13+09:00,2026-09-27T00:07:13+09:00,2026-09-27,0,2,0,1,0,0,Merge pull request #13 from yabsed/fix/qwen-from-attached-notebook
+vlm-in-flash,7cdde39dbf0f75903b4eaca6ad276b9145a7454a,Seol Handong,Seol Handong,2026-09-27T00:28:31+09:00,2026-09-27T00:28:31+09:00,2026-09-27,0,1,0,0,1,0,Prepare focused notebook 02 changes from current HEAD
+vlm-in-flash,193b0e8eefce7f6e9fe9d5986b643dc0773ca90a,Seol Handong,Seol Handong,2026-09-27T00:30:16+09:00,2026-09-27T00:30:16+09:00,2026-09-27,0,1,0,0,1,0,Replay a local NPZ in notebook CI without enabling capture
+vlm-in-flash,4e0c88c1f35c8d7df7e022f0d7f6118abf31d303,Seol Handong,Seol Handong,2026-09-27T00:30:30+09:00,2026-09-27T00:30:30+09:00,2026-09-27,0,1,0,0,1,0,Publish the validated notebook edit without workflow-token writes
+vlm-in-flash,066cbb7e136427932c5a4a9f9108c5b905280390,github-actions[bot],github-actions[bot],2026-09-27T00:31:24+09:00,2026-09-27T00:31:24+09:00,2026-09-27,0,1,1,0,0,0,Capture local activation traces in notebook 02 and seed the oracle with Paper
+vlm-in-flash,ac6799f8cadf31c1e3123e1ea2dc1e88d979bab9,yabsed,yabsed,2026-09-27T00:50:33+09:00,2026-09-27T00:50:33+09:00,2026-09-27,0,1,0,0,1,0,02
+vlm-in-flash,cf378edec9d0ab2999fa50e25961012fb430fcc1,yabsed,yabsed,2026-09-27T00:57:02+09:00,2026-09-27T01:18:07+09:00,2026-09-27,1,1,0,0,1,0,02
+vlm-in-flash,0bff74b50c19ecc89b3cc7c9aaad81a57b60184d,Seol Handong,Seol Handong,2026-09-27T01:38:51+09:00,2026-09-27T01:38:51+09:00,2026-09-27,1,1,0,0,1,0,Restore CSV-backed oracle reports and delegate Paper to the submodule
+vlm-in-flash,708a0f0a3dd5f26d9ddc6ffbebd785ae445c9a8e,Seol Handong,Seol Handong,2026-09-27T01:39:29+09:00,2026-09-27T01:39:29+09:00,2026-09-27,1,1,0,0,1,0,Validate the real upstream selector and CSV-only notebook replay
+vlm-in-flash,8c2467f3cc9527fcce5473be211b6373ada831c2,Seol Handong,GitHub,2026-09-27T01:43:39+09:00,2026-09-27T01:43:39+09:00,2026-09-27,1,2,0,1,0,0,Merge pull request #16 from yabsed/fix/oracle-csv-upstream
+vlm-in-flash,b0446eda754f73e347ead515ceffbda28db5c713,yabsed,yabsed,2026-09-27T01:56:50+09:00,2026-09-27T01:56:50+09:00,2026-09-27,1,1,0,0,1,0,result
+vlm-in-flash,da09a465bb70cd1d69d68f81e6769771366d073c,Seol Handong,Seol Handong,2026-09-27T02:03:58+09:00,2026-09-27T02:03:58+09:00,2026-09-27,2,1,0,0,1,0,Fix the oracle at nominal R and leave underfill to upstream Paper
+vlm-in-flash,59b5970d860d699d6d32106a5e287279e1a43087,Seol Handong,Seol Handong,2026-09-27T02:04:56+09:00,2026-09-27T02:04:56+09:00,2026-09-27,2,1,0,0,1,0,"Test nominal-R cardinality, underfilled Paper gaps and CSV replay"
+vlm-in-flash,0d291124eaafd86324ea8d5c1312f44e55958f0e,Seol Handong,Seol Handong,2026-09-27T02:07:03+09:00,2026-09-27T02:07:03+09:00,2026-09-27,2,1,0,0,1,0,Inspect concurrent notebook result changes before merging the latest base
+vlm-in-flash,d59dd09d07e2b82bb7273daefa7a3efe572fc781,Seol Handong,Seol Handong,2026-09-27T02:08:25+09:00,2026-09-27T02:08:25+09:00,2026-09-27,2,2,0,1,0,0,Merge the new result commit without changing its CSV; remove temporary source review
+vlm-in-flash,99f11f7f4b339b4db233aafc5c29bd491ec336a2,Seol Handong,GitHub,2026-09-27T02:09:12+09:00,2026-09-27T02:09:12+09:00,2026-09-27,2,2,0,1,0,0,Merge pull request #17 from yabsed/fix/nominal-r-oracle
+vlm-in-flash,794cdc7263fad66a767730981d706b0e07ff1bb7,yabsed,yabsed,2026-09-27T02:24:33+09:00,2026-09-27T02:24:33+09:00,2026-09-27,2,1,0,0,1,0,ran jupyter
+vlm-in-flash,ac760b8dcacf5cadc89f8c45774baaa123c657f3,yabsed,yabsed,2026-09-27T02:29:47+09:00,2026-09-27T02:29:47+09:00,2026-09-27,2,1,0,0,1,0,delete cell 02
+vlm-in-flash,a6ed310510ed9d8a5db151494189444194cf773d,yabsed,yabsed,2026-09-27T02:31:30+09:00,2026-09-27T02:31:30+09:00,2026-09-27,2,1,0,0,1,0,reran
+vlm-in-flash,7bf53ac2c9c5b6c75a63ee8f9367aa5a7007cce1,yabsed,yabsed,2026-09-27T02:44:06+09:00,2026-09-27T02:44:06+09:00,2026-09-27,2,1,0,0,1,0,change explanation
+vlm-in-flash,cc4f8c589716fbcaee186cc9f2b928193d25a65e,yabsed,yabsed,2026-09-27T03:02:09+09:00,2026-09-27T03:02:09+09:00,2026-09-27,3,1,0,0,1,0,update 2
+vlm-in-flash,606f19a9e922ec32d9fff871406d38d25e5c8df6,Seol Handong,Seol Handong,2026-09-27T03:25:03+09:00,2026-09-27T03:25:03+09:00,2026-09-27,3,1,0,0,1,0,Prepare the pinned inputs for the native selector experiment
+vlm-in-flash,0af3220674a9a97b30ae2a1feefe65b075170586,Seol Handong,Seol Handong,2026-09-27T03:26:39+09:00,2026-09-27T03:26:39+09:00,2026-09-27,3,1,0,0,1,0,Initialize only the conclusion reference submodule
+vlm-in-flash,fcbf03be83d85bcb1f7d18ea2bf492932cc41a25,Seol Handong,Seol Handong,2026-09-27T03:32:27+09:00,2026-09-27T03:32:27+09:00,2026-09-27,3,1,0,0,1,0,Implement saturation tiles and Top-R directly in C++
+vlm-in-flash,42995f1c6e1720a2bc892836a13c4a095ea84ead,Seol Handong,Seol Handong,2026-09-27T03:33:39+09:00,2026-09-27T03:33:39+09:00,2026-09-27,3,1,0,0,1,0,Add a short native-selection timing report with matched-mask checks
+vlm-in-flash,3e8733118d0380780076f5a8cff1fb6ad45206f6,Seol Handong,Seol Handong,2026-09-27T03:35:36+09:00,2026-09-27T03:35:36+09:00,2026-09-27,3,1,0,0,1,0,Run and publish the native selector experiment; smoke-check notebook changes
+vlm-in-flash,c9de32dbd6087d2a7579b23bb8597c49e90c28b8,github-actions[bot],github-actions[bot],2026-09-27T03:38:22+09:00,2026-09-27T03:38:22+09:00,2026-09-27,3,1,1,0,0,0,Record CPU native-selection measurements and figures
+vlm-in-flash,5dc14bb63f4dd7ce5a7be3174c6302a6a85c98ce,Seol Handong,Seol Handong,2026-09-27T03:39:12+09:00,2026-09-27T03:39:12+09:00,2026-09-27,3,1,0,0,1,0,Remove the temporary source-transfer workflow
+vlm-in-flash,75de64d08562c51b3a5774f60f3280d89159f0d0,Seol Handong,GitHub,2026-09-27T03:42:46+09:00,2026-09-27T03:42:46+09:00,2026-09-27,3,2,0,1,0,0,Merge pull request #18 from yabsed/feat/native-selection-benchmark
+vlm-in-flash,f7f60293c0e973d0db2c5a94b2a38f3c0f5b6f45,yabsed,yabsed,2026-09-27T03:48:09+09:00,2026-09-27T03:48:09+09:00,2026-09-27,3,1,0,0,1,0,teach clangd
+vlm-in-flash,eb1723ad6827862aa6085ce834a2159973b22bdd,Seol Handong,Seol Handong,2026-09-27T03:54:08+09:00,2026-09-27T03:54:08+09:00,2026-09-27,3,1,0,0,1,0,Prepare the saved-data composed-cost section without rerunning measurements
+vlm-in-flash,019d20b2cd53f1464239abd3bd113bf0dcbbb549,github-actions[bot],github-actions[bot],2026-09-27T03:54:36+09:00,2026-09-27T03:54:36+09:00,2026-09-27,3,1,1,0,0,0,Complete selection plus modeled I/O analysis from saved CSVs
+vlm-in-flash,7e7c606486c81fe194b4e833280e45d239216083,Seol Handong,GitHub,2026-09-27T03:58:18+09:00,2026-09-27T03:58:18+09:00,2026-09-27,3,2,0,1,0,0,Merge pull request #19 from yabsed/feat/selection-plus-modeled-io
+vlm-in-flash,78c1bc3074f1147da29aabc8b4427f450260265f,yabsed,yabsed,2026-09-27T04:02:44+09:00,2026-09-27T04:03:22+09:00,2026-09-27,4,1,0,0,1,0,ran 03
+vlm-in-flash,ca33a0192fe9f43b266553db13be03f2de776676,yabsed,yabsed,2026-09-27T04:34:25+09:00,2026-09-27T04:34:25+09:00,2026-09-27,4,1,0,0,1,0,measure 03
+vlm-in-flash,aa0d88567a8fab18f010b40feda75aa0860d89a2,yabsed,yabsed,2026-09-27T04:51:17+09:00,2026-09-27T04:51:17+09:00,2026-09-27,4,1,0,0,1,0,03
+vlm-in-flash,d95a448df8506d8cd91308e43b76e6675387f42c,yabsed,yabsed,2026-09-27T05:27:44+09:00,2026-09-27T05:27:44+09:00,2026-09-27,5,1,0,0,1,0,sleep
+vlm-in-flash,ed8b103b7834d6c07ca538fba049a18facd35599,yabsed,yabsed,2026-09-27T15:20:12+09:00,2026-09-27T15:20:12+09:00,2026-09-27,15,1,0,0,1,0,update 01
+vlm-in-flash,ce32b47781151f676271d162b179f2fb15bec888,yabsed,yabsed,2026-09-27T15:57:09+09:00,2026-09-27T15:57:09+09:00,2026-09-27,15,1,0,0,1,0,ran updated 01
+vlm-in-flash,4d114584a6a147bc17724f8156f46a3b8714e322,yabsed,yabsed,2026-09-27T16:17:54+09:00,2026-09-27T16:17:54+09:00,2026-09-27,16,1,0,0,1,0,ran updated 02
+vlm-in-flash,19752f083d3886495bf7513868a3d30c836716ad,yabsed,yabsed,2026-09-27T16:35:04+09:00,2026-09-27T16:35:04+09:00,2026-09-27,16,1,0,0,1,0,rerun 03
+vlm-in-flash,26e6d63fa3ded83fdec1dbce3a3bfc26ef8da3ea,yabsed,yabsed,2026-09-27T17:23:46+09:00,2026-09-27T17:23:46+09:00,2026-09-27,17,1,0,0,1,0,update 03
+vlm-in-flash,dd35fe2ceba76edfc4c1c2d1417bc87c754c950f,yabsed,yabsed,2026-09-27T17:35:12+09:00,2026-09-27T17:35:12+09:00,2026-09-27,17,1,0,0,1,0,run 03
+vlm-in-flash,9d25458bc213e3038fff791a7233534257e4f41c,yabsed,yabsed,2026-09-27T22:10:33+09:00,2026-09-27T22:13:08+09:00,2026-09-27,22,1,0,0,1,0,shorten 01
+vlm-in-flash,d250d4e931637823bb1f905df82aeb2136b4346e,yabsed,yabsed,2026-09-27T22:32:00+09:00,2026-09-27T22:32:00+09:00,2026-09-27,22,1,0,0,1,0,02
+final,b6dff582073038cfa4ccbd66a5ab26b8592e7edf,yabsed,yabsed,2026-09-28T00:38:10+09:00,2026-09-28T00:38:10+09:00,2026-09-28,0,0,0,0,1,0,Collect conclusion results and upstream source
+vlm-in-flash,4c19eb50dd404143e086bc698e1cf459d268e625,yabsed,yabsed,2026-09-28T00:42:57+09:00,2026-09-28T00:42:57+09:00,2026-09-28,0,1,0,0,1,0,Add final as submodule
+final,6101f340eeb9bccf1204af337cf146876d0e7a25,yabsed,yabsed,2026-09-28T00:44:02+09:00,2026-09-28T00:44:02+09:00,2026-09-28,0,1,0,0,1,0,Move results and vlm-flash to repository root
+vlm-in-flash,aa9f233e174a4496f37eb45f9f13cc149dd911b5,yabsed,yabsed,2026-09-28T00:44:20+09:00,2026-09-28T00:44:20+09:00,2026-09-28,0,1,0,0,1,0,Update final submodule paths
+final,c524a2d0b20c5f788999b16f15dc614273117829,yabsed,yabsed,2026-09-28T00:45:58+09:00,2026-09-28T00:45:58+09:00,2026-09-28,0,1,0,0,1,0,Fix notebook paths after moving vlm-flash
+final,9b01e6045e7eecd310fdc5b422b0a29928259465,yabsed,yabsed,2026-09-28T01:02:05+09:00,2026-09-28T01:02:05+09:00,2026-09-28,1,1,0,0,1,0,Add Baseline reame of September
+final,4fe9c4d0a6e521779e3b3434022079aed989cfe5,yabsed,yabsed,2026-09-28T03:38:39+09:00,2026-09-28T03:38:39+09:00,2026-09-28,3,1,0,0,1,0,New Evidence: Chunk Size may matter less
+final,ab34ac7dbb0071476c9d1d69b79ad310eb3dae06,yabsed,yabsed,2026-09-28T11:08:06+09:00,2026-09-28T11:08:06+09:00,2026-09-28,11,1,0,0,1,0,Update 02
+final,fd3dcc2b97b714ad565b0d14659c4116bafb137f,yabsed,yabsed,2026-09-28T13:34:09+09:00,2026-09-28T13:34:09+09:00,2026-09-28,13,1,0,0,1,0,Remove Selectors.cpp
+vlm-in-flash,ced1030f9e57b1eae46110dc3b0749c47439e15e,yabsed,yabsed,2026-09-28T00:46:05+09:00,2026-09-28T13:59:02+09:00,2026-09-28,13,1,0,0,1,0,Update final submodule for notebook paths
+final,18078524624f5a6dc2747e5d21b3df12017ae1ac,yabsed,yabsed,2026-09-28T13:58:33+09:00,2026-09-28T13:59:09+09:00,2026-09-28,13,1,0,0,1,0,Refactor: Note Running Sequence to FileName & top-R as a limit of tile
+final,268d224cb3024bc1dd343c941b7da2108364535e,yabsed,yabsed,2026-09-28T14:02:07+09:00,2026-09-28T14:03:14+09:00,2026-09-28,14,1,0,0,1,0,style: display kind message while testing SSD speed
+final,8c2e46db2f6572498644dee44d4832e8c374e29c,yabsed,yabsed,2026-09-28T15:48:40+09:00,2026-09-28T15:48:40+09:00,2026-09-28,15,1,0,0,1,0,Update Result from 01 and 02
+final,695f06a2c590085f36a5d44e2ad2071e367611b9,yabsed,yabsed,2026-09-28T16:05:07+09:00,2026-09-28T16:12:03+09:00,2026-09-28,16,1,0,0,1,0,Update Experiment 03
+final,7b53465a976576f420a064e303bc230d808f33cc,yabsed,yabsed,2026-09-28T16:51:03+09:00,2026-09-28T16:51:03+09:00,2026-09-28,16,1,0,0,1,0,Update Experiment 03
+final,db820f76e48db4276f66ef44efe8f41014906e20,yabsed,yabsed,2026-10-10T21:24:48+09:00,2026-10-10T21:24:48+09:00,2026-10-10,21,1,0,0,1,0,update vscode settings
+final,fd858f84481e5d6bd06fabd7594ebb61cd4491e2,yabsed,yabsed,2026-10-10T22:07:27+09:00,2026-10-10T22:10:07+09:00,2026-10-10,22,1,0,0,1,0,Humanize AI Code in 01_01
+final,f5dcc0eeffcb2ec50bb1e63bbdea0ec7d09994ee,yabsed,yabsed,2026-10-10T23:57:43+09:00,2026-10-10T23:57:43+09:00,2026-10-10,23,1,0,0,1,0,rerun experiment 1
+final,d914f2fe591d1e05bac06c40faf12e94ea8afa1c,yabsed,yabsed,2026-10-11T17:56:15+09:00,2026-10-11T18:00:07+09:00,2026-10-11,18,1,0,0,1,0,update code design to be more readable
+final,38d603476448a1ca9c9ef3fcec698513b4d4879f,yabsed,yabsed,2026-10-11T19:02:21+09:00,2026-10-11T19:19:41+09:00,2026-10-11,19,1,0,0,1,0,Humanize 02_01 jupyter
+final,26b5aa6588e2f90ee3c551f6d18ab85dae52b03e,yabsed,yabsed,2026-10-11T20:12:53+09:00,2026-10-11T20:12:53+09:00,2026-10-11,20,1,0,0,1,0,Humanize 02_02 Jupyter
+final,dae826db4281574710a2924fa16fafbd8b869692,yabsed,yabsed,2026-10-11T22:09:57+09:00,2026-10-11T22:09:57+09:00,2026-10-11,22,1,0,0,1,0,Apply Faster Global DP Algorithm
+final,045902d6a1c8c80c8a3e17f93a56085ce6f20f5d,yabsed,yabsed,2026-10-18T19:26:44+09:00,2026-10-18T19:26:44+09:00,2026-10-18,19,1,0,0,1,0,Update 02_02
+final,a88738c5dd5c6f9c2f2f90984c12e05ecd478fa3,yabsed,yabsed,2026-10-18T19:32:02+09:00,2026-10-18T19:32:02+09:00,2026-10-18,19,1,0,0,1,0,Rerun process
+final,d729893eb8914ea13cc33c140332f2a9969d7aa5,yabsed,yabsed,2026-10-18T19:38:14+09:00,2026-10-18T19:38:14+09:00,2026-10-18,19,1,0,0,1,0,Reduce the length of Markdown
+final,cdea38dc7a67207c0335f8126dcdaf9d712769c6,yabsed,yabsed,2026-10-18T19:49:13+09:00,2026-10-18T19:49:13+09:00,2026-10-18,19,1,0,0,1,0,Update 02_03
+final,a0c063fb06e0a4bb696e5be10f4f202b6e666fba,yabsed,yabsed,2026-10-18T22:52:12+09:00,2026-10-18T22:52:12+09:00,2026-10-18,22,1,0,0,1,0,Rerun
+final,0f7ee5098f943ed769e9a064a935e01006cf2238,yabsed,yabsed,2026-10-18T23:25:00+09:00,2026-10-18T23:31:10+09:00,2026-10-18,23,1,0,0,1,0,delete 02_02
+final,20426ebf0cd54f0a5b2f43b17e4709aaea63eae5,yabsed,yabsed,2026-10-19T00:35:51+09:00,2026-10-19T00:41:14+09:00,2026-10-19,0,1,0,0,1,0,enhance readability
+final,2645a06e5f01a788641527f848e28539388c866f,yabsed,yabsed,2026-10-19T02:04:27+09:00,2026-10-19T02:10:33+09:00,2026-10-19,2,1,0,0,1,0,enhance readbility of 02_03
+final,5d7e35d6654586bf924804a046547199656b5dde,yabsed,yabsed,2026-10-19T02:42:11+09:00,2026-10-19T02:42:11+09:00,2026-10-19,2,1,0,0,1,0,rerun
+final,58c41d1b3fc5cbaeff345b27903a97a976686c53,yabsed,yabsed,2026-10-19T23:19:15+09:00,2026-10-19T23:19:15+09:00,2026-10-19,23,1,0,0,1,0,enhance human readability of 01
+final,f4815a89ee26153ad678d8fc3ac8323851f25755,yabsed,yabsed,2026-10-19T23:38:06+09:00,2026-10-19T23:45:38+09:00,2026-10-19,23,1,0,0,1,0,enhance human readability of 02_01
+final,073d33368c386d7e1f446330546f8fe12d5a6e54,yabsed,yabsed,2026-10-20T14:32:29+09:00,2026-10-20T14:32:29+09:00,2026-10-20,14,1,0,0,1,0,finalize enhancing readability of 01
+final,a63ef72b72ca97882f7154af1f6725b041afcce2,yabsed,yabsed,2026-10-20T14:47:09+09:00,2026-10-20T14:47:09+09:00,2026-10-20,14,1,0,0,1,0,shorten markdown explanation of ipynb
+final,39f9283d323054a11284d3f7d380d10bd74cee32,yabsed,yabsed,2026-10-20T14:51:57+09:00,2026-10-20T14:51:57+09:00,2026-10-20,14,1,0,0,1,0,shorten markdown of 02_01
+final,1b7104aae2ed836c02e547a5833e2a070f4c6ec7,yabsed,yabsed,2026-10-20T16:08:46+09:00,2026-10-20T16:08:46+09:00,2026-10-20,16,1,0,0,1,0,enhance readability after 02_02
+final,b801921f367bb1c088271c160015dfbf19df6805,yabsed,yabsed,2026-10-20T16:17:08+09:00,2026-10-20T16:17:08+09:00,2026-10-20,16,1,0,0,1,0,enhance readability of 02_02
+final,4b007ff4e2c6397df3a00ec178bae83d6ab5eac1,yabsed,yabsed,2026-10-20T16:43:08+09:00,2026-10-20T16:43:08+09:00,2026-10-20,16,1,0,0,1,0,enhance redability of 02_03
+final,5800d6b69e9c2e8bc5acfd93d0a119d922970ea6,yabsed,yabsed,2026-10-20T19:53:17+09:00,2026-10-20T19:53:17+09:00,2026-10-20,19,1,0,0,1,0,fix 01 error and rerun
+final,5e7467c4653717b6163c4f9e1e486f868f1fbc44,yabsed,yabsed,2026-10-20T19:58:17+09:00,2026-10-20T19:58:17+09:00,2026-10-20,19,1,0,0,1,0,rerun 02
+final,b4ceb430801fdbe8b1ace4c43e91f51940579ab5,yabsed,yabsed,2026-10-21T15:45:03+09:00,2026-10-21T15:45:03+09:00,2026-10-21,15,1,0,0,1,0,enhance reability of 02_03
+final,fb1d05e7c85e13bb2bd10a4a050d2dcf46b55bb0,yabsed,yabsed,2026-10-21T16:05:35+09:00,2026-10-21T16:05:35+09:00,2026-10-21,16,1,0,0,1,0,enhance 02_04 using AI
+vlm-in-flash,bbbc528e6cacc99c426b5e6d34cbba80f9b227bd,yabsed,yabsed,2026-10-24T21:11:19+09:00,2026-10-24T21:11:19+09:00,2026-10-24,21,1,0,0,1,0,Update final submodule
+vlm-in-flash,1c2a212dee25da160344c517c5e6d5a227f04fde,yabsed,yabsed,2026-10-24T21:44:12+09:00,2026-10-24T21:44:12+09:00,2026-10-24,21,1,0,0,1,0,how does paper actually select blocks?
+vlm-in-flash,863a7b85431eaabc825e8e5f3435bbd9dfa9d476,yabsed,yabsed,2026-10-24T21:54:07+09:00,2026-10-24T21:54:07+09:00,2026-10-24,21,1,0,0,1,0,is two line model correct? use outer data to find this out
+final,7915638d5dc6ed5e6607c07bfd8a8a0c465b6a94,yabsed,yabsed,2026-10-26T16:22:51+09:00,2026-10-26T16:22:51+09:00,2026-10-26,16,1,0,0,1,0,enhance readability of 02_04
+final,d3b15bce29d17ce63e2e362e4f844b5a45eac1ff,yabsed,yabsed,2026-10-26T18:38:49+09:00,2026-10-26T18:38:49+09:00,2026-10-26,18,1,0,0,1,0,split 02_04
+final,3cb9df75467c6ac0e097807361110aac1179fb7a,yabsed,yabsed,2026-10-26T18:50:00+09:00,2026-10-26T18:50:00+09:00,2026-10-26,18,1,0,0,1,0,split 02_05
+final,14c9243dfa9322200a4b1a059ff845baf48fdb18,yabsed,yabsed,2026-10-26T19:11:51+09:00,2026-10-26T19:11:51+09:00,2026-10-26,19,1,0,0,1,0,fix error in 0204
+final,27539bb42e1e5d4e487d7d832a85de4189a30d66,yabsed,yabsed,2026-10-26T20:03:43+09:00,2026-10-26T20:03:43+09:00,2026-10-26,20,1,0,0,1,0,enhance 02_04
+final,85ace0380a0dbeddb4750e3cf9aa5fa16c221695,yabsed,yabsed,2026-10-26T20:51:43+09:00,2026-10-26T20:51:43+09:00,2026-10-26,20,1,0,0,1,0,enhance 2
+final,a097c02e7b1477c20d1e0093056809d827ea0f58,yabsed,yabsed,2026-10-26T21:02:56+09:00,2026-10-26T21:02:56+09:00,2026-10-26,21,1,0,0,1,0,enhance 02_04
+final,b8e791035f9faf03fddcc873a08d184e0398e9ec,yabsed,yabsed,2026-10-26T21:47:47+09:00,2026-10-26T21:47:47+09:00,2026-10-26,21,1,0,0,1,0,enhance 0204
+final,2a6454c108a194b2d96882e538a378ba3122478b,yabsed,yabsed,2026-10-26T22:44:09+09:00,2026-10-26T22:44:09+09:00,2026-10-26,22,1,0,0,1,0,enhance 0204
+final,20177720cb060649a4bd01e1db2fad4290a0ac71,yabsed,yabsed,2026-10-26T22:48:29+09:00,2026-10-26T22:48:29+09:00,2026-10-26,22,1,0,0,1,0,enhance 0204
+final,80599ad0e2d3f303aacd9bc8179ccaf794264a7c,yabsed,yabsed,2026-10-26T23:08:38+09:00,2026-10-26T23:08:38+09:00,2026-10-26,23,1,0,0,1,0,change 0205
+final,8f4618c0dbec2d4285aee025d6f386ac675c4cd3,yabsed,yabsed,2026-10-27T02:19:52+09:00,2026-10-27T02:19:52+09:00,2026-10-27,2,1,0,0,1,0,enhance 3
+final,c87f1d17ef08648c5385f1d5a971cbfd93d183b4,yabsed,yabsed,2026-10-27T03:13:59+09:00,2026-10-27T03:13:59+09:00,2026-10-27,3,1,0,0,1,0,enhance 3
+final,1f93825f8f2c298d62b735965a69dbd28d8fc666,yabsed,yabsed,2026-10-27T03:32:34+09:00,2026-10-27T03:32:34+09:00,2026-10-27,3,1,0,0,1,0,shorten markdown
+final,f086444baab278c7befc702db11faa9bc5c44308,yabsed,yabsed,2026-10-27T17:14:18+09:00,2026-10-27T17:14:18+09:00,2026-10-27,17,1,0,0,1,0,read 03_01
+final,9c661cd38647d279a5a001d486d0eafe65dd15a5,yabsed,yabsed,2026-10-27T18:34:53+09:00,2026-10-27T18:34:53+09:00,2026-10-27,18,1,0,0,1,0,enhance 03_02
+final,dbd8bc177f696bf9b39c1540cea194fd6ef28d24,yabsed,yabsed,2026-10-27T18:41:09+09:00,2026-10-27T18:41:09+09:00,2026-10-27,18,1,0,0,1,0,0302 limit number of runs
+final,e038cd9ad4e48647b3a4d612d3abf2d0ab24f4bb,yabsed,yabsed,2026-10-27T18:56:23+09:00,2026-10-27T18:56:23+09:00,2026-10-27,18,1,0,0,1,0,rerun 03
+final,40eef7feec56791222a2414791666f666cbb8478,yabsed,yabsed,2026-10-27T19:06:12+09:00,2026-10-27T19:06:12+09:00,2026-10-27,19,1,0,0,1,0,todo readme
+final,28b8d662102d5f0d07a7cb59a8b523cd3dd52e31,yabsed,yabsed,2026-10-27T21:08:59+09:00,2026-10-27T21:30:03+09:00,2026-10-27,21,1,0,0,1,0,add reference directory
+final,8e7b0b7647be7a5ddf3c964a796ed967ce8cff0b,yabsed,yabsed,2026-10-27T23:19:07+09:00,2026-10-27T23:19:07+09:00,2026-10-27,23,1,0,0,1,0,start writing midterm paper
+final,439a82658f328ebc07565d13ec34465192ce5049,yabsed,yabsed,2026-10-27T23:21:53+09:00,2026-10-27T23:21:53+09:00,2026-10-27,23,1,0,0,1,0,i admit - i havent read those
+vlm-in-flash,2cb2bc4548bca19a24eb581bbc5081fa48c551c7,yabsed,yabsed,2026-10-27T23:22:08+09:00,2026-10-27T23:22:08+09:00,2026-10-27,23,1,0,0,1,0,update from submodule
+vlm-in-flash,a9adac15c0b3c7bcdd4a39736de8c876e4a1f414,yabsed,yabsed,2026-10-27T23:49:51+09:00,2026-10-27T23:49:51+09:00,2026-10-27,23,1,0,0,1,0,논문의 요약
+final,f203718cbe866e76aaf4908fc40073352edc649b,yabsed,yabsed,2026-10-27T23:57:07+09:00,2026-10-27T23:57:07+09:00,2026-10-27,23,1,0,0,1,0,수학적 표기
+final,ed503bf8bdaa7f284e3ade5f2494ca8432e56505,yabsed,yabsed,2026-10-28T00:33:23+09:00,2026-10-28T00:33:23+09:00,2026-10-28,0,1,0,0,1,0,이론적 배경 완료
+vlm-in-flash,3fefc543970e550e30f490939847f021e91ec3ca,yabsed,yabsed,2026-10-28T00:33:31+09:00,2026-10-28T00:33:31+09:00,2026-10-28,0,1,0,0,1,0,update math
+final,d88d62abd9877ee9c4cc1bd5cfdb0194e6f576c7,yabsed,yabsed,2026-10-28T01:04:27+09:00,2026-10-28T01:06:16+09:00,2026-10-28,1,1,0,0,1,0,2.1
+vlm-in-flash,859c409f10e5e85b795b4c4a2ef76f1bcfffcc95,yabsed,yabsed,2026-10-28T01:08:26+09:00,2026-10-28T01:08:26+09:00,2026-10-28,1,1,0,0,1,0,why M = R
+vlm-in-flash,d3055a00bcf9f4223f617837699ba2bf359ffeb4,yabsed,yabsed,2026-10-28T01:36:42+09:00,2026-10-28T01:36:42+09:00,2026-10-28,1,1,0,0,1,0,finalized 2.2
+final,5904397ba7fe84262557317dc8bb93be9d18e9b2,yabsed,yabsed,2026-10-28T01:36:33+09:00,2026-10-28T01:39:12+09:00,2026-10-28,1,1,0,0,1,0,write 2.2
+vlm-in-flash,96d311cda418cba74e7957ed7c67869b7f4e7ce4,yabsed,yabsed,2026-10-28T02:12:28+09:00,2026-10-28T02:12:28+09:00,2026-10-28,2,1,0,0,1,0,2.3
+final,d8455c7df0a07462886c61397d10d36e128ab13e,yabsed,yabsed,2026-10-28T02:17:56+09:00,2026-10-28T02:17:56+09:00,2026-10-28,2,1,0,0,1,0,add 2.3
+vlm-in-flash,2de384dbda47f2e7a108437647e3202bd286a228,yabsed,yabsed,2026-10-28T02:18:02+09:00,2026-10-28T02:18:02+09:00,2026-10-28,2,1,0,0,1,0,update 2.3
+final,18fab54d005663c308e8e2c16af02eb2ece80c40,yabsed,yabsed,2026-10-28T02:39:49+09:00,2026-10-28T02:39:49+09:00,2026-10-28,2,1,0,0,1,0,2.4
+vlm-in-flash,ff5154a4ed2953e0d4917975bcf3fffde47a0269,yabsed,yabsed,2026-10-28T02:39:54+09:00,2026-10-28T02:39:54+09:00,2026-10-28,2,1,0,0,1,0,2.4
+final,33d0942e1ab92663f9b546c8095b6271dbdbefee,yabsed,yabsed,2026-10-28T03:04:36+09:00,2026-10-28T03:04:36+09:00,2026-10-28,3,1,0,0,1,0,2.5
+vlm-in-flash,cd320b55702c818d7dae6a62bf8b87090e0d1c71,yabsed,yabsed,2026-10-28T03:04:41+09:00,2026-10-28T03:04:41+09:00,2026-10-28,3,1,0,0,1,0,2.5
+final,4f60183d77d5638f874cd4ddc4925f57d2465b72,yabsed,yabsed,2026-10-28T03:06:17+09:00,2026-10-28T03:06:17+09:00,2026-10-28,3,1,0,0,1,0,update skeleton
+vlm-in-flash,556bcc6967b2da7909bf3576b5d72057256ad27f,yabsed,yabsed,2026-10-28T03:06:25+09:00,2026-10-28T03:06:25+09:00,2026-10-28,3,1,0,0,1,0,update final submoudle
+final,d7ddc1915fff3838aa7568c0b54b8e58e52586eb,yabsed,yabsed,2026-10-28T03:33:25+09:00,2026-10-28T03:33:25+09:00,2026-10-28,3,1,0,0,1,0,add 3.1
+vlm-in-flash,baedc9679da8e62b413f8ae9ec2912d2e389acd7,yabsed,yabsed,2026-10-28T03:33:42+09:00,2026-10-28T03:33:53+09:00,2026-10-28,3,1,0,0,1,0,3.1
+vlm-in-flash,55037e70bd2052024588d57ba1fccf9140073052,yabsed,yabsed,2026-10-28T03:35:27+09:00,2026-10-28T03:35:27+09:00,2026-10-28,3,1,0,0,1,0,add manual
+final,c7fb80e70703a3ede3a2eef2ba0a2b4a544501b4,yabsed,yabsed,2026-10-28T03:51:59+09:00,2026-10-28T03:51:59+09:00,2026-10-28,3,1,0,0,1,0,3.2
+vlm-in-flash,fb63c6eaa8cbffbc849632b2339f8de0d09d18a9,yabsed,yabsed,2026-10-28T03:52:02+09:00,2026-10-28T03:52:10+09:00,2026-10-28,3,1,0,0,1,0,3.2
+vlm-in-flash,aa904c7537541c9f89df805811d6c817454efb97,yabsed,yabsed,2026-10-28T03:58:58+09:00,2026-10-28T03:58:58+09:00,2026-10-28,3,1,0,0,1,0,3.3
+final,399315b873fa6703061dc114b4fd5bc20a5fd203,yabsed,yabsed,2026-10-28T04:00:39+09:00,2026-10-28T04:00:39+09:00,2026-10-28,4,1,0,0,1,0,3.3
+final,2d3d521e6a30cdbd4bf00502a67ccf54c7aa0c32,yabsed,yabsed,2026-10-28T04:05:26+09:00,2026-10-28T04:05:26+09:00,2026-10-28,4,1,0,0,1,0,재현 자료
+final,a747fe982cc91dc98e69497baf681a5017486918,yabsed,yabsed,2026-10-28T04:23:46+09:00,2026-10-28T04:23:46+09:00,2026-10-28,4,1,0,0,1,0,향후 연구에서 고민해야 할 점
+vlm-in-flash,ff68a4c65e5e996f1150adff94f361bfd7bd7309,yabsed,yabsed,2026-10-28T04:23:57+09:00,2026-10-28T04:23:57+09:00,2026-10-28,4,1,0,0,1,0,update final
+final,5fbf420dcc3e14bc73d1953b90030d4ab47d3efc,yabsed,yabsed,2026-10-28T04:40:39+09:00,2026-10-28T04:40:39+09:00,2026-10-28,4,1,0,0,1,0,pdf
+vlm-in-flash,bbeb55e1b933b6b5bb387a4969c444affec40d2f,yabsed,yabsed,2026-10-28T04:40:47+09:00,2026-10-28T04:40:47+09:00,2026-10-28,4,1,0,0,1,0,new submodule
+vlm-in-flash,64cb5277f9b077ed2981acca8c8d8bd7265f7e74,yabsed,yabsed,2026-10-28T04:57:37+09:00,2026-10-28T04:57:37+09:00,2026-10-28,4,1,0,0,1,0,send email
