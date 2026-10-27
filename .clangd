@@ -1,5 +1,5 @@
 If:
-  PathMatch: conclusion/python/results/03/.*\.cpp
+  PathMatch: (conclusion/python|final)/results/03/.*\.cpp
 
 CompileFlags:
   Add:
